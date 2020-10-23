@@ -6,9 +6,15 @@
   <body>
     {% if data %}
       <code>
-        {% for player in data %}
-          {{player}} <a href="/player/{{player['channel']}}/play">Play</a> <a href="/player/{{player.channel}}/stop">Stop</a></a><br>
+        {% for player in data.channels %}
+          {{player}} <a href="/player/{{player['channel']}}/play">Play</a> <a href="/player/{{player.channel}}/stop">Stop</a><br>
         {% endfor %}
+      </code>
+      <br>
+      <code>
+        {% for output in data.outputs %}
+        <a href="/player/0/output/{{output.name}}">Set Channel 0</a> <a href="/player/1/output/{{output.name}}">Set Channel 1</a> <a href="/player/2/output/{{output.name}}">Set Channel 2</a> - {{output.name}}<br>
+      {% endfor %}
       </code>
     {% endif %}
 

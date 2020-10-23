@@ -2,6 +2,7 @@ import multiprocessing
 from bapsicle_standalone import bapsicle
 from flask import Flask, render_template
 import json
+import sounddevice as sd
 
 app = Flask(__name__)
 
@@ -18,9 +19,23 @@ channel_p = []
 
 @app.route("/")
 def status():
-    data = []
+    channel_states = []
     for i in range(3):
-      data.append(details(i))
+      channel_states.append(details(i))
+
+    devices = sd.query_devices()
+    outputs = []
+    
+    for device in devices:
+      if device["max_output_channels"] > 0:
+        outputs.append(device)
+
+    
+
+    data = {
+      'channels': channel_states,
+      'outputs': outputs,
+    }
     return render_template('index.html', data=data)
 
 
@@ -63,6 +78,12 @@ def seek(channel, pos):
 
   return status()
 
+@app.route("/player/<int:channel>/output/<name>")
+def output(channel, name):
+  channel_to_q[channel].put("OUTPUT:" + name)
+  channel_to_q[channel].put("LOAD:test"+str(channel)+".mp3")
+  return status()
+
 
 @app.route("/player/<int:channel>/details")
 def details(channel):
@@ -82,6 +103,9 @@ def all_stop():
   status()
 
 if __name__ == "__main__":
+
+
+
 
   for channel in range(3):
     channel_to_q.append(multiprocessing.Queue())

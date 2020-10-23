@@ -11,8 +11,17 @@ class bapsicle():
     "pos": 0,
     "remaining": 0,
     "length": 0,
-    "loop": False
+    "loop": False,
+    "output": None
   }
+
+  def isInit(self):
+    try:
+      pygame.mixer.music.get_busy()
+    except:
+      return False
+    else:
+      return True
 
   def isPlaying(self):
     return bool(pygame.mixer.music.get_busy())
@@ -47,6 +56,21 @@ class bapsicle():
       else:
         self.state["length"] = pygame.mixer.Sound(filename).get_length()/1000
 
+  def output(self, name = None):
+    pygame.mixer.quit()
+    try:
+      if name:
+        pygame.mixer.init(44100, -16, 1, 1024, devicename=name)
+      else:
+        pygame.mixer.init(44100, -16, 1, 1024)
+    except:
+      return "FAIL:Failed to init mixer, check sound devices."
+    else:
+      if name:
+        self.state["output"] = name
+      else:
+        self.state["output"] = "default"
+      return "OK"
 
 
   def updateState(self, pos = None):
@@ -67,7 +91,7 @@ class bapsicle():
 
     self.state["channel"] = channel
 
-    pygame.mixer.init(44100, -16, 1, 1024)
+    self.output()
 
 
 
@@ -75,24 +99,29 @@ class bapsicle():
     while True:
       time.sleep(0.01)
       incoming_msg = in_q.get()
-      self.updateState()
       if (not incoming_msg):
         continue
-      if (incoming_msg == 'PLAY'):
-        self.play()
-      if (incoming_msg == 'PAUSE'):
-        self.pause()
-      if (incoming_msg == 'UNPAUSE'):
-        self.unpause()
-      if (incoming_msg == 'STOP'):
-        self.stop()
-      if (incoming_msg.startswith("SEEK")):
-        split = incoming_msg.split(":")
-        self.seek(float(split[1]))
-      if (incoming_msg.startswith("LOAD")):
-        split = incoming_msg.split(":")
-        self.load(split[1])
+      if self.isInit():
+        self.updateState()
+        if (incoming_msg == 'PLAY'):
+          self.play()
+        if (incoming_msg == 'PAUSE'):
+          self.pause()
+        if (incoming_msg == 'UNPAUSE'):
+          self.unpause()
+        if (incoming_msg == 'STOP'):
+          self.stop()
+        if (incoming_msg.startswith("SEEK")):
+          split = incoming_msg.split(":")
+          self.seek(float(split[1]))
+        if (incoming_msg.startswith("LOAD")):
+          split = incoming_msg.split(":")
+          self.load(split[1])
+        if (incoming_msg == 'DETAILS'):
+          out_q.put(self.getDetails())
 
-      if (incoming_msg == 'DETAILS'):
-        out_q.put(self.getDetails())
+
+      if (incoming_msg.startswith("OUTPUT")):
+        split = incoming_msg.split(":")
+        out_q.put(self.output(split[1]))
 
