@@ -1,0 +1,3 @@
+[submodule "ury-playd"]
+	path = ury-playd
+	url = https://github.com/UniversityRadioYork/ury-playd
