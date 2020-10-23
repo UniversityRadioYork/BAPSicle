@@ -81,10 +81,13 @@ def all_stop():
     channel.put("STOP")
   status()
 
-for channel in range(3):
-  channel_to_q.append(multiprocessing.Queue())
-  channel_from_q.append(multiprocessing.Queue())
-  channel_to_q[-1].put_nowait("LOAD:test"+str(channel)+".mp3")
-  channel_p.append(multiprocessing.Process(target=bapsicle, args=(channel, channel_to_q[-1], channel_from_q[-1])).start())
+if __name__ == "__main__":
 
-app.run(host='0.0.0.0', port=5000, debug=True)
+  for channel in range(3):
+    channel_to_q.append(multiprocessing.Queue())
+    channel_from_q.append(multiprocessing.Queue())
+    channel_to_q[-1].put_nowait("LOAD:test"+str(channel)+".mp3")
+    channel_p.append(multiprocessing.Process(target=bapsicle, args=(channel, channel_to_q[-1], channel_from_q[-1])).start())
+
+
+  app.run(host='0.0.0.0', port=5000, debug=True)
