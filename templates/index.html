@@ -1,0 +1,17 @@
+<html>
+  <head>
+    <title>BAPSicle</title>
+    <meta http-equiv="refresh" content="2;url=/" />
+  </head>
+  <body>
+    {% if data %}
+      <code>
+        {% for player in data %}
+          {{player}} <a href="/player/{{player['channel']}}/play">Play</a> <a href="/player/{{player.channel}}/stop">Stop</a></a><br>
+        {% endfor %}
+      </code>
+    {% endif %}
+
+
+  </body>
+</html>
