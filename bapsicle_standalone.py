@@ -3,8 +3,12 @@ import time
 import json
 from mutagen.mp3 import MP3
 
+from state_manager import stateManager
+
 class bapsicle():
-  state = {
+  state = None
+
+  __default_state = {
     "filename": "",
     "channel": -1,
     "playing": False,
@@ -35,7 +39,7 @@ class bapsicle():
     pygame.mixer.music.pause()
 
   def unpause(self):
-    pygame.mixer.music.play(0, self.state["pos"])
+    pygame.mixer.music.play(0, self.state.state["pos"])
 
   def stop(self):
     pygame.mixer.music.stop()
@@ -48,13 +52,13 @@ class bapsicle():
 
   def load(self, filename):
     if not self.isPlaying():
-      self.state["filename"] = filename
+      self.state.update("filename",filename)
       pygame.mixer.music.load(filename)
       if ".mp3" in filename:
         song = MP3(filename)
-        self.state["length"] = song.info.length
+        self.state.update("length",song.info.length)
       else:
-        self.state["length"] = pygame.mixer.Sound(filename).get_length()/1000
+        self.state.update("length",pygame.mixer.Sound(filename).get_length()/1000)
 
   def output(self, name = None):
     pygame.mixer.quit()
@@ -67,29 +71,31 @@ class bapsicle():
       return "FAIL:Failed to init mixer, check sound devices."
     else:
       if name:
-        self.state["output"] = name
+        self.state.update("output",name)
       else:
-        self.state["output"] = "default"
+        self.state.update("output","default")
       return "OK"
 
 
   def updateState(self, pos = None):
-    self.state["playing"] = self.isPlaying()
+    self.state.update("playing",self.isPlaying())
     if (pos):
-      self.state["pos"] = pos
+      self.state.update("pos",pos)
     else:
-      self.state["pos"] = pygame.mixer.music.get_pos()/1000
-
-    self.state["remaining"] = self.state["length"] - self.state["pos"]
+      self.state.update("pos",pygame.mixer.music.get_pos()/1000)
+    print(self.state.state)
+    self.state.update("remaining",self.state.state["length"] - self.state.state["pos"])
 
   def getDetails(self):
-    res = "RESP:DETAILS: " + json.dumps(self.state)
+    res = "RESP:DETAILS: " + json.dumps(self.state.state)
     return res
 
 
   def __init__(self, channel, in_q, out_q):
 
-    self.state["channel"] = channel
+    self.state = stateManager("channel" + str(channel), self.__default_state)
+
+    self.state.update("channel", channel)
 
     self.output()
 
