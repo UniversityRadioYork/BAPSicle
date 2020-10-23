@@ -67,7 +67,7 @@ class bapsicle():
 
     self.state["channel"] = channel
 
-    pygame.mixer.init()
+    pygame.mixer.init(44100, -16, 1, 1024)
 
 
 
