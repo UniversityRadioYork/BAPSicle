@@ -1,5 +1,5 @@
 import multiprocessing
-from bapsicle_standalone import bapsicle
+import bapsicle_standalone
 from flask import Flask, render_template
 import json
 import sounddevice as sd
@@ -102,16 +102,21 @@ def all_stop():
     channel.put("STOP")
   status()
 
+
 if __name__ == "__main__":
-
-
-
 
   for channel in range(3):
     channel_to_q.append(multiprocessing.Queue())
     channel_from_q.append(multiprocessing.Queue())
     channel_to_q[-1].put_nowait("LOAD:test"+str(channel)+".mp3")
-    channel_p.append(multiprocessing.Process(target=bapsicle, args=(channel, channel_to_q[-1], channel_from_q[-1])).start())
+    channel_p.append(
+      multiprocessing.Process(
+        target=bapsicle_standalone.bapsicle,
+        args=(channel, channel_to_q[-1], channel_from_q[-1])
+      )
+    )
+    channel_p[channel].start()
 
 
-  app.run(host='0.0.0.0', port=5000, debug=True)
+  # Don't use reloader, it causes Nested Processes!
+  app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
