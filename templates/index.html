@@ -7,7 +7,10 @@
     {% if data %}
       <code>
         {% for player in data.channels %}
-          {{player}} <a href="/player/{{player['channel']}}/play">Play</a> <a href="/player/{{player.channel}}/stop">Stop</a><br>
+        <a href="/player/{{player.channel}}/play">Play</a> 
+        <a href="/player/{{player.channel}}/stop">Stop</a>
+        <a href="/player/{{player.channel}}/seek/50">Seek 50</a>
+        {{player}}<br>
         {% endfor %}
       </code>
       <br>
