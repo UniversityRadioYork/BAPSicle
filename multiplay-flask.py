@@ -1,10 +1,10 @@
 import multiprocessing
 import bapsicle_standalone
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory
 import json
 import sounddevice as sd
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='')
 
 channel_to_q = []
 channel_from_q = []
@@ -15,10 +15,16 @@ channel_p = []
 
 
 
-
-
 @app.route("/")
-def status():
+def ui_index():
+    data = {
+      'ui_page': "index",
+      "ui_title": ""
+    }
+    return render_template('index.html', data=data)
+
+@app.route("/status")
+def ui_status():
     channel_states = []
     for i in range(3):
       channel_states.append(details(i))
@@ -35,8 +41,10 @@ def status():
     data = {
       'channels': channel_states,
       'outputs': outputs,
+      'ui_page': "status",
+      "ui_title": "Status"
     }
-    return render_template('index.html', data=data)
+    return render_template('status.html', data=data)
 
 
 @app.route("/player/<int:channel>/play")
@@ -44,7 +52,7 @@ def play(channel):
 
   channel_to_q[channel].put("PLAY")
 
-  return status()
+  return ui_status()
 
 
 @app.route("/player/<int:channel>/pause")
@@ -52,7 +60,7 @@ def pause(channel):
 
   channel_to_q[channel].put("PAUSE")
 
-  return status()
+  return ui_status()
 
 
 @app.route("/player/<int:channel>/unpause")
@@ -60,7 +68,7 @@ def unPause(channel):
 
   channel_to_q[channel].put("UNPAUSE")
 
-  return status()
+  return ui_status()
 
 
 @app.route("/player/<int:channel>/stop")
@@ -68,7 +76,7 @@ def stop(channel):
 
   channel_to_q[channel].put("STOP")
 
-  return status()
+  return ui_status()
 
 
 @app.route("/player/<int:channel>/seek/<int:pos>")
@@ -76,13 +84,13 @@ def seek(channel, pos):
 
   channel_to_q[channel].put("SEEK:" + str(pos))
 
-  return status()
+  return ui_status()
 
 @app.route("/player/<int:channel>/output/<name>")
 def output(channel, name):
   channel_to_q[channel].put("OUTPUT:" + name)
   channel_to_q[channel].put("LOAD:test"+str(channel)+".mp3")
-  return status()
+  return ui_status()
 
 
 @app.route("/player/<int:channel>/details")
@@ -100,15 +108,19 @@ def details(channel):
 def all_stop():
   for channel in channel_to_q:
     channel.put("STOP")
-  status()
+  ui_status()
 
+
+@app.route('/static/<path:path>')
+def send_static(path):
+    return send_from_directory('ui-static', path)
 
 if __name__ == "__main__":
 
   for channel in range(3):
     channel_to_q.append(multiprocessing.Queue())
     channel_from_q.append(multiprocessing.Queue())
-    channel_to_q[-1].put_nowait("LOAD:test"+str(channel)+".mp3")
+    # channel_to_q[-1].put_nowait("LOAD:test"+str(channel)+".mp3")
     channel_p.append(
       multiprocessing.Process(
         target=bapsicle_standalone.bapsicle,

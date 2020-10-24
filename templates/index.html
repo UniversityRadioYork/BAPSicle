@@ -1,26 +1,28 @@
-<html>
-  <head>
-    <title>BAPSicle</title>
-    <meta http-equiv="refresh" content="2;url=/" />
-  </head>
-  <body>
-    {% if data %}
-      <code>
-        {% for player in data.channels %}
-        <a href="/player/{{player.channel}}/play">Play</a> 
-        <a href="/player/{{player.channel}}/stop">Stop</a>
-        <a href="/player/{{player.channel}}/seek/50">Seek 50</a>
-        {{player}}<br>
-        {% endfor %}
-      </code>
-      <br>
-      <code>
-        {% for output in data.outputs %}
-        <a href="/player/0/output/{{output.name}}">Set Channel 0</a> <a href="/player/1/output/{{output.name}}">Set Channel 1</a> <a href="/player/2/output/{{output.name}}">Set Channel 2</a> - {{output.name}}<br>
-      {% endfor %}
-      </code>
-    {% endif %}
+{% extends 'base.html' %}
+{% block head %}
+  <meta http-equiv="refresh" content="5;url=/" />
+{% endblock %}
+{% block content %}
 
-
-  </body>
-</html>
+  <div class="card-body p-0">
+    <!-- Nested Row within Card Body -->
+    <div class="row">
+      <div class="col-lg-6 d-none d-lg-block bg-index-image"></div>
+      <div class="col-lg-6">
+        <div class="p-5">
+          <div class="text-center">
+            <h2 class="h1 text-gray-900 mb-4"><small>Welcome to</small><br>BAPSicle!</h2>
+            <p class="h4">The next gen Broadcast and Presenting Suite server!</p>
+          </div>
+          <hr>
+          <p>Wanted the actual playout controller?</p>
+          <a href="#" class="btn btn-primary btn-user btn-block">
+            Open WebStudio
+          </a>
+          <hr>
+          <p>Version: X  |  Server Name: Studio X</p>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
