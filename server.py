@@ -1,8 +1,17 @@
 import multiprocessing
 import player
-from flask import Flask, render_template, send_from_directory
+from flask import Flask, render_template, send_from_directory, request
 import json
 import sounddevice as sd
+
+
+class BAPSicleServer():
+    def __init__(self):
+        startServer()
+
+    def __del__(self):
+        stopServer()
+
 
 app = Flask(__name__, static_url_path='')
 
@@ -135,8 +144,7 @@ def send_static(path):
     return send_from_directory('ui-static', path)
 
 
-if __name__ == "__main__":
-
+def startServer():
     for channel in range(3):
         channel_to_q.append(multiprocessing.Queue())
         channel_from_q.append(multiprocessing.Queue())
@@ -144,10 +152,24 @@ if __name__ == "__main__":
         channel_p.append(
             multiprocessing.Process(
                 target=player.Player,
-                args=(channel, channel_to_q[-1], channel_from_q[-1])
+                args=(channel, channel_to_q[-1], channel_from_q[-1]),
+                daemon=True
             )
         )
         channel_p[channel].start()
 
     # Don't use reloader, it causes Nested Processes!
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+
+
+def stopServer():
+    print("Stopping server.py")
+    for q in channel_to_q:
+        q.put("QUIT")
+    for player in channel_p:
+        player.join()
+    app = None
+
+
+if __name__ == "__main__":
+    print("BAPSicle is a service. Please run it like one.")

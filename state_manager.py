@@ -7,7 +7,7 @@ class StateManager:
     __state = {}
 
     def __init__(self, name, default_state=None):
-        self.filepath = "state/" + name + ".json"
+        self.filepath = "C:\Program Files\BAPSicle\state\\" + name + ".json"
         if not os.path.isfile(self.filepath):
             self.log("No file found for " + self.filepath)
             try:
