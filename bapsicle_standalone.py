@@ -2,6 +2,7 @@ import pygame
 import time
 import json
 from mutagen.mp3 import MP3
+import copy
 
 from state_manager import stateManager
 
@@ -70,20 +71,17 @@ class bapsicle():
     except:
       return "FAIL:Failed to init mixer, check sound devices."
     else:
-      if name:
-        self.state.update("output",name)
-      else:
-        self.state.update("output","default")
-      return "OK"
+      self.state.update("output",name)
+    
+    return "OK"
 
 
   def updateState(self, pos = None):
     self.state.update("playing",self.isPlaying())
     if (pos):
-      self.state.update("pos",pos)
+      self.state.update("pos",max(0,pos))
     else:
-      self.state.update("pos",pygame.mixer.music.get_pos()/1000)
-    print(self.state.state)
+      self.state.update("pos",max(0,pygame.mixer.music.get_pos()/1000))
     self.state.update("remaining",self.state.state["length"] - self.state.state["pos"])
 
   def getDetails(self):
@@ -97,7 +95,25 @@ class bapsicle():
 
     self.state.update("channel", channel)
 
-    self.output()
+    loaded_state = copy.copy(self.state.state)
+
+    if loaded_state["output"]:
+      print("Setting output to: " + loaded_state["output"])
+      self.output(loaded_state["output"])
+    else:
+      self.output()
+
+    if loaded_state["filename"]:
+      print("Loading filename: " + loaded_state["filename"])
+      self.load(loaded_state["filename"])
+
+    if loaded_state["pos"] != 0:
+      print("Seeking to pos: " + str(loaded_state["pos"]))
+      self.seek(loaded_state["pos"])
+
+    if loaded_state["playing"] == True:
+      print("Resuming.")
+      self.unpause()
 
 
 
