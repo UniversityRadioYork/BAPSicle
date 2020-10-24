@@ -4,9 +4,9 @@ import json
 from mutagen.mp3 import MP3
 import copy
 
-from state_manager import stateManager
+from state_manager import StateManager
 
-class bapsicle():
+class Player():
   state = None
 
   __default_state = {
@@ -91,7 +91,7 @@ class bapsicle():
 
   def __init__(self, channel, in_q, out_q):
 
-    self.state = stateManager("channel" + str(channel), self.__default_state)
+    self.state = StateManager("channel" + str(channel), self.__default_state)
 
     self.state.update("channel", channel)
 

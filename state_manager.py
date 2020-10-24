@@ -1,11 +1,12 @@
 import json
 import os
 
-class stateManager:
+
+class StateManager:
     filepath = None
     __state = {}
 
-    def __init__(self, name, default_state = None):
+    def __init__(self, name, default_state=None):
         self.filepath = "state/" + name + ".json"
         if not os.path.isfile(self.filepath):
             self.log("No file found for " + self.filepath)
@@ -18,16 +19,15 @@ class stateManager:
 
         self.log("Saving state to " + self.filepath)
 
-
         file = open(self.filepath, 'r')
 
         file_state = file.read()
         file.close()
 
-        #TODO: also check for invalid JSON state
+        # TODO: also check for invalid JSON state
         if file_state == "":
             print("file empty")
-            
+
             self.state = default_state
 
         else:
@@ -54,6 +54,3 @@ class stateManager:
 
     def log(self, msg):
         print(msg)
-
-
-        

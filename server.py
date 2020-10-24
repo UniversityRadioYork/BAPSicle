@@ -1,5 +1,5 @@
 import multiprocessing
-import bapsicle_standalone
+import player
 from flask import Flask, render_template, send_from_directory
 import json
 import sounddevice as sd
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     # channel_to_q[-1].put_nowait("LOAD:test"+str(channel)+".mp3")
     channel_p.append(
       multiprocessing.Process(
-        target=bapsicle_standalone.bapsicle,
+        target=player.Player,
         args=(channel, channel_to_q[-1], channel_from_q[-1])
       )
     )
