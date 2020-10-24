@@ -12,7 +12,13 @@ channel_p = []
 
 
 
-
+@app.errorhandler(404)
+def page_not_found(e):
+    data = {
+      'ui_page': "404",
+      "ui_title": "404"
+    }
+    return render_template('404.html', data=data), 404
 
 
 @app.route("/")
