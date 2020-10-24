@@ -2,36 +2,15 @@
 {% block head %}
   <meta http-equiv="refresh" content="2;url=/status" />
 {% endblock %}
-{% block content %}
-  
-    <div class="card-body p-0">
-      <!-- Nested Row within Card Body -->
-      <div class="row">
-        <div class="col-lg-12">
-          <div class="p-5">
-            <div class="text-center">
-              <h2 class="h3 text-gray-900 mb-4">Status</h2>
-            </div>
-            <hr>
-            {% if data %}
-              <code>
-                {% for player in data.channels %}
-                <a href="/player/{{player.channel}}/play">Play</a> 
-                <a href="/player/{{player.channel}}/stop">Stop</a>
-                <a href="/player/{{player.channel}}/seek/50">Seek 50</a>
-                {{player}}<br>
-                {% endfor %}
-              </code>
-              <br>
-              <code>
-                {% for output in data.outputs %}
-                  <a href="/player/0/output/{{output.name}}">Set Channel 0</a> <a href="/player/1/output/{{output.name}}">Set Channel 1</a> <a href="/player/2/output/{{output.name}}">Set Channel 2</a> - {{output.name}}<br>
-                {% endfor %}
-              </code>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-    </div>
-    
+{% block content_inner %}
+  {% if data %}
+    <code>
+      {% for player in data.channels %}
+      <a href="/player/{{player.channel}}/play">Play</a> 
+      <a href="/player/{{player.channel}}/stop">Stop</a>
+      <a href="/player/{{player.channel}}/seek/50">Seek 50</a>
+      {{player}}<br>
+      {% endfor %}
+    </code>
+  {% endif %}
 {% endblock %}

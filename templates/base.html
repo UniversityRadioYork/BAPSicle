@@ -47,9 +47,33 @@
               </a>
             </div>
             <div class="card o-hidden border-0 shadow-lg my-3">
-              {% block content %}{% endblock %}
+              {% block content %}
+                
+                <div class="card-body p-0">
+                  <!-- Nested Row within Card Body -->
+                  <div class="row">
+                    <div class="col-lg-12">
+                      <div class="px-4 pt-5 pb-3">
+                        <div class="text-center">
+                          <h2 class="h3 text-gray-900">{{ data.ui_title }}</h2>
+                        </div>
+                        <hr>
+                      </div>
+                      <div class="px-4 pb-4">
+                        {% block content_inner %}
+                        <div class="py-4 text-center">
+                          <h2>Woops.</h2>
+                          <p>No content defined in <code>content</code> or <code>content_inner</code> block.</p>
+                        </div>
+                        {% endblock %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+    
+              {% endblock %}
             </div>
-            </div>
+          </div>
   
         </div>
   

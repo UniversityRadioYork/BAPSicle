@@ -11,12 +11,11 @@ channel_from_q = []
 channel_p = []
 
 
-
 @app.errorhandler(404)
 def page_not_found(e):
     data = {
-      'ui_page': "404",
-      "ui_title": "404"
+        'ui_page': "404",
+        "ui_title": "404"
     }
     return render_template('404.html', data=data), 404
 
@@ -24,31 +23,44 @@ def page_not_found(e):
 @app.route("/")
 def ui_index():
     data = {
-      'ui_page': "index",
-      "ui_title": ""
+        'ui_page': "index",
+        "ui_title": ""
     }
     return render_template('index.html', data=data)
+
+
+@app.route("/config")
+def ui_config():
+    channel_states = []
+    for i in range(3):
+        channel_states.append(details(i))
+
+    devices = sd.query_devices()
+    outputs = []
+
+    for device in devices:
+        if device["max_output_channels"] > 0:
+            outputs.append(device)
+
+    data = {
+        'channels': channel_states,
+        'outputs': outputs,
+        'ui_page': "config",
+        "ui_title": "Config"
+    }
+    return render_template('config.html', data=data)
+
 
 @app.route("/status")
 def ui_status():
     channel_states = []
     for i in range(3):
-      channel_states.append(details(i))
-
-    devices = sd.query_devices()
-    outputs = []
-    
-    for device in devices:
-      if device["max_output_channels"] > 0:
-        outputs.append(device)
-
-    
+        channel_states.append(details(i))
 
     data = {
-      'channels': channel_states,
-      'outputs': outputs,
-      'ui_page': "status",
-      "ui_title": "Status"
+        'channels': channel_states,
+        'ui_page': "status",
+        "ui_title": "Status"
     }
     return render_template('status.html', data=data)
 
@@ -56,85 +68,86 @@ def ui_status():
 @app.route("/player/<int:channel>/play")
 def play(channel):
 
-  channel_to_q[channel].put("PLAY")
+    channel_to_q[channel].put("PLAY")
 
-  return ui_status()
+    return ui_status()
 
 
 @app.route("/player/<int:channel>/pause")
 def pause(channel):
 
-  channel_to_q[channel].put("PAUSE")
+    channel_to_q[channel].put("PAUSE")
 
-  return ui_status()
+    return ui_status()
 
 
 @app.route("/player/<int:channel>/unpause")
 def unPause(channel):
 
-  channel_to_q[channel].put("UNPAUSE")
+    channel_to_q[channel].put("UNPAUSE")
 
-  return ui_status()
+    return ui_status()
 
 
 @app.route("/player/<int:channel>/stop")
 def stop(channel):
 
-  channel_to_q[channel].put("STOP")
+    channel_to_q[channel].put("STOP")
 
-  return ui_status()
+    return ui_status()
 
 
 @app.route("/player/<int:channel>/seek/<int:pos>")
 def seek(channel, pos):
 
-  channel_to_q[channel].put("SEEK:" + str(pos))
+    channel_to_q[channel].put("SEEK:" + str(pos))
 
-  return ui_status()
+    return ui_status()
+
 
 @app.route("/player/<int:channel>/output/<name>")
 def output(channel, name):
-  channel_to_q[channel].put("OUTPUT:" + name)
-  channel_to_q[channel].put("LOAD:test"+str(channel)+".mp3")
-  return ui_status()
+    channel_to_q[channel].put("OUTPUT:" + name)
+    channel_to_q[channel].put("LOAD:test"+str(channel)+".mp3")
+    return ui_status()
 
 
 @app.route("/player/<int:channel>/details")
 def details(channel):
 
-  channel_to_q[channel].put("DETAILS")
-  while True:
-    response = channel_from_q[channel].get()
+    channel_to_q[channel].put("DETAILS")
+    while True:
+        response = channel_from_q[channel].get()
 
-    if response and response.startswith("RESP:DETAILS"):
-      return json.loads(response.strip("RESP:DETAILS:"))
+        if response and response.startswith("RESP:DETAILS"):
+            return json.loads(response.strip("RESP:DETAILS:"))
 
 
 @app.route("/player/all/stop")
 def all_stop():
-  for channel in channel_to_q:
-    channel.put("STOP")
-  ui_status()
+    for channel in channel_to_q:
+        channel.put("STOP")
+    ui_status()
 
 
 @app.route('/static/<path:path>')
 def send_static(path):
     return send_from_directory('ui-static', path)
 
+
 if __name__ == "__main__":
 
-  for channel in range(3):
-    channel_to_q.append(multiprocessing.Queue())
-    channel_from_q.append(multiprocessing.Queue())
-    # channel_to_q[-1].put_nowait("LOAD:test"+str(channel)+".mp3")
-    channel_p.append(
-      multiprocessing.Process(
-        target=player.Player,
-        args=(channel, channel_to_q[-1], channel_from_q[-1])
-      )
-    )
-    channel_p[channel].start()
+    for channel in range(3):
+        channel_to_q.append(multiprocessing.Queue())
+        channel_from_q.append(multiprocessing.Queue())
+        # channel_to_q[-1].put_nowait("LOAD:test"+str(channel)+".mp3")
+        channel_p.append(
+            multiprocessing.Process(
+                target=player.Player,
+                args=(channel, channel_to_q[-1], channel_from_q[-1])
+            )
+        )
+        channel_p[channel].start()
 
-
-  # Don't use reloader, it causes Nested Processes!
-  app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    # Don't use reloader, it causes Nested Processes!
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
