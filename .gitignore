@@ -4,3 +4,11 @@
 __pycache__/
 
 state/
+
+*.egg-info/
+
+build/build-exe-config.json
+
+*.exe
+
+*.pyo

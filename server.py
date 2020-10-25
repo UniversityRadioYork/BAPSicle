@@ -3,6 +3,9 @@ import player
 from flask import Flask, render_template, send_from_directory, request
 import json
 import sounddevice as sd
+import setproctitle
+
+setproctitle.setproctitle("BAPSicle - Server")
 
 
 class BAPSicleServer():
