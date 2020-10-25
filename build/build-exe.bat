@@ -5,6 +5,6 @@ pip install -e ..\
 
 python generate-build-exe-config.py
 
-auto-py-to-exe -c build-exe-config.json -o ./ 
+auto-py-to-exe -c build-exe-config.json -o ../install 
 
 TIMEOUT 5
