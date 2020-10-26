@@ -9,6 +9,6 @@ state/
 
 build/build-exe-config.json
 
-*.exe
+install/*.exe
 
 *.pyo
