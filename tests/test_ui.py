@@ -1,4 +1,4 @@
-from bapsicle import server
+from server import BAPSicleServer
 import unittest
 
 
@@ -19,7 +19,8 @@ class TestUI(unittest.TestCase):
     # initialization logic
     # code that is executed before each test
     def setUp(self):
-        self.app = server.app.test_client()
+        server = BAPSicleServer()
+        self.app = server.get_flask().test_client()
         self.app.testing = True
 
     # clean up logic

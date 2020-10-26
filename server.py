@@ -12,6 +12,9 @@ class BAPSicleServer():
     def __del__(self):
         stopServer()
 
+    def get_flask(self):
+        return app
+
 
 app = Flask(__name__, static_url_path='')
 
@@ -168,6 +171,7 @@ def stopServer():
         q.put("QUIT")
     for player in channel_p:
         player.join()
+    global app
     app = None
 
 
