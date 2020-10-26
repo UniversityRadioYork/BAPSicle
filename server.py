@@ -6,8 +6,8 @@ import sounddevice as sd
 
 
 class BAPSicleServer():
-    def __init__(self):
-        startServer()
+    def __init__(self, start_flask=True):
+        startServer(start_flask)
 
     def __del__(self):
         stopServer()
@@ -147,7 +147,7 @@ def send_static(path):
     return send_from_directory('ui-static', path)
 
 
-def startServer():
+def startServer(start_flask=True):
     for channel in range(3):
         channel_to_q.append(multiprocessing.Queue())
         channel_from_q.append(multiprocessing.Queue())
@@ -161,8 +161,11 @@ def startServer():
         )
         channel_p[channel].start()
 
-    # Don't use reloader, it causes Nested Processes!
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    # Allow us to not start flask, if we're doing test runs.
+    # It hangs this way, we'll start a test client separately.
+    if (start_flask):
+        # Don't use reloader, it causes Nested Processes!
+        app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
 
 
 def stopServer():

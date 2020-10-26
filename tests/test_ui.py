@@ -19,9 +19,11 @@ class TestUI(unittest.TestCase):
     # initialization logic
     # code that is executed before each test
     def setUp(self):
-        server = BAPSicleServer()
-        self.app = server.get_flask().test_client()
-        self.app.testing = True
+        server = BAPSicleServer(start_flask=False).get_flask()
+        server.config['TESTING'] = True
+        server.config['WTF_CSRF_ENABLED'] = False
+        server.config['DEBUG'] = False
+        self.app = server.test_client()
 
     # clean up logic
     # code that is executed after each test
