@@ -19,6 +19,7 @@ class Player():
         "filename": "",
         "channel": -1,
         "playing": False,
+        "loaded": False,
         "pos": 0,
         "remaining": 0,
         "length": 0,
@@ -26,50 +27,117 @@ class Player():
         "output": None
     }
 
+    @property
     def isInit(self):
         try:
             mixer.music.get_busy()
         except:
             return False
-        else:
-            return True
+
+        return True
 
     @property
     def isPlaying(self):
-        return bool(mixer.music.get_busy())
+        if self.isInit:
+            return bool(mixer.music.get_busy())
+        return False
 
     @property
     def isLoaded(self):
+        if not self.state.state["filename"]:
+            return False
+        if self.isPlaying:
+            return True
+
+        try:
+            current_pos = mixer.music.get_pos()
+            mixer.music.set_pos(current_pos)
+        except:
+            # TODO: Trigger specially off the SDLError (couldn't find it)
+            return False
+
         return False
 
     def play(self):
+        if not self.isPlaying:
+            try:
+                mixer.music.play(0)
+            except:
+                return False
 
-        mixer.music.play(0)
+            return True
+        return False
 
     def pause(self):
-        mixer.music.pause()
+        if self.isPlaying:
+            try:
+                mixer.music.pause()
+            except:
+                return False
+
+            return True
+        return False
 
     def unpause(self):
-        mixer.music.play(0, self.state.state["pos"])
+        if not self.isPlaying:
+            try:
+                mixer.music.play(0, self.state.state["pos"])
+            except:
+                return False
+
+            return True
+        return False
 
     def stop(self):
-        mixer.music.stop()
+        if self.isPlaying:
+            try:
+                mixer.music.stop()
+            except:
+                return False
+
+            return True
+        return False
 
     def seek(self, pos):
-        if self.isPlaying():
-            mixer.music.play(0, pos)
-        else:
-            self.updateState(pos)
+        if self.isPlaying:
+            try:
+                mixer.music.play(0, pos)
+            except:
+                return False
+            return True
+
+        return False
 
     def load(self, filename):
-        if not self.isPlaying():
+        if not self.isPlaying:
+
             self.state.update("filename", filename)
-            mixer.music.load(filename)
-            if ".mp3" in filename:
-                song = MP3(filename)
-                self.state.update("length", song.info.length)
-            else:
-                self.state.update("length", mixer.Sound(filename).get_length()/1000)
+
+            try:
+                mixer.music.load(filename)
+            except:
+                # We couldn't load that file.
+                print("Couldn't load file:", filename)
+                return False
+
+            try:
+                if ".mp3" in filename:
+                    song = MP3(filename)
+                    self.state.update("length", song.info.length)
+                else:
+                    self.state.update("length", mixer.Sound(filename).get_length()/1000)
+            except:
+                return False
+        return True
+
+    def unload(self):
+        if not self.isPlaying:
+            try:
+                mixer.music.unload()
+                self.state.update("filename", "")
+            except:
+                return False
+        return not self.isLoaded
 
     def quit(self):
         mixer.quit()
@@ -90,6 +158,7 @@ class Player():
 
     def updateState(self, pos=None):
         self.state.update("playing", self.isPlaying)
+        self.state.update("loaded", self.isLoaded)
         if (pos):
             self.state.update("pos", max(0, pos))
         else:
@@ -142,7 +211,8 @@ class Player():
                     pass
                 else:
                     # We got a message.
-                    if self.isInit():
+                    if self.isInit:
+
                         self.updateState()
 
                         if (incoming_msg == 'LOADED?'):
@@ -209,7 +279,11 @@ if __name__ == "__main__":
     ).start()
 
     # Do some testing
-
+    in_q.put("LOADED?")
+    in_q.put("PLAY")
+    in_q.put("LOAD:\\Users\\matth\\Documents\\GitHub\\bapsicle\\dev\\test.mp3")
+    in_q.put("LOADED?")
+    in_q.put("PLAY")
     print("Entering infinite loop.")
     while True:
         pass
