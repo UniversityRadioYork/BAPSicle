@@ -1,10 +1,13 @@
-import pygame
+from state_manager import StateManager
+from mutagen.mp3 import MP3
+from pygame import mixer
 import time
 import json
-from mutagen.mp3 import MP3
 import copy
+import os
+import setproctitle
 
-from state_manager import StateManager
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
 
 class Player():
@@ -24,54 +27,54 @@ class Player():
 
     def isInit(self):
         try:
-            pygame.mixer.music.get_busy()
+            mixer.music.get_busy()
         except:
             return False
         else:
             return True
 
     def isPlaying(self):
-        return bool(pygame.mixer.music.get_busy())
+        return bool(mixer.music.get_busy())
 
     def play(self):
 
-        pygame.mixer.music.play(0)
+        mixer.music.play(0)
 
     def pause(self):
-        pygame.mixer.music.pause()
+        mixer.music.pause()
 
     def unpause(self):
-        pygame.mixer.music.play(0, self.state.state["pos"])
+        mixer.music.play(0, self.state.state["pos"])
 
     def stop(self):
-        pygame.mixer.music.stop()
+        mixer.music.stop()
 
     def seek(self, pos):
         if self.isPlaying():
-            pygame.mixer.music.play(0, pos)
+            mixer.music.play(0, pos)
         else:
             self.updateState(pos)
 
     def load(self, filename):
         if not self.isPlaying():
             self.state.update("filename", filename)
-            pygame.mixer.music.load(filename)
+            mixer.music.load(filename)
             if ".mp3" in filename:
                 song = MP3(filename)
                 self.state.update("length", song.info.length)
             else:
-                self.state.update("length", pygame.mixer.Sound(filename).get_length()/1000)
+                self.state.update("length", mixer.Sound(filename).get_length()/1000)
 
     def quit(self):
-        pygame.mixer.quit()
+        mixer.quit()
 
     def output(self, name=None):
         self.quit()
         try:
             if name:
-                pygame.mixer.init(44100, -16, 1, 1024, devicename=name)
+                mixer.init(44100, -16, 1, 1024, devicename=name)
             else:
-                pygame.mixer.init(44100, -16, 1, 1024)
+                mixer.init(44100, -16, 1, 1024)
         except:
             return "FAIL:Failed to init mixer, check sound devices."
         else:
@@ -84,7 +87,7 @@ class Player():
         if (pos):
             self.state.update("pos", max(0, pos))
         else:
-            self.state.update("pos", max(0, pygame.mixer.music.get_pos()/1000))
+            self.state.update("pos", max(0, mixer.music.get_pos()/1000))
         self.state.update("remaining", self.state.state["length"] - self.state.state["pos"])
 
     def getDetails(self):
@@ -93,6 +96,7 @@ class Player():
 
     def __init__(self, channel, in_q, out_q):
         self.running = True
+        setproctitle.setproctitle("BAPSicle - Player " + str(channel))
 
         self.state = StateManager("channel" + str(channel), self.__default_state)
 

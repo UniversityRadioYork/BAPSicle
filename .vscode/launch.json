@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Launch Server Standalone",
+            "type": "python",
+            "request": "launch",
+            "program": "./launch_standalone.py",
+            "console": "integratedTerminal"
+        }
+    ]
+}

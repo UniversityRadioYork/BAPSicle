@@ -1,6 +1,22 @@
 
-.vscode/
+
 
 __pycache__/
 
 state/
+
+*.egg-info/
+
+build/build-exe-config.json
+
+install/*.exe
+
+*.pyo
+
+*.spec
+
+build/build-exe-pyinstaller-command.bat
+
+build/build/BAPSicle/
+
+build/output/

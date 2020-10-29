@@ -3,6 +3,9 @@ import player
 from flask import Flask, render_template, send_from_directory, request
 import json
 import sounddevice as sd
+import setproctitle
+
+setproctitle.setproctitle("BAPSicle - Server")
 
 
 class BAPSicleServer():
@@ -117,7 +120,6 @@ def seek(channel, pos):
 @app.route("/player/<int:channel>/output/<name>")
 def output(channel, name):
     channel_to_q[channel].put("OUTPUT:" + name)
-    channel_to_q[channel].put("LOAD:test"+str(channel)+".mp3")
     return ui_status()
 
 
@@ -148,7 +150,6 @@ def startServer():
     for channel in range(3):
         channel_to_q.append(multiprocessing.Queue())
         channel_from_q.append(multiprocessing.Queue())
-        # channel_to_q[-1].put_nowait("LOAD:test"+str(channel)+".mp3")
         channel_p.append(
             multiprocessing.Process(
                 target=player.Player,
