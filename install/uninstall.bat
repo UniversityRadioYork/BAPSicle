@@ -1,11 +1,15 @@
 
 set service_name="BAPSicle"
 
-cd %~dp0\nssm
-nssm stop %service_name%
-nssm remove %service_name% confirm
-sc.exe delete %service_name%
+: We can't 'nssm stop because' we're about to delete it.
+: The file will remain open, so you'll get access denied.
+net stop %service_name%
+sc delete %service_name%
 
-del "C:\Program Files\BAPSicle\" /q /s /f
+: We cd out of the folder, just in case we're about to delete
+: out PWD.
+cd \
+rmdir "C:\Program Files\BAPSicle\" /q /s
+
 
 PAUSE
