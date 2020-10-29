@@ -1,4 +1,4 @@
-# Bapsicle
+# BAPSicle
 ### a.k.a. The Next-Gen BAPS server
 
 !["BAPSicle logo, a pink melting ice lolly."](/dev/logo.png "BAPSicle Logo")
