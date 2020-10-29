@@ -9,10 +9,8 @@ config = json.loads(in_file.read())
 in_file.close()
 
 for option in config["pyinstallerOptions"]:
-    if option["optionDest"] == "icon_file":
-        option["value"] = dir_path + option["value"]
-    if option["optionDest"] == "datas":
-        option["value"] = parent_path + option["value"]
+    if option["optionDest"] in ["datas", "filenames", "icon_file"]:
+        option["value"] = os.path.abspath(parent_path + option["value"])
 
 out_file = open('build-exe-config.json', 'w')
 out_file.write(json.dumps(config, indent=2))

@@ -7,7 +7,7 @@
   },
   {
    "optionDest": "filenames",
-   "value": "../launch_standalone.py"
+   "value": "\\launch_standalone.py"
   },
   {
    "optionDest": "onefile",
@@ -19,7 +19,7 @@
   },
   {
    "optionDest": "icon_file",
-   "value": "\\icon.ico"
+   "value": "\\build\\icon.ico"
   },
   {
    "optionDest": "name",
