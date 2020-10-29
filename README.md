@@ -11,7 +11,7 @@ Just want to install BAPSicle?
 
 ### Windows
 
-Currently there's just a batch script. Simply run ``install.bat`` as administrator. If you've just built BAPSicle youself, it'll be in ``/install`` folder.
+Currently there's just a batch script. Simply run ``install.bat`` as administrator. If you've just built BAPSicle yourself, it'll be in the ``/install`` folder.
 
 This will:
 * Copy BAPSicle into ``C:\Program Files\BAPSicle``
