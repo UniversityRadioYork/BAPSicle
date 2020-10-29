@@ -4,7 +4,7 @@ set exe_path=%install_path%\\%exe_name%
 set service_name="BAPSicle"
 
 mkdir %install_path%
-mkdir "%install_path%\state"
+mkdir %install_path%\state
 
 
 cd %~dp0\nssm
