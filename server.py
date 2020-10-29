@@ -169,6 +169,7 @@ def stopServer():
         q.put("QUIT")
     for player in channel_p:
         player.join()
+    global app
     app = None
 
 
