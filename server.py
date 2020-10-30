@@ -45,7 +45,7 @@ def ui_index():
 def ui_config():
     channel_states = []
     for i in range(3):
-        channel_states.append(details(i))
+        channel_states.append(status(i))
 
     devices = sd.query_devices()
     outputs = []
@@ -67,7 +67,7 @@ def ui_config():
 def ui_status():
     channel_states = []
     for i in range(3):
-        channel_states.append(details(i))
+        channel_states.append(status(i))
 
     data = {
         'channels': channel_states,
@@ -123,15 +123,29 @@ def output(channel, name):
     return ui_status()
 
 
-@app.route("/player/<int:channel>/details")
-def details(channel):
+@app.route("/player/<int:channel>/unload")
+def unload(channel):
 
-    channel_to_q[channel].put("DETAILS")
+    channel_to_q[channel].put("UNLOAD")
+
+    return ui_status()
+
+
+@app.route("/player/<int:channel>/status")
+def status(channel):
+
+    channel_to_q[channel].put("STATUS")
     while True:
         response = channel_from_q[channel].get()
+        if response.startswith("STATUS:"):
+            response = response[7:]
+            response = response[response.index(":")+1:]
+            try:
+                response = json.loads(response)
+            except:
+                pass
 
-        if response and response.startswith("RESP:DETAILS"):
-            return json.loads(response.strip("RESP:DETAILS:"))
+            return response
 
 
 @app.route("/player/all/stop")
