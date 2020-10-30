@@ -10,7 +10,12 @@ import setproctitle
 import copy
 import json
 import time
+
+# Stop the Pygame Hello message.
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 from pygame import mixer
+
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
 from mutagen.mp3 import MP3
