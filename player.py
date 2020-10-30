@@ -11,10 +11,9 @@ import copy
 import json
 import time
 from pygame import mixer
-from state_manager import StateManager
+from helpers.state_manager import StateManager
+from helpers.logging_manager import LoggingManager
 from mutagen.mp3 import MP3
-import os
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
 
 class Player():
@@ -22,6 +21,7 @@ class Player():
     running = False
     out_q = None
     last_msg = None
+    logger = None
 
     __default_state = {
         "initialised": False,
@@ -231,37 +231,38 @@ class Player():
             self.out_q.put(response)
 
     def __init__(self, channel, in_q, out_q):
-        self.running = True
-        self.out_q = out_q
 
         setproctitle.setproctitle("BAPSicle - Player " + str(channel))
 
+        self.running = True
+        self.out_q = out_q
         self.state = StateManager("channel" + str(channel), self.__default_state)
-
         self.state.update("channel", channel)
+
+        self.logger = LoggingManager("channel" + str(channel))
 
         loaded_state = copy.copy(self.state.state)
 
         if loaded_state["output"]:
-            print("Setting output to: " + loaded_state["output"])
+            self.logger.log.info("Setting output to: " + loaded_state["output"])
             self.output(loaded_state["output"])
         else:
-            print("Using default output device.")
+            self.logger.log.info("Using default output device.")
             self.output()
 
         if loaded_state["filename"]:
-            print("Loading filename: " + loaded_state["filename"])
+            self.logger.log.info("Loading filename: " + loaded_state["filename"])
             self.load(loaded_state["filename"])
 
             if loaded_state["pos_true"] != 0:
-                print("Seeking to pos_true: " + str(loaded_state["pos_true"]))
+                self.logger.log.info("Seeking to pos_true: " + str(loaded_state["pos_true"]))
                 self.seek(loaded_state["pos_true"])
 
             if loaded_state["playing"] == True:
-                print("Resuming.")
+                self.logger.log.info("Resuming.")
                 self.unpause()
         else:
-            print("No file was previously loaded.")
+            self.logger.log.info("No file was previously loaded.")
 
         while self.running:
             time.sleep(0.1)
@@ -334,7 +335,7 @@ class Player():
             except:
                 raise
 
-        print("Quiting player ", channel)
+        self.logger.log.info("Quiting player ", channel)
         self.quit()
         self._retMsg("EXIT")
 
