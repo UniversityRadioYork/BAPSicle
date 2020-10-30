@@ -14,8 +14,11 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 class Player():
     state = None
     running = False
+    out_q = None
+    last_msg = None
 
     __default_state = {
+        "initialised": False,
         "filename": "",
         "channel": -1,
         "playing": False,
@@ -49,14 +52,30 @@ class Player():
         if self.isPlaying:
             return True
 
+        # Because Pygame/SDL is annoying
+        # We're not playing now, so we can quickly test run
+        # If that works, we're loaded.
         try:
-            current_pos = mixer.music.get_pos()
-            mixer.music.set_pos(current_pos)
+            position = self.state.state["pos"]
+            mixer.music.set_volume(0)
+            mixer.music.play(0)
         except:
-            # TODO: Trigger specially off the SDLError (couldn't find it)
+            try:
+                mixer.music.set_volume(1)
+            except:
+                pass
             return False
+        if position > 0:
+            mixer.music.pause()
+        else:
+            mixer.music.stop()
+        mixer.music.set_volume(1)
+        return True
 
-        return False
+    @property
+    def status(self):
+        res = json.dumps(self.state.state)
+        return res
 
     def play(self):
         if not self.isPlaying:
@@ -144,33 +163,47 @@ class Player():
 
     def output(self, name=None):
         self.quit()
+        self.state.update("output", name)
+        self.state.update("filename", "")
         try:
             if name:
                 mixer.init(44100, -16, 1, 1024, devicename=name)
             else:
                 mixer.init(44100, -16, 1, 1024)
         except:
-            return "FAIL:Failed to init mixer, check sound devices."
+            return False
+
+        return True
+
+    def _updateState(self, pos=None):
+        self.state.update("initialised", self.isInit)
+        if self.isInit:
+            self.state.update("playing", self.isPlaying)
+            self.state.update("loaded", self.isLoaded)
+            if (pos):
+                self.state.update("pos", max(0, pos))
+            else:
+                self.state.update("pos", max(0, mixer.music.get_pos()/1000))
+            self.state.update("remaining", self.state.state["length"] - self.state.state["pos"])
+
+    def _retMsg(self, msg, okay_str=False):
+        response = self.last_msg + ":"
+        if msg == True:
+            response += "OKAY"
+        elif isinstance(msg, str):
+            if okay_str:
+                response += "OKAY:" + msg
+            else:
+                response += "FAIL:" + msg
         else:
-            self.state.update("output", name)
-
-        return "OK"
-
-    def updateState(self, pos=None):
-        self.state.update("playing", self.isPlaying)
-        self.state.update("loaded", self.isLoaded)
-        if (pos):
-            self.state.update("pos", max(0, pos))
-        else:
-            self.state.update("pos", max(0, mixer.music.get_pos()/1000))
-        self.state.update("remaining", self.state.state["length"] - self.state.state["pos"])
-
-    def getDetails(self):
-        res = "RESP:DETAILS: " + json.dumps(self.state.state)
-        return res
+            response += "FAIL"
+        if self.out_q:
+            self.out_q.put(response)
 
     def __init__(self, channel, in_q, out_q):
         self.running = True
+        self.out_q = out_q
+
         setproctitle.setproctitle("BAPSicle - Player " + str(channel))
 
         self.state = StateManager("channel" + str(channel), self.__default_state)
@@ -201,47 +234,67 @@ class Player():
             print("No file was previously loaded.")
 
         while self.running:
-            time.sleep(0.01)
+            time.sleep(0.1)
+            self._updateState()
             try:
                 try:
-                    incoming_msg = in_q.get_nowait()
+                    self.last_msg = in_q.get_nowait()
                 except Empty:
                     # The incomming message queue was empty,
                     # skip message processing
                     pass
                 else:
+
                     # We got a message.
-                    if self.isInit:
 
-                        self.updateState()
+                    # Output re-inits the mixer, so we can do this any time.
+                    if (self.last_msg.startswith("OUTPUT")):
+                        split = self.last_msg.split(":")
+                        self._retMsg(self.output(split[1]))
 
-                        if (incoming_msg == 'LOADED?'):
-                            out_q.put(self.isLoaded)
+                    elif self.isInit:
+
+                        if (self.last_msg == 'LOADED?'):
+                            self._retMsg(self.isLoaded)
                             continue
 
-                        if (incoming_msg == 'PLAY'):
-                            self.play()
-                        if (incoming_msg == 'PAUSE'):
-                            self.pause()
-                        if (incoming_msg == 'UNPAUSE'):
-                            self.unpause()
-                        if (incoming_msg == 'STOP'):
-                            self.stop()
-                        if (incoming_msg == 'QUIT'):
-                            self.quit()
-                            self.running = False
-                        if (incoming_msg.startswith("SEEK")):
-                            split = incoming_msg.split(":")
-                            self.seek(float(split[1]))
-                        if (incoming_msg.startswith("LOAD")):
-                            split = incoming_msg.split(":")
-                            self.load(split[1])
-                        if (incoming_msg == 'DETAILS'):
-                            out_q.put(self.getDetails())
+                        elif (self.last_msg == 'PLAY'):
+                            self._retMsg(self.play())
 
-                    if (incoming_msg.startswith("OUTPUT")):
-                        split = incoming_msg.split(":")
-                        out_q.put(self.output(split[1]))
+                        elif (self.last_msg == 'PAUSE'):
+                            self._retMsg(self.pause())
+
+                        elif (self.last_msg == 'UNPAUSE'):
+                            self._retMsg(self.unpause())
+
+                        elif (self.last_msg == 'STOP'):
+                            self._retMsg(self.stop())
+
+                        elif (self.last_msg == 'QUIT'):
+                            self.running = False
+                            continue
+
+                        elif (self.last_msg.startswith("SEEK")):
+                            split = self.last_msg.split(":")
+                            self._retMsg(self.seek(float(split[1])))
+
+                        elif (self.last_msg.startswith("LOAD")):
+                            split = self.last_msg.split(":")
+                            self._retMsg(self.load(split[1]))
+
+                        elif (self.last_msg == 'UNLOAD'):
+                            self._retMsg(self.unload())
+
+                        elif (self.last_msg == 'STATUS'):
+                            self._retMsg(self.status, True)
+
+                        else:
+                            self._retMsg("Unknown Command")
+                    else:
+                        if (self.last_msg == 'STATUS'):
+                            self._retMsg(self.status)
+                        else:
+                            self._retMsg(False)
 
             # Catch the player being killed externally.
             except KeyboardInterrupt:
@@ -253,14 +306,15 @@ class Player():
 
         print("Quiting player ", channel)
         self.quit()
+        self._retMsg("EXIT")
 
 
 def showOutput(in_q, out_q):
     print("Starting showOutput().")
     while True:
         time.sleep(0.01)
-        incoming_msg = out_q.get()
-        print(incoming_msg)
+        self.last_msg = out_q.get()
+        print(self.last_msg)
 
 
 if __name__ == "__main__":
