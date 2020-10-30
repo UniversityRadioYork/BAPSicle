@@ -1,4 +1,4 @@
-pygame==2.0.0.dev20
+pygame==2.0.0.dev24
 flask
 mutagen
 sounddevice
