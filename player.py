@@ -237,7 +237,9 @@ class Player():
 
     def __init__(self, channel, in_q, out_q):
 
-        setproctitle.setproctitle("BAPSicle - Player " + str(channel))
+        process_title = "Player: Channel " + str(channel)
+        setproctitle.setproctitle(process_title)
+        multiprocessing.current_process().name = process_title
 
         self.running = True
         self.out_q = out_q

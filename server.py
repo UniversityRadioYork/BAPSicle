@@ -9,7 +9,13 @@ setproctitle.setproctitle("BAPSicle - Server")
 
 
 class BAPSicleServer():
+
     def __init__(self):
+
+        process_title = "Server"
+        setproctitle.setproctitle(process_title)
+        multiprocessing.current_process().name = process_title
+
         startServer()
 
     def __del__(self):
