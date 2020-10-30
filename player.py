@@ -1,3 +1,9 @@
+# This is the player. Reliability is critical here, so we're catching
+# literally every exception possible and handling it.
+
+# It is key that whenever the parent server tells us to do something
+# that we respond with something, FAIL or OKAY. The server doesn't like to be kept waiting.
+
 from queue import Empty
 import multiprocessing
 import setproctitle
@@ -22,8 +28,11 @@ class Player():
         "filename": "",
         "channel": -1,
         "playing": False,
+        "paused": False,
         "loaded": False,
         "pos": 0,
+        "pos_offset": 0,
+        "pos_true": 0,
         "remaining": 0,
         "length": 0,
         "loop": False,
@@ -42,8 +51,12 @@ class Player():
     @property
     def isPlaying(self):
         if self.isInit:
-            return bool(mixer.music.get_busy())
+            return (not self.isPaused) and bool(mixer.music.get_busy())
         return False
+
+    @property
+    def isPaused(self):
+        return self.state.state["paused"]
 
     @property
     def isLoaded(self):
@@ -66,9 +79,9 @@ class Player():
                 pass
             return False
         if position > 0:
-            mixer.music.pause()
+            self.pause()
         else:
-            mixer.music.stop()
+            self.stop()
         mixer.music.set_volume(1)
         return True
 
@@ -77,58 +90,66 @@ class Player():
         res = json.dumps(self.state.state)
         return res
 
-    def play(self):
-        if not self.isPlaying:
-            try:
-                mixer.music.play(0)
-            except:
-                return False
-
-            return True
-        return False
+    def play(self, pos=0):
+        # if not self.isPlaying:
+        try:
+            mixer.music.play(0, pos)
+            self.state.update("pos_offset", pos)
+        except:
+            return False
+        self.state.update("paused", False)
+        return True
+        # return False
 
     def pause(self):
-        if self.isPlaying:
-            try:
-                mixer.music.pause()
-            except:
-                return False
+        # if self.isPlaying:
 
-            return True
-        return False
+        try:
+            mixer.music.pause()
+        except:
+            return False
+        self.state.update("paused", True)
+        return True
+        # return False
 
     def unpause(self):
         if not self.isPlaying:
             try:
-                mixer.music.play(0, self.state.state["pos"])
+                self.play(self.state.state["pos_true"])
             except:
                 return False
-
+            self.state.update("paused", False)
             return True
         return False
 
     def stop(self):
-        if self.isPlaying:
-            try:
-                mixer.music.stop()
-            except:
-                return False
-
-            return True
-        return False
+        # if self.isPlaying or self.isPaused:
+        try:
+            mixer.music.stop()
+        except:
+            return False
+        self.state.update("pos", 0)
+        self.state.update("pos_offset", 0)
+        self.state.update("pos_true", 0)
+        self.state.update("paused", False)
+        return True
+        # return False
 
     def seek(self, pos):
         if self.isPlaying:
             try:
-                mixer.music.play(0, pos)
+                self.play(pos)
             except:
                 return False
             return True
-
-        return False
+        else:
+            self.state.update("paused", True)
+            self._updateState(pos=pos)
+        return True
 
     def load(self, filename):
         if not self.isPlaying:
+            self.unload()
 
             self.state.update("filename", filename)
 
@@ -153,6 +174,7 @@ class Player():
         if not self.isPlaying:
             try:
                 mixer.music.unload()
+                self.state.update("paused", False)
                 self.state.update("filename", "")
             except:
                 return False
@@ -160,6 +182,7 @@ class Player():
 
     def quit(self):
         mixer.quit()
+        self.state.update("paused", False)
 
     def output(self, name=None):
         self.quit()
@@ -178,13 +201,20 @@ class Player():
     def _updateState(self, pos=None):
         self.state.update("initialised", self.isInit)
         if self.isInit:
+            # TODO: get_pos returns the time since the player started playing
+            # This is NOT the same as the position through the song.
+            if self.isPlaying:
+                # Get one last update in, incase we're about to pause/stop it.
+                self.state.update("pos", max(0, mixer.music.get_pos()/1000))
             self.state.update("playing", self.isPlaying)
             self.state.update("loaded", self.isLoaded)
+
             if (pos):
                 self.state.update("pos", max(0, pos))
-            else:
-                self.state.update("pos", max(0, mixer.music.get_pos()/1000))
-            self.state.update("remaining", self.state.state["length"] - self.state.state["pos"])
+
+            self.state.update("pos_true", self.state.state["pos"] + self.state.state["pos_offset"])
+
+            self.state.update("remaining", self.state.state["length"] - self.state.state["pos_true"])
 
     def _retMsg(self, msg, okay_str=False):
         response = self.last_msg + ":"
@@ -223,9 +253,9 @@ class Player():
             print("Loading filename: " + loaded_state["filename"])
             self.load(loaded_state["filename"])
 
-            if loaded_state["pos"] != 0:
-                print("Seeking to pos: " + str(loaded_state["pos"]))
-                self.seek(loaded_state["pos"])
+            if loaded_state["pos_true"] != 0:
+                print("Seeking to pos_true: " + str(loaded_state["pos_true"]))
+                self.seek(loaded_state["pos_true"])
 
             if loaded_state["playing"] == True:
                 print("Resuming.")
@@ -313,8 +343,8 @@ def showOutput(in_q, out_q):
     print("Starting showOutput().")
     while True:
         time.sleep(0.01)
-        self.last_msg = out_q.get()
-        print(self.last_msg)
+        last_msg = out_q.get()
+        print(last_msg)
 
 
 if __name__ == "__main__":
