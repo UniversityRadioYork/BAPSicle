@@ -20,3 +20,11 @@ build/build-exe-pyinstaller-command.bat
 build/build/BAPSicle/
 
 build/output/
+
+logs/
+
+*.mp3
+
+*.oga
+
+*.ogg
