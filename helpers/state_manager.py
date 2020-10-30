@@ -1,38 +1,42 @@
+from helpers.logging_manager import LoggingManager
 import json
 import os
+import logging
 from helpers.os_environment import resolve_external_file_path
 
 
 class StateManager:
     filepath = None
+    logger = None
     __state = {}
 
-    def __init__(self, name, default_state=None):
+    def __init__(self, name, logger: LoggingManager, default_state=None):
+        self.logger = logger
+
         self.filepath = resolve_external_file_path("/state/" + name + ".json")
+        self._log("State file path set to: " + self.filepath)
+
         if not os.path.isfile(self.filepath):
-            self.log("No file found for " + self.filepath)
+            self._log("No existing state file found.")
             try:
                 # Try creating the file.
                 open(self.filepath, "x")
             except:
-                self.log("failed to create state file")
+                self._log("Failed to create state file.", logging.CRITICAL)
                 return
 
-        self.log("Saving state to " + self.filepath)
+        with open(self.filepath, 'r') as file:
+            file_state = file.read()
 
-        file = open(self.filepath, 'r')
-
-        file_state = file.read()
-        file.close()
-
-        # TODO: also check for invalid JSON state
         if file_state == "":
-            print("file empty")
-
+            self._log("State file is empty. Setting default state.")
             self.state = default_state
-
         else:
-            self.__state = json.loads(file_state)
+            try:
+                self.__state = json.loads(file_state)
+            except:
+                self._logException("Failed to parse state JSON. Resetting to default state.")
+                self.state = default_state
 
     @property
     def state(self):
@@ -42,16 +46,22 @@ class StateManager:
     def state(self, state):
         self.__state = state
 
-        file = open(self.filepath, "w")
+        try:
+            state_json = json.dumps(state, indent=2, sort_keys=True)
+        except:
+            self._logException("Failed to dump JSON state.")
+        else:
+            with open(self.filepath, "w") as file:
 
-        file.write(json.dumps(state, indent=2, sort_keys=True))
-
-        file.close()
+                file.write(state_json)
 
     def update(self, key, value):
         state = self.state
         state[key] = value
         self.state = state
 
-    def log(self, msg):
-        print(msg)
+    def _log(self, text, level=logging.INFO):
+        self.logger.log.log(level, "State Manager: " + text)
+
+    def _logException(self, text):
+        self.logger.log.exception("State Manager: " + text)

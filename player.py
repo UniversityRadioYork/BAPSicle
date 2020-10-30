@@ -243,10 +243,11 @@ class Player():
 
         self.running = True
         self.out_q = out_q
-        self.state = StateManager("channel" + str(channel), self.__default_state)
-        self.state.update("channel", channel)
 
         self.logger = LoggingManager("channel" + str(channel))
+
+        self.state = StateManager("channel" + str(channel), self.logger, self.__default_state)
+        self.state.update("channel", channel)
 
         loaded_state = copy.copy(self.state.state)
 

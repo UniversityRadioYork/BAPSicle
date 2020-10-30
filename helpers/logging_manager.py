@@ -15,9 +15,10 @@ class LoggingManager():
             level=logging.INFO,
             filemode='a'
         )
-        self.logger.info("Logger Started.")
+        self.logger.info("** LOGGER STARTED **")
 
     def __del__(self):
+        self.logger.info("** LOGGER EXITING **")
         logging.shutdown()
 
     @property
