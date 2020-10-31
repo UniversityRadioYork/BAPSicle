@@ -150,7 +150,13 @@ class Player():
     def load(self, filename):
         if not self.isPlaying:
             self.unload()
+            # Fix any OS specific / or \'s
+            if os.path.sep == "/":
+                filename = filename.replace("\\", '/')
+            else:
+                filename = filename.replace("/", '\\')
 
+            print(filename)
             self.state.update("filename", filename)
 
             try:
@@ -348,7 +354,7 @@ def showOutput(in_q, out_q):
 
 
 if __name__ == "__main__":
-
+    multiprocessing.set_start_method("spawn", True)
     in_q = multiprocessing.Queue()
     out_q = multiprocessing.Queue()
 

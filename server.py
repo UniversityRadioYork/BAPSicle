@@ -161,7 +161,9 @@ def send_static(path):
 
 
 def startServer():
+    multiprocessing.set_start_method("spawn", True)
     for channel in range(3):
+
         channel_to_q.append(multiprocessing.Queue())
         channel_from_q.append(multiprocessing.Queue())
         channel_p.append(
