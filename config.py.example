@@ -1,0 +1,3 @@
+# Flask Details
+HOST: str = "localhost"
+PORT: int = 5000

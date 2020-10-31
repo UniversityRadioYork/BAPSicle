@@ -4,6 +4,7 @@ from flask import Flask, render_template, send_from_directory, request
 import json
 import sounddevice as sd
 import setproctitle
+import config
 
 setproctitle.setproctitle("BAPSicle - Server")
 
@@ -174,7 +175,7 @@ def startServer():
         channel_p[channel].start()
 
     # Don't use reloader, it causes Nested Processes!
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    app.run(host=config.HOST, port=config.PORT, debug=True, use_reloader=False)
 
 
 def stopServer():
