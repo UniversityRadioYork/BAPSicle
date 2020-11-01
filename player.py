@@ -10,11 +10,13 @@ import setproctitle
 import copy
 import json
 import time
+import os
+import sys
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 from pygame import mixer
 from state_manager import StateManager
 from mutagen.mp3 import MP3
-import os
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+
 
 
 class Player():
@@ -343,6 +345,7 @@ class Player():
         print("Quiting player ", channel)
         self.quit()
         self._retMsg("EXIT")
+        sys.exit(0)
 
 
 def showOutput(in_q, out_q):

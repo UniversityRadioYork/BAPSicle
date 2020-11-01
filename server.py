@@ -4,6 +4,8 @@ from flask import Flask, render_template, send_from_directory, request
 import json
 import sounddevice as sd
 import setproctitle
+import logging
+import sys
 
 setproctitle.setproctitle("BAPSicle - Server")
 
@@ -18,10 +20,15 @@ class BAPSicleServer():
 
 app = Flask(__name__, static_url_path='')
 
+log = logging.getLogger('werkzeug')
+log.disabled = True
+app.logger.disabled = True
+
 channel_to_q = []
 channel_from_q = []
 channel_p = []
 
+stopping = False
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -147,6 +154,11 @@ def status(channel):
 
             return response
 
+@app.route("/quit")
+def quit():
+    stopServer()
+    return "Shutting down..."
+
 
 @app.route("/player/all/stop")
 def all_stop():
@@ -184,9 +196,23 @@ def stopServer():
     for q in channel_to_q:
         q.put("QUIT")
     for player in channel_p:
-        player.join()
-    global app
-    app = None
+        try:
+            player.join()
+        except:
+            pass
+    print ("Stopped all players.")
+    global stopping
+    if stopping == False:
+        stopping = True
+        shutdown = request.environ.get('werkzeug.server.shutdown')
+        if shutdown is None:
+            print("Shutting down Server.")
+
+        else:
+            print("Shutting down Flask.")
+            shutdown()
+    else:
+        print(str(stopping))
 
 
 if __name__ == "__main__":
