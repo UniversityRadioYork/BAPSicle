@@ -8,6 +8,11 @@ class StateManager:
     __state = {}
 
     def __init__(self, name, default_state=None):
+        try:
+            os.mkdir(resolve_external_file_path("/state"))
+        except FileExistsError:
+            pass
+
         self.filepath = resolve_external_file_path("/state/" + name + ".json")
         if not os.path.isfile(self.filepath):
             self.log("No file found for " + self.filepath)

@@ -10,11 +10,15 @@ import setproctitle
 import copy
 import json
 import time
-from pygame import mixer
-from state_manager import StateManager
-from mutagen.mp3 import MP3
 import os
+import sys
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+from pygame import mixer
+from mutagen.mp3 import MP3
+
+from state_manager import StateManager
+from helpers.os_environment import isMacOS
+
 
 
 class Player():
@@ -150,7 +154,13 @@ class Player():
     def load(self, filename):
         if not self.isPlaying:
             self.unload()
+            # Fix any OS specific / or \'s
+            if os.path.sep == "/":
+                filename = filename.replace("\\", '/')
+            else:
+                filename = filename.replace("/", '\\')
 
+            print(filename)
             self.state.update("filename", filename)
 
             try:
@@ -337,6 +347,7 @@ class Player():
         print("Quiting player ", channel)
         self.quit()
         self._retMsg("EXIT")
+        sys.exit(0)
 
 
 def showOutput(in_q, out_q):
@@ -348,6 +359,8 @@ def showOutput(in_q, out_q):
 
 
 if __name__ == "__main__":
+    if isMacOS:
+        multiprocessing.set_start_method("spawn", True)
 
     in_q = multiprocessing.Queue()
     out_q = multiprocessing.Queue()
@@ -365,7 +378,7 @@ if __name__ == "__main__":
     # Do some testing
     in_q.put("LOADED?")
     in_q.put("PLAY")
-    in_q.put("LOAD:\\Users\\matth\\Documents\\GitHub\\bapsicle\\dev\\test.mp3")
+    in_q.put("LOAD:\\Users\\mstratford\\Documents\\Dev\\GitHub\\bapsicle\\dev\\test.mp3")
     in_q.put("LOADED?")
     in_q.put("PLAY")
     print("Entering infinite loop.")

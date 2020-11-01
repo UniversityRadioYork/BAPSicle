@@ -4,6 +4,8 @@ from flask import Flask, render_template, send_from_directory, request
 import json
 import sounddevice as sd
 import setproctitle
+import logging
+from helpers.os_environment import isMacOS
 
 setproctitle.setproctitle("BAPSicle - Server")
 
@@ -18,9 +20,15 @@ class BAPSicleServer():
 
 app = Flask(__name__, static_url_path='')
 
+log = logging.getLogger('werkzeug')
+log.disabled = True
+app.logger.disabled = True
+
 channel_to_q = []
 channel_from_q = []
 channel_p = []
+
+stopping = False
 
 
 @app.errorhandler(404)
@@ -148,6 +156,12 @@ def status(channel):
             return response
 
 
+@app.route("/quit")
+def quit():
+    stopServer()
+    return "Shutting down..."
+
+
 @app.route("/player/all/stop")
 def all_stop():
     for channel in channel_to_q:
@@ -161,7 +175,10 @@ def send_static(path):
 
 
 def startServer():
+    if isMacOS():
+        multiprocessing.set_start_method("spawn", True)
     for channel in range(3):
+
         channel_to_q.append(multiprocessing.Queue())
         channel_from_q.append(multiprocessing.Queue())
         channel_p.append(
@@ -174,7 +191,7 @@ def startServer():
         channel_p[channel].start()
 
     # Don't use reloader, it causes Nested Processes!
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    app.run(host='0.0.0.0', port=13500, debug=True, use_reloader=False)
 
 
 def stopServer():
@@ -182,9 +199,21 @@ def stopServer():
     for q in channel_to_q:
         q.put("QUIT")
     for player in channel_p:
-        player.join()
-    global app
-    app = None
+        try:
+            player.join()
+        except:
+            pass
+    print("Stopped all players.")
+    global stopping
+    if stopping == False:
+        stopping = True
+        shutdown = request.environ.get('werkzeug.server.shutdown')
+        if shutdown is None:
+            print("Shutting down Server.")
+
+        else:
+            print("Shutting down Flask.")
+            shutdown()
 
 
 if __name__ == "__main__":

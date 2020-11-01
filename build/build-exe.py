@@ -32,12 +32,13 @@ for option in config["pyinstallerOptions"]:
         cmd_str += "--" + str(option_dest) + ' "' + str(option["value"]) + '" '
 
 
-command = open('build-exe-pyinstaller-command.bat', 'w')
+for format in [".bat", ".sh"]:
+    command = open('build-exe-pyinstaller-command'+format, 'w')
 
-if filename == "":
-    print("No filename data was found in json file.")
-    command.write("")
-else:
-    command.write(cmd_str + ' --distpath "output/" --workpath "build/" "' + filename + '"')
+    if filename == "":
+        print("No filename data was found in json file.")
+        command.write("")
+    else:
+        command.write(cmd_str + ' --distpath "output/" --workpath "build/" "' + filename + '"')
 
-command.close()
+    command.close()
