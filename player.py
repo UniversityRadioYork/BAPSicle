@@ -1,3 +1,18 @@
+"""
+    BAPSicle Server
+    Next-gen audio playout server for University Radio York playout,
+    based on WebStudio interface.
+
+    Audio Player
+
+    Authors:
+        Matthew Stratford
+        Michael Grace
+
+    Date:
+        October, November 2020
+"""
+
 # This is the player. Reliability is critical here, so we're catching
 # literally every exception possible and handling it.
 
@@ -10,8 +25,10 @@ import setproctitle
 import copy
 import json
 import time
+from typing import Callable, Dict, List
 from pygame import mixer
 from state_manager import StateManager
+from plan import PlanObject
 from mutagen.mp3 import MP3
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
@@ -25,7 +42,7 @@ class Player():
 
     __default_state = {
         "initialised": False,
-        "filename": "",
+        "loaded_item": None,
         "channel": -1,
         "playing": False,
         "paused": False,
@@ -36,7 +53,8 @@ class Player():
         "remaining": 0,
         "length": 0,
         "loop": False,
-        "output": None
+        "output": None,
+        "show_plan": []
     }
 
     @property
@@ -60,7 +78,7 @@ class Player():
 
     @property
     def isLoaded(self):
-        if not self.state.state["filename"]:
+        if not self.state.state["loaded_item"]:
             return False
         if self.isPlaying:
             return True
@@ -87,7 +105,13 @@ class Player():
 
     @property
     def status(self):
-        res = json.dumps(self.state.state)
+        state = copy.copy(self.state.state)
+
+        # Not the biggest fan of this, but maybe I'll get a better solution for this later
+        state["loaded_item"] = state["loaded_item"].__dict__() if state["loaded_item"] else None
+        state["show_plan"] = [repr.__dict__() for repr in state["show_plan"]]
+
+        res = json.dumps(state)
         return res
 
     def play(self, pos=0):
@@ -126,7 +150,8 @@ class Player():
         # if self.isPlaying or self.isPaused:
         try:
             mixer.music.stop()
-        except:
+        except Exception as e:
+            print("Couldn't Stop Player:", e)
             return False
         self.state.update("pos", 0)
         self.state.update("pos_offset", 0)
@@ -147,11 +172,27 @@ class Player():
             self._updateState(pos=pos)
         return True
 
-    def load(self, filename):
+    def add_to_plan(self, new_item: Dict[str, any]) -> bool:
+        self.state.update("show_plan", self.state.state["show_plan"] + [PlanObject(new_item)])
+        return True
+
+    def load(self, timeslotitemid: int):
         if not self.isPlaying:
             self.unload()
 
-            self.state.update("filename", filename)
+            updated: bool = False
+            
+            for i in range(len(self.state.state["show_plan"])):
+                if self.state.state["show_plan"][i].timeslotitemid == timeslotitemid:
+                    self.state.update("loaded_item", self.state.state["show_plan"][i])
+                    updated = True
+                    break
+
+            if not updated:
+                print("Failed to find timeslotitemid:", timeslotitemid)
+                return False
+
+            filename: str = self.state.state["loaded_item"].filename
 
             try:
                 mixer.music.load(filename)
@@ -175,7 +216,7 @@ class Player():
             try:
                 mixer.music.unload()
                 self.state.update("paused", False)
-                self.state.update("filename", "")
+                self.state.update("loaded_item", None)
             except:
                 return False
         return not self.isLoaded
@@ -187,7 +228,7 @@ class Player():
     def output(self, name=None):
         self.quit()
         self.state.update("output", name)
-        self.state.update("filename", "")
+        self.state.update("loaded_item", None)
         try:
             if name:
                 mixer.init(44100, -16, 1, 1024, devicename=name)
@@ -249,9 +290,9 @@ class Player():
             print("Using default output device.")
             self.output()
 
-        if loaded_state["filename"]:
-            print("Loading filename: " + loaded_state["filename"])
-            self.load(loaded_state["filename"])
+        if loaded_state["loaded_item"]:
+            print("Loading filename: " + loaded_state["loaded_item"["filename"]])
+            self.load(loaded_state["loaded_item"["timeslotitemid"]])
 
             if loaded_state["pos_true"] != 0:
                 print("Seeking to pos_true: " + str(loaded_state["pos_true"]))
@@ -288,17 +329,21 @@ class Player():
                             self._retMsg(self.isLoaded)
                             continue
 
+                        elif (self.last_msg.startswith("ADD")):
+                            split = self.last_msg.split(":")
+                            self._retMsg(self.add_to_plan(json.loads(":".join(split[1:]))))
+
                         elif (self.last_msg == 'PLAY'):
-                            self._retMsg(self.play())
+                             self._retMsg(self.play())
 
                         elif (self.last_msg == 'PAUSE'):
-                            self._retMsg(self.pause())
+                             self._retMsg(self.pause())
 
                         elif (self.last_msg == 'UNPAUSE'):
-                            self._retMsg(self.unpause())
+                             self._retMsg(self.unpause())
 
                         elif (self.last_msg == 'STOP'):
-                            self._retMsg(self.stop())
+                             self._retMsg(self.stop())
 
                         elif (self.last_msg == 'QUIT'):
                             self.running = False
@@ -310,13 +355,13 @@ class Player():
 
                         elif (self.last_msg.startswith("LOAD")):
                             split = self.last_msg.split(":")
-                            self._retMsg(self.load(split[1]))
+                            self._retMsg(self.load(int(split[1])))
 
                         elif (self.last_msg == 'UNLOAD'):
-                            self._retMsg(self.unload())
+                             self._retMsg(self.unload())
 
                         elif (self.last_msg == 'STATUS'):
-                            self._retMsg(self.status, True)
+                             self._retMsg(self.status, True)
 
                         else:
                             self._retMsg("Unknown Command")
@@ -365,7 +410,7 @@ if __name__ == "__main__":
     # Do some testing
     in_q.put("LOADED?")
     in_q.put("PLAY")
-    in_q.put("LOAD:\\Users\\matth\\Documents\\GitHub\\bapsicle\\dev\\test.mp3")
+    in_q.put("LOAD:dev/test.mp3") # I mean, this won't work now, this can get sorted :)
     in_q.put("LOADED?")
     in_q.put("PLAY")
     print("Entering infinite loop.")

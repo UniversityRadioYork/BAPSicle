@@ -1,3 +1,18 @@
+"""
+    BAPSicle Server
+    Next-gen audio playout server for University Radio York playout,
+    based on WebStudio interface.
+
+    Flask Server
+
+    Authors:
+        Matthew Stratford
+        Michael Grace
+
+    Date:
+        October, November 2020
+"""
+
 import multiprocessing
 import player
 from flask import Flask, render_template, send_from_directory, request
@@ -123,6 +138,10 @@ def output(channel, name):
     channel_to_q[channel].put("OUTPUT:" + name)
     return ui_status()
 
+@app.route("/player/<int:channel>/load/<int:timeslotitemid>")
+def load(channel:int, timeslotitemid: int):
+    channel_to_q[channel].put("LOAD:" + str(timeslotitemid))
+    return ui_status()
 
 @app.route("/player/<int:channel>/unload")
 def unload(channel):
@@ -131,6 +150,32 @@ def unload(channel):
 
     return ui_status()
 
+@app.route("/player/<int:channel>/add", methods=["POST"])
+def add_to_plan(channel: int):
+    new_item: Dict[str, any] = {
+        "timeslotitemid": int(request.form["timeslotitemid"]),
+        "filename": request.form["filename"],
+        "title":  request.form["title"],
+        "artist":  request.form["artist"],
+    }
+
+    channel_to_q[channel].put("ADD:" + json.dumps(new_item))
+
+    return new_item
+
+@app.route("/player/<int:channel>/move/<int:timeslotitemid>/<int:position>")
+def move_plan(channel: int, timeslotitemid: int, position: int):
+    channel_to_q[channel].put("MOVE:" + json.dumps({"timeslotitemid": timeslotitemid, "position": position}))
+    
+    #TODO Return
+    return True
+
+@app.route("/player/<int:channel>/remove/<int:timeslotitemid>")
+def remove_plan(channel: int, timeslotitemid: int):
+    channel_to_q[channel].put("REMOVE:" + timeslotitemid)
+
+    #TODO Return
+    return True
 
 @app.route("/player/<int:channel>/status")
 def status(channel):
@@ -173,6 +218,16 @@ def startServer():
             )
         )
         channel_p[channel].start()
+
+    # There is a plan for this, but I'm going to leave this here until i sort it
+    new_item: Dict[str, any] = {
+        "timeslotitemid": 0,
+        "filename": "dev/test.mp3",
+        "title":  "Test File",
+        "artist":  None,
+    }
+
+    channel_to_q[0].put("ADD:" + json.dumps(new_item))
 
     # Don't use reloader, it causes Nested Processes!
     app.run(host=config.HOST, port=config.PORT, debug=True, use_reloader=False)
