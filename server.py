@@ -214,8 +214,6 @@ def stopServer():
         else:
             print("Shutting down Flask.")
             shutdown()
-    else:
-        print(str(stopping))
 
 
 if __name__ == "__main__":
