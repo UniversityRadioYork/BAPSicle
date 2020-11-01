@@ -14,8 +14,11 @@ import os
 import sys
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 from pygame import mixer
-from state_manager import StateManager
 from mutagen.mp3 import MP3
+
+from state_manager import StateManager
+from helpers.os_environment import isMacOS
+
 
 
 class Player():
@@ -356,7 +359,9 @@ def showOutput(in_q, out_q):
 
 
 if __name__ == "__main__":
-    #multiprocessing.set_start_method("spawn", True)
+    if isMacOS:
+        multiprocessing.set_start_method("spawn", True)
+
     in_q = multiprocessing.Queue()
     out_q = multiprocessing.Queue()
 
