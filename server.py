@@ -5,7 +5,7 @@ import json
 import sounddevice as sd
 import setproctitle
 import logging
-import sys
+from helpers.os_environment import isMacOS
 
 setproctitle.setproctitle("BAPSicle - Server")
 
@@ -29,6 +29,7 @@ channel_from_q = []
 channel_p = []
 
 stopping = False
+
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -154,6 +155,7 @@ def status(channel):
 
             return response
 
+
 @app.route("/quit")
 def quit():
     stopServer()
@@ -173,7 +175,8 @@ def send_static(path):
 
 
 def startServer():
-    multiprocessing.set_start_method("spawn", True)
+    if isMacOS():
+        multiprocessing.set_start_method("spawn", True)
     for channel in range(3):
 
         channel_to_q.append(multiprocessing.Queue())
@@ -200,7 +203,7 @@ def stopServer():
             player.join()
         except:
             pass
-    print ("Stopped all players.")
+    print("Stopped all players.")
     global stopping
     if stopping == False:
         stopping = True
