@@ -325,25 +325,25 @@ class Player():
 
                     elif self.isInit:
 
-                        if (self.last_msg == 'LOADED?'):
+                        message_types: Dict[str, Callable[any, bool]] = { # TODO Check Types
+                            "PLAY":     lambda: self._retMsg(self.play()),
+                            "PAUSE":    lambda: self._retMsg(self.pause()),
+                            "UNPAUSE":  lambda: self._retMsg(self.unpause()),
+                            "STOP":     lambda: self._retMsg(self.stop()),
+                            "UNLOAD":   lambda: self._retMsg(self.unload()),
+                            "STATUS":   lambda: self._retMsg(self.status, True)
+                        }
+
+                        if self.last_msg in message_types.keys():
+                            message_types[self.last_msg]()
+
+                        elif (self.last_msg == 'LOADED?'):
                             self._retMsg(self.isLoaded)
                             continue
 
                         elif (self.last_msg.startswith("ADD")):
                             split = self.last_msg.split(":")
                             self._retMsg(self.add_to_plan(json.loads(":".join(split[1:]))))
-
-                        elif (self.last_msg == 'PLAY'):
-                             self._retMsg(self.play())
-
-                        elif (self.last_msg == 'PAUSE'):
-                             self._retMsg(self.pause())
-
-                        elif (self.last_msg == 'UNPAUSE'):
-                             self._retMsg(self.unpause())
-
-                        elif (self.last_msg == 'STOP'):
-                             self._retMsg(self.stop())
 
                         elif (self.last_msg == 'QUIT'):
                             self.running = False
@@ -356,12 +356,6 @@ class Player():
                         elif (self.last_msg.startswith("LOAD")):
                             split = self.last_msg.split(":")
                             self._retMsg(self.load(int(split[1])))
-
-                        elif (self.last_msg == 'UNLOAD'):
-                             self._retMsg(self.unload())
-
-                        elif (self.last_msg == 'STATUS'):
-                             self._retMsg(self.status, True)
 
                         else:
                             self._retMsg("Unknown Command")
