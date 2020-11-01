@@ -16,11 +16,11 @@ Currently there's just a batch script. Simply run ``install.bat`` as administrat
 This will:
 * Copy BAPSicle into ``C:\Program Files\BAPSicle``
 * Install BAPSicle.exe as a Windows Service with NSSM.
-* If all goes well, open [http://localhost:5000](localhost:13500) for the server UI.
+* If all goes well, open [http://localhost:13500](localhost:13500) for the server UI.
 
 ### Linux
 
-Installed service for linux is comming soon. Testing is primarily on Ubuntu 20.04. Your milage with other distros will vary.
+Installed service for linux is coming soon. Testing is primarily on Ubuntu 20.04. Your milage with other distros will vary.
 
 ### MacOS
 
