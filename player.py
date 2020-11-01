@@ -374,7 +374,7 @@ if __name__ == "__main__":
     # Do some testing
     in_q.put("LOADED?")
     in_q.put("PLAY")
-    in_q.put("LOAD:\\Users\\matth\\Documents\\GitHub\\bapsicle\\dev\\test.mp3")
+    in_q.put("LOAD:\\Users\\mstratford\\Documents\\Dev\\GitHub\\bapsicle\\dev\\test.mp3")
     in_q.put("LOADED?")
     in_q.put("PLAY")
     print("Entering infinite loop.")

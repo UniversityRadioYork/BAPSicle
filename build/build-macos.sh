@@ -1,5 +1,5 @@
 #!/bin/bash
-brew install tcl
+cd "$(dirname "$0")"
 
 pip3 install -r requirements.txt
 pip3 install -r requirements-macos.txt
@@ -10,3 +10,10 @@ python3 ./generate-build-exe-config.py
 python3 ./build-exe.py
 
 bash ./build-exe-pyinstaller-command.sh
+
+rm ./*.spec
+
+brew install platypus
+
+platypus --load-profile ./BAPSicle.platypus --overwrite ./output/BAPSicle.app
+
