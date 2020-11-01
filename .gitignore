@@ -21,6 +21,8 @@ build/build/BAPSicle/
 
 build/output/
 
+build/build-exe-pyinstaller-command.sh
+
 logs/
 
 *.mp3
