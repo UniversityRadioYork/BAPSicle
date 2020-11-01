@@ -194,6 +194,7 @@ class Player():
         self.state.update("paused", False)
 
     def output(self, name=None):
+        wasPlaying = self.state.state["playing"]
         self.quit()
         self.state.update("output", name)
         try:
@@ -205,6 +206,10 @@ class Player():
             return False
 
         self.load(self.state.state["filename"])
+
+        if wasPlaying:
+            self.unpause()
+
         return True
 
     def _updateState(self, pos=None):
