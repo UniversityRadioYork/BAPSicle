@@ -199,9 +199,9 @@ class Player():
         self.state.update("output", name)
         try:
             if name:
-                mixer.init(44100, -16, 1, 1024, devicename=name)
+                mixer.init(44100, -16, 2, 1024, devicename=name)
             else:
-                mixer.init(44100, -16, 1, 1024)
+                mixer.init(44100, -16, 2, 1024)
         except:
             return False
 
