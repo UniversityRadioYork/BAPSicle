@@ -196,7 +196,6 @@ class Player():
     def output(self, name=None):
         self.quit()
         self.state.update("output", name)
-        self.state.update("filename", "")
         try:
             if name:
                 mixer.init(44100, -16, 1, 1024, devicename=name)
@@ -205,6 +204,7 @@ class Player():
         except:
             return False
 
+        self.load(self.state.state["filename"])
         return True
 
     def _updateState(self, pos=None):
