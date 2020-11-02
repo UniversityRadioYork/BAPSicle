@@ -176,6 +176,19 @@ class Player():
         self.state.update("show_plan", self.state.state["show_plan"] + [PlanObject(new_item)])
         return True
 
+    def remove_from_plan(self, timeslotitemid: int) -> bool:
+        plan_copy = copy.copy(self.state.state["show_plan"])
+        for i in range(len(plan_copy)):
+            if plan_copy[i].timeslotitemid == timeslotitemid:
+                plan_copy.remove(i)
+                self.state.update("show_plan", plan_copy)
+                return True
+        return False
+
+    def clear_channel_plan(self) -> bool:
+        self.state.update("show_plan", [])
+        return True
+
     def load(self, timeslotitemid: int):
         if not self.isPlaying:
             self.unload()
@@ -330,32 +343,22 @@ class Player():
                             "PAUSE":    lambda: self._retMsg(self.pause()),
                             "UNPAUSE":  lambda: self._retMsg(self.unpause()),
                             "STOP":     lambda: self._retMsg(self.stop()),
+                            "SEEK":     lambda: self._retMsg(self.seek(float(self.last_msg.split(":")[1]))),
+                            "LOAD":     lambda: self._retMsg(self.load(int(self.last_msg.split(":")[1]))),
+                            "LOADED?":  lambda: self._retMsg(self.isLoaded),
                             "UNLOAD":   lambda: self._retMsg(self.unload()),
-                            "STATUS":   lambda: self._retMsg(self.status, True)
+                            "STATUS":   lambda: self._retMsg(self.status, True),
+                            "ADD":      lambda: self._retMsg(self.add_to_plan(json.loads(":".join(self.last_msg.split(":")[1:])))),
+                            "REMOVE":   lambda: self._retMsg(self.remove_from_plan(int(self.last_msg.split(":")[1]))),
+                            "CLEAR":    lambda: self._retMsg(self.clear_channel_plan())
                         }
 
                         if self.last_msg in message_types.keys():
                             message_types[self.last_msg]()
 
-                        elif (self.last_msg == 'LOADED?'):
-                            self._retMsg(self.isLoaded)
-                            continue
-
-                        elif (self.last_msg.startswith("ADD")):
-                            split = self.last_msg.split(":")
-                            self._retMsg(self.add_to_plan(json.loads(":".join(split[1:]))))
-
                         elif (self.last_msg == 'QUIT'):
                             self.running = False
                             continue
-
-                        elif (self.last_msg.startswith("SEEK")):
-                            split = self.last_msg.split(":")
-                            self._retMsg(self.seek(float(split[1])))
-
-                        elif (self.last_msg.startswith("LOAD")):
-                            split = self.last_msg.split(":")
-                            self._retMsg(self.load(int(split[1])))
 
                         else:
                             self._retMsg("Unknown Command")

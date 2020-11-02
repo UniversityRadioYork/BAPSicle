@@ -38,6 +38,7 @@ channel_to_q = []
 channel_from_q = []
 channel_p = []
 
+### General Endpoints
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -92,6 +93,7 @@ def ui_status():
     }
     return render_template('status.html', data=data)
 
+### Channel Audio Options
 
 @app.route("/player/<int:channel>/play")
 def play(channel):
@@ -138,6 +140,8 @@ def output(channel, name):
     channel_to_q[channel].put("OUTPUT:" + name)
     return ui_status()
 
+### Channel Items
+
 @app.route("/player/<int:channel>/load/<int:timeslotitemid>")
 def load(channel:int, timeslotitemid: int):
     channel_to_q[channel].put("LOAD:" + str(timeslotitemid))
@@ -177,6 +181,15 @@ def remove_plan(channel: int, timeslotitemid: int):
     #TODO Return
     return True
 
+@app.route("/player/<int:channel>/clear")
+def clear_channel_plan(channel: int):
+    channel_to_q[channel].put("CLEAR")
+
+    #TODO Return
+    return True
+
+### General Channel Endpoints
+
 @app.route("/player/<int:channel>/status")
 def status(channel):
 
@@ -198,7 +211,14 @@ def status(channel):
 def all_stop():
     for channel in channel_to_q:
         channel.put("STOP")
-    ui_status()
+    return ui_status()
+
+
+@app.route("/player/all/clear")
+def clear_all_channels():
+    for channel in channel_to_q:
+        channel.put("CLEAR") 
+    return ui_status()
 
 
 @app.route('/static/<path:path>')
