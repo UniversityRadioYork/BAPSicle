@@ -1,3 +1,18 @@
+"""
+    BAPSicle Server
+    Next-gen audio playout server for University Radio York playout,
+    based on WebStudio interface.
+
+    Audio Player
+
+    Authors:
+        Matthew Stratford
+        Michael Grace
+
+    Date:
+        October, November 2020
+"""
+
 # This is the player. Reliability is critical here, so we're catching
 # literally every exception possible and handling it.
 
@@ -10,6 +25,11 @@ import setproctitle
 import copy
 import json
 import time
+
+from typing import Callable, Dict, List
+
+from plan import PlanObject
+
 import os
 import sys
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
@@ -29,7 +49,7 @@ class Player():
 
     __default_state = {
         "initialised": False,
-        "filename": "",
+        "loaded_item": None,
         "channel": -1,
         "playing": False,
         "paused": False,
@@ -39,8 +59,11 @@ class Player():
         "pos_true": 0,
         "remaining": 0,
         "length": 0,
-        "loop": False,
-        "output": None
+        "auto_advance": True,
+        "repeat": "NONE", #NONE, ONE or ALL
+        "play_on_load": False,
+        "output": None,
+        "show_plan": []
     }
 
     @property
@@ -64,7 +87,7 @@ class Player():
 
     @property
     def isLoaded(self):
-        if not self.state.state["filename"]:
+        if not self.state.state["loaded_item"]:
             return False
         if self.isPlaying:
             return True
@@ -91,8 +114,16 @@ class Player():
 
     @property
     def status(self):
-        res = json.dumps(self.state.state)
+        state = copy.copy(self.state.state)
+
+        # Not the biggest fan of this, but maybe I'll get a better solution for this later
+        state["loaded_item"] = state["loaded_item"].__dict__ if state["loaded_item"] else None
+        state["show_plan"] = [repr.__dict__ for repr in state["show_plan"]]
+
+        res = json.dumps(state)
         return res
+
+    ### Audio Playout Related Methods
 
     def play(self, pos=0):
         # if not self.isPlaying:
@@ -130,7 +161,8 @@ class Player():
         # if self.isPlaying or self.isPaused:
         try:
             mixer.music.stop()
-        except:
+        except Exception as e:
+            print("Couldn't Stop Player:", e)
             return False
         self.state.update("pos", 0)
         self.state.update("pos_offset", 0)
@@ -151,7 +183,53 @@ class Player():
             self._updateState(pos=pos)
         return True
 
-    def load(self, filename):
+    def set_auto_advance(self, message: int) -> bool:
+        if message == 0:
+            self.state.update("auto_advance", False)
+            return True # It did it
+        elif message == 1:
+            self.state.update("auto_advance", True)
+            return True
+        else:
+            return False
+
+    def set_repeat(self, message: str) -> bool:
+        if message in ["ALL", "ONE", "NONE"]:
+            self.state.update("repeat", message)
+            return True
+        else:
+            return False
+
+    def set_play_on_load(self, message: int) -> bool:
+        if message == 0:
+            self.state.update("play_on_load", False)
+            return True # It did it
+        elif message == 1:
+            self.state.update("play_on_load", True)
+            return True
+        else:
+            return False
+
+    ### Show Plan Related Methods
+
+    def add_to_plan(self, new_item: Dict[str, any]) -> bool:
+        self.state.update("show_plan", self.state.state["show_plan"] + [PlanObject(new_item)])
+        return True
+
+    def remove_from_plan(self, timeslotitemid: int) -> bool:
+        plan_copy = copy.copy(self.state.state["show_plan"])
+        for i in range(len(plan_copy)):
+            if plan_copy[i].timeslotitemid == timeslotitemid:
+                plan_copy.remove(i)
+                self.state.update("show_plan", plan_copy)
+                return True
+        return False
+
+    def clear_channel_plan(self) -> bool:
+        self.state.update("show_plan", [])
+        return True
+
+    def load(self, timeslotitemid: int):
         if not self.isPlaying:
             self.unload()
             # Fix any OS specific / or \'s
@@ -160,8 +238,21 @@ class Player():
             else:
                 filename = filename.replace("/", '\\')
 
-            print(filename)
-            self.state.update("filename", filename)
+
+            updated: bool = False
+            
+            for i in range(len(self.state.state["show_plan"])):
+                if self.state.state["show_plan"][i].timeslotitemid == timeslotitemid:
+                    self.state.update("loaded_item", self.state.state["show_plan"][i])
+                    updated = True
+                    break
+
+            if not updated:
+                print("Failed to find timeslotitemid:", timeslotitemid)
+                return False
+
+            filename: str = self.state.state["loaded_item"].filename
+
 
             try:
                 mixer.music.load(filename)
@@ -185,7 +276,7 @@ class Player():
             try:
                 mixer.music.unload()
                 self.state.update("paused", False)
-                self.state.update("filename", "")
+                self.state.update("loaded_item", None)
             except:
                 return False
         return not self.isLoaded
@@ -197,7 +288,7 @@ class Player():
     def output(self, name=None):
         self.quit()
         self.state.update("output", name)
-        self.state.update("filename", "")
+        self.state.update("loaded_item", None)
         try:
             if name:
                 mixer.init(44100, -16, 1, 1024, devicename=name)
@@ -225,6 +316,31 @@ class Player():
             self.state.update("pos_true", self.state.state["pos"] + self.state.state["pos_offset"])
 
             self.state.update("remaining", self.state.state["length"] - self.state.state["pos_true"])
+
+            if self.state.state["remaining"] == 0:
+                # Track has ended
+                print("Finished", self.state.state["loaded_item"].name)
+                
+                # Repeat 1
+                if self.state.state["repeat"] == "ONE":
+                    self.play()
+
+                # Auto Advance
+                elif self.state.state["auto_advance"]:
+                    for i in range(len(self.state.state["show_plan"])):
+                        if self.state.state["show_plan"][i].timeslotitemid == self.state.state["loaded_item"].timeslotitemid:
+                            if len(self.state.state["show_plan"]) > i+1:
+                                self.load(self.state.state["show_plan"][i+1].timeslotitemid)
+                                break
+
+                            # Repeat All
+                            elif self.state.state["repeat"] == "ALL":
+                                self.load(self.state.state["show_plan"][0].timeslotitemid)
+                
+                # Play on Load
+                if self.state.state["play_on_load"]:
+                    self.play()
+                
 
     def _retMsg(self, msg, okay_str=False):
         response = self.last_msg + ":"
@@ -259,9 +375,9 @@ class Player():
             print("Using default output device.")
             self.output()
 
-        if loaded_state["filename"]:
-            print("Loading filename: " + loaded_state["filename"])
-            self.load(loaded_state["filename"])
+        if loaded_state["loaded_item"]:
+            print("Loading filename: " + loaded_state["loaded_item"].filename)
+            self.load(loaded_state["loaded_item"].timeslotitemid)
 
             if loaded_state["pos_true"] != 0:
                 print("Seeking to pos_true: " + str(loaded_state["pos_true"]))
@@ -294,39 +410,36 @@ class Player():
 
                     elif self.isInit:
 
-                        if (self.last_msg == 'LOADED?'):
-                            self._retMsg(self.isLoaded)
-                            continue
+                        message_types: Dict[str, Callable[any, bool]] = { # TODO Check Types
+                            "STATUS":       lambda: self._retMsg(self.status, True),
+                            
+                            # Audio Playout
+                            "PLAY":         lambda: self._retMsg(self.play()),
+                            "PAUSE":        lambda: self._retMsg(self.pause()),
+                            "UNPAUSE":      lambda: self._retMsg(self.unpause()),
+                            "STOP":         lambda: self._retMsg(self.stop()),
+                            "SEEK":         lambda: self._retMsg(self.seek(float(self.last_msg.split(":")[1]))),
+                            "AUTOADVANCE":  lambda: self._retMsg(self.set_auto_advance(int(self.last_msg.split(":")[1]))),
+                            "REPEAT":       lambda: self._retMsg(self.set_repeat(self.last_msg.split(":")[1])),
+                            "PLAYONLOAD":   lambda: self._retMsg(self.set_play_on_load(int(self.last_msg.split(":")[1]))),
 
-                        elif (self.last_msg == 'PLAY'):
-                            self._retMsg(self.play())
+                            # Show Plan Items
+                            "LOAD":         lambda: self._retMsg(self.load(int(self.last_msg.split(":")[1]))),
+                            "LOADED?":      lambda: self._retMsg(self.isLoaded),
+                            "UNLOAD":       lambda: self._retMsg(self.unload()),
+                            "ADD":          lambda: self._retMsg(self.add_to_plan(json.loads(":".join(self.last_msg.split(":")[1:])))),
+                            "REMOVE":       lambda: self._retMsg(self.remove_from_plan(int(self.last_msg.split(":")[1]))),
+                            "CLEAR":        lambda: self._retMsg(self.clear_channel_plan())
+                        }
 
-                        elif (self.last_msg == 'PAUSE'):
-                            self._retMsg(self.pause())
+                        message_type: str = self.last_msg.split(":")[0]
 
-                        elif (self.last_msg == 'UNPAUSE'):
-                            self._retMsg(self.unpause())
-
-                        elif (self.last_msg == 'STOP'):
-                            self._retMsg(self.stop())
+                        if message_type in message_types.keys():
+                            message_types[message_type]()
 
                         elif (self.last_msg == 'QUIT'):
                             self.running = False
                             continue
-
-                        elif (self.last_msg.startswith("SEEK")):
-                            split = self.last_msg.split(":")
-                            self._retMsg(self.seek(float(split[1])))
-
-                        elif (self.last_msg.startswith("LOAD")):
-                            split = self.last_msg.split(":")
-                            self._retMsg(self.load(split[1]))
-
-                        elif (self.last_msg == 'UNLOAD'):
-                            self._retMsg(self.unload())
-
-                        elif (self.last_msg == 'STATUS'):
-                            self._retMsg(self.status, True)
 
                         else:
                             self._retMsg("Unknown Command")
@@ -378,7 +491,8 @@ if __name__ == "__main__":
     # Do some testing
     in_q.put("LOADED?")
     in_q.put("PLAY")
-    in_q.put("LOAD:\\Users\\mstratford\\Documents\\Dev\\GitHub\\bapsicle\\dev\\test.mp3")
+
+    in_q.put("LOAD:dev/test.mp3")
     in_q.put("LOADED?")
     in_q.put("PLAY")
     print("Entering infinite loop.")
