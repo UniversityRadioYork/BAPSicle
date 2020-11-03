@@ -32,15 +32,19 @@ class PlanObject:
     def name(self) -> str:
         return "{0} - {1}".format(self._title, self._artist) if self._artist else self._title
 
+    @property
+    def __dict__(self) -> Dict[str, any]:
+        return {
+            "timeslotitemid": self.timeslotitemid,
+            "title": self._title,
+            "artist": self._artist,
+            "name": self.name,
+            "filename": self.filename
+        }
+
     def __init__(self, new_item: Dict[str, any]):
         self._timeslotitemid = new_item["timeslotitemid"]
         self._filename = new_item["filename"]
         self._title = new_item["title"]
         self._artist = new_item["artist"]
-
-    def __dict__(self) -> Dict[str, any]:
-        return {
-            "timeslotitemid": self.timeslotitemid,
-            "name": self.name,
-            "filename": self.filename
-        }
+        

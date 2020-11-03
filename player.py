@@ -108,8 +108,8 @@ class Player():
         state = copy.copy(self.state.state)
 
         # Not the biggest fan of this, but maybe I'll get a better solution for this later
-        state["loaded_item"] = state["loaded_item"].__dict__() if state["loaded_item"] else None
-        state["show_plan"] = [repr.__dict__() for repr in state["show_plan"]]
+        state["loaded_item"] = state["loaded_item"].__dict__ if state["loaded_item"] else None
+        state["show_plan"] = [repr.__dict__ for repr in state["show_plan"]]
 
         res = json.dumps(state)
         return res
@@ -304,8 +304,8 @@ class Player():
             self.output()
 
         if loaded_state["loaded_item"]:
-            print("Loading filename: " + loaded_state["loaded_item"["filename"]])
-            self.load(loaded_state["loaded_item"["timeslotitemid"]])
+            print("Loading filename: " + loaded_state["loaded_item"].filename)
+            self.load(loaded_state["loaded_item"].timeslotitemid)
 
             if loaded_state["pos_true"] != 0:
                 print("Seeking to pos_true: " + str(loaded_state["pos_true"]))
@@ -353,8 +353,10 @@ class Player():
                             "CLEAR":    lambda: self._retMsg(self.clear_channel_plan())
                         }
 
-                        if self.last_msg in message_types.keys():
-                            message_types[self.last_msg]()
+                        message_type: str = self.last_msg.split(":")[0]
+
+                        if message_type in message_types.keys():
+                            message_types[message_type]()
 
                         elif (self.last_msg == 'QUIT'):
                             self.running = False

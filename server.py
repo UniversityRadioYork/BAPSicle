@@ -20,6 +20,7 @@ import json
 import sounddevice as sd
 import setproctitle
 import config
+import pyttsx3
 
 setproctitle.setproctitle("BAPSicle - Server")
 
@@ -239,15 +240,31 @@ def startServer():
         )
         channel_p[channel].start()
 
-    # There is a plan for this, but I'm going to leave this here until i sort it
+    # Welcome Speech
+
+    text_to_speach = pyttsx3.init()
+    text_to_speach.save_to_file(    
+    """Thank-you for installing BAPSicle - the play-out server from the broadcasting and presenting suite.
+    This server is accepting connections on port {0}
+    The version of the server service is {1}
+    Please refer to the documentation included with this application for further assistance.""".format(
+        config.PORT,
+        config.VERSION
+    ),
+    "dev/welcome.mp3"
+    )
+    text_to_speach.runAndWait()
+
     new_item: Dict[str, any] = {
         "timeslotitemid": 0,
-        "filename": "dev/test.mp3",
-        "title":  "Test File",
-        "artist":  None,
+        "filename": "dev/welcome.mp3",
+        "title":  "Welcome to BAPSicle",
+        "artist":  "University Radio York",
     }
 
     channel_to_q[0].put("ADD:" + json.dumps(new_item))
+    channel_to_q[0].put("LOAD:0")
+    channel_to_q[0].put("PLAY")
 
     # Don't use reloader, it causes Nested Processes!
     app.run(host=config.HOST, port=config.PORT, debug=True, use_reloader=False)
