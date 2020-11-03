@@ -2,10 +2,10 @@ import multiprocessing
 import player
 from flask import Flask, render_template, send_from_directory, request
 import json
-import sounddevice as sd
 import setproctitle
 import logging
 from helpers.os_environment import isMacOS
+from helpers.device_manager import DeviceManager
 
 setproctitle.setproctitle("BAPSicle - Server")
 
@@ -55,12 +55,7 @@ def ui_config():
     for i in range(3):
         channel_states.append(status(i))
 
-    devices = sd.query_devices()
-    outputs = []
-
-    for device in devices:
-        if device["max_output_channels"] > 0:
-            outputs.append(device)
+    outputs = DeviceManager.getOutputs()
 
     data = {
         'channels': channel_states,
