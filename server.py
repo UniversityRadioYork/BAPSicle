@@ -141,6 +141,21 @@ def output(channel, name):
     channel_to_q[channel].put("OUTPUT:" + name)
     return ui_status()
 
+@app.route("/player/<int:channel>/autoadvance/<int:state>")
+def autoadvance(channel: int, state: int):
+    channel_to_q[channel].put("AUTOADVANCE:" + str(state))
+    return ui_status()
+
+@app.route("/player/<int:channel>/repeat/<state>")
+def autoadvance(channel: int, state):
+    channel_to_q[channel].put("REPEAT:" + state.upper())
+    return ui_status()
+
+@app.route("/player/<int:channel>/playonload/<int:state>")
+def autoadvance(channel: int, state: int):
+    channel_to_q[channel].put("PLAYONLOAD:" + str(state))
+    return ui_status()
+
 ### Channel Items
 
 @app.route("/player/<int:channel>/load/<int:timeslotitemid>")
