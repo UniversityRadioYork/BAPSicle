@@ -24,5 +24,3 @@ class DeviceManager():
         outputs = filter(self._isOutput, self._getDevices())
 
         return outputs
-
-    # TODO: Maybe some hotplug event triggers support for the players?
