@@ -80,6 +80,7 @@ class Player():
             try:
                 mixer.music.set_volume(1)
             except:
+                self.logger.log.exception("Failed to reset volume after attempting loaded test.")
                 pass
             return False
         if position > 0:
@@ -95,32 +96,31 @@ class Player():
         return res
 
     def play(self, pos=0):
-        # if not self.isPlaying:
         try:
             mixer.music.play(0, pos)
             self.state.update("pos_offset", pos)
         except:
+            self.logger.log.exception("Failed to play at pos: " + str(pos))
             return False
         self.state.update("paused", False)
         return True
-        # return False
 
     def pause(self):
-        # if self.isPlaying:
-
         try:
             mixer.music.pause()
         except:
+            self.logger.log.exception("Failed to pause.")
             return False
         self.state.update("paused", True)
         return True
-        # return False
 
     def unpause(self):
         if not self.isPlaying:
+            position = self.state.state["pos_true"]
             try:
-                self.play(self.state.state["pos_true"])
+                self.play(position)
             except:
+                self.logger.log.exception("Failed to unpause from pos: " + str(position))
                 return False
             self.state.update("paused", False)
             return True
@@ -131,6 +131,7 @@ class Player():
         try:
             mixer.music.stop()
         except:
+            self.logger.log.exception("Failed to stop playing.")
             return False
         self.state.update("pos", 0)
         self.state.update("pos_offset", 0)
@@ -144,6 +145,7 @@ class Player():
             try:
                 self.play(pos)
             except:
+                self.logger.log.exception("Failed to seek to pos: " + str(pos))
                 return False
             return True
         else:
@@ -163,10 +165,11 @@ class Player():
             self.state.update("filename", filename)
 
             try:
+                self.logger.log.info("Loading file: " + str(filename))
                 mixer.music.load(filename)
             except:
                 # We couldn't load that file.
-                print("Couldn't load file:", filename)
+                self.logger.log.exception("Couldn't load file: " + str(filename))
                 return False
 
             try:
@@ -176,6 +179,7 @@ class Player():
                 else:
                     self.state.update("length", mixer.Sound(filename).get_length()/1000)
             except:
+                self.logger.log.exception("Failed to update the length of item.")
                 return False
         return True
 
@@ -186,12 +190,16 @@ class Player():
                 self.state.update("paused", False)
                 self.state.update("filename", "")
             except:
+                self.logger.log.exception("Failed to unload channel.")
                 return False
         return not self.isLoaded
 
     def quit(self):
-        mixer.quit()
-        self.state.update("paused", False)
+        try:
+            mixer.quit()
+            self.state.update("paused", False)
+        except:
+            self.logger.log.exception("Failed to quit mixer.")
 
     def output(self, name=None):
         wasPlaying = self.state.state["playing"]
@@ -203,6 +211,7 @@ class Player():
             else:
                 mixer.init(44100, -16, 2, 1024)
         except:
+            self.logger.log.exception("Failed to init mixer with device name: " + str(name))
             return False
 
         self.load(self.state.state["filename"])
@@ -215,8 +224,6 @@ class Player():
     def _updateState(self, pos=None):
         self.state.update("initialised", self.isInit)
         if self.isInit:
-            # TODO: get_pos returns the time since the player started playing
-            # This is NOT the same as the position through the song.
             if self.isPlaying:
                 # Get one last update in, incase we're about to pause/stop it.
                 self.state.update("pos", max(0, mixer.music.get_pos()/1000))
@@ -346,11 +353,14 @@ class Player():
 
             # Catch the player being killed externally.
             except KeyboardInterrupt:
+                self.logger.log.info("Received KeyboardInterupt")
                 break
             except SystemExit:
+                self.logger.log.info("Received SystemExit")
                 break
             except:
-                raise
+                self.logger.log.exception("Received unexpected exception.")
+                break
 
         self.logger.log.info("Quiting player ", channel)
         self.quit()
