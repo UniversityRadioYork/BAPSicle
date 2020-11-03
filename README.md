@@ -52,7 +52,7 @@ To build a ``BAPSicle.exe``, run ``build\build-exe.bat``. The resulting file wil
 
 ### Linux
 
-Coming soon...
+To build a ``BAPSicle`` executable, run ``build/build-linux.sh``. The resulting file will appear in ``build/output``.
 
 ### MacOS
 
