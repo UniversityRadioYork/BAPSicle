@@ -7,7 +7,7 @@
   },
   {
    "optionDest": "filenames",
-   "value": "\\launch_standalone.py"
+   "value": "/launch_standalone.py"
   },
   {
    "optionDest": "onefile",
@@ -15,11 +15,15 @@
   },
   {
    "optionDest": "console",
-   "value": true
+   "value": false
+  },
+  {
+    "optionDest": "exclude-module",
+    "value": "tkinter"
   },
   {
    "optionDest": "icon_file",
-   "value": "\\build\\icon.ico"
+   "value": "/build/icon.ico"
   },
   {
    "optionDest": "name",
@@ -63,11 +67,11 @@
   },
   {
    "optionDest": "datas",
-   "value": "\\templates;templates/"
+   "value": "/templates;templates/"
   },
   {
    "optionDest": "datas",
-   "value": "\\ui-static;ui-static/"
+   "value": "/ui-static;ui-static/"
   }
  ],
  "nonPyinstallerOptions": {

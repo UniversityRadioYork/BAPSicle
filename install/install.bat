@@ -28,7 +28,7 @@ nssm set %service_name% AppStopMethodConsole 5000
 nssm set %service_name% AppStopMethodWindow 5000
 nssm set %service_name% AppStopMethodThreads 5000
 nssm set %service_name% DisplayName "BAPSicle Server"
-nssm set %service_name% Description "The next gen Broadcast and Presenting Suite server! Access settings on port 5000."
+nssm set %service_name% Description "The next gen Broadcast and Presenting Suite server! Access settings on port 13500."
 nssm set %service_name% ObjectName LocalSystem
 nssm set %service_name% Start SERVICE_AUTO_START
 nssm set %service_name% Type SERVICE_INTERACTIVE_PROCESS
@@ -41,4 +41,4 @@ nssm start %service_name%
 
 timeout 4 /nobreak
 
-explorer "http://localhost:5000/"
+explorer "http://localhost:13500/"
