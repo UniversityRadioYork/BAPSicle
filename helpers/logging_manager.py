@@ -10,7 +10,7 @@ class LoggingManager():
         self.logger = logging.getLogger(name)
 
         logging.basicConfig(
-            filename=resolve_external_file_path("/logs/" + name + ".txt"),
+            filename=resolve_external_file_path("/logs/" + name + ".log"),
             format='%(asctime)s  | %(levelname)s | %(message)s',
             level=logging.INFO,
             filemode='a'
