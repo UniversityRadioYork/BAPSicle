@@ -22,7 +22,10 @@ import logging
 from helpers.os_environment import isMacOS
 from helpers.device_manager import DeviceManager
 
-import pyttsx3
+if not isMacOS():
+    # Rip, this doesn't like threading on MacOS.
+    import pyttsx3
+
 import config
 from typing import Dict, List
 
@@ -270,20 +273,24 @@ def startServer():
         )
         channel_p[channel].start()
 
-    # Welcome Speech
+    if not isMacOS():
 
-    text_to_speach = pyttsx3.init()
-    text_to_speach.save_to_file(    
-    """Thank-you for installing BAPSicle - the play-out server from the broadcasting and presenting suite.
-    This server is accepting connections on port {0}
-    The version of the server service is {1}
-    Please refer to the documentation included with this application for further assistance.""".format(
-        config.PORT,
-        config.VERSION
-    ),
-    "dev/welcome.mp3"
-    )
-    text_to_speach.runAndWait()
+        # Temporary RIP.
+
+        # Welcome Speech
+
+        text_to_speach = pyttsx3.init()
+        text_to_speach.save_to_file(
+        """Thank-you for installing BAPSicle - the play-out server from the broadcasting and presenting suite.
+        This server is accepting connections on port {0}
+        The version of the server service is {1}
+        Please refer to the documentation included with this application for further assistance.""".format(
+            config.PORT,
+            config.VERSION
+        ),
+        "dev/welcome.mp3"
+        )
+        text_to_speach.runAndWait()
 
     new_item: Dict[str, any] = {
         "timeslotitemid": 0,
