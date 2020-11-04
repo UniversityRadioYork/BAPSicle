@@ -43,6 +43,13 @@ class Player():
         "output": None
     }
 
+    __rate_limited_params = [
+        "pos",
+        "pos_offset",
+        "pos_true",
+        "remaining"
+    ]
+
     @property
     def isInit(self):
         try:
@@ -222,16 +229,18 @@ class Player():
         return True
 
     def _updateState(self, pos=None):
+
         self.state.update("initialised", self.isInit)
         if self.isInit:
-            if self.isPlaying:
+            if (pos):
+                self.state.update("pos", max(0, pos))
+            elif self.isPlaying:
                 # Get one last update in, incase we're about to pause/stop it.
                 self.state.update("pos", max(0, mixer.music.get_pos()/1000))
             self.state.update("playing", self.isPlaying)
             self.state.update("loaded", self.isLoaded)
 
-            if (pos):
-                self.state.update("pos", max(0, pos))
+
 
             self.state.update("pos_true", self.state.state["pos"] + self.state.state["pos_offset"])
 
@@ -262,7 +271,7 @@ class Player():
 
         self.logger = LoggingManager("channel" + str(channel))
 
-        self.state = StateManager("channel" + str(channel), self.logger, self.__default_state)
+        self.state = StateManager("channel" + str(channel), self.logger, self.__default_state, self.__rate_limited_params)
         self.state.update("channel", channel)
 
         loaded_state = copy.copy(self.state.state)
