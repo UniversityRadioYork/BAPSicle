@@ -153,12 +153,12 @@ def autoadvance(channel: int, state: int):
     return ui_status()
 
 @app.route("/player/<int:channel>/repeat/<state>")
-def autoadvance(channel: int, state):
+def repeat(channel: int, state):
     channel_to_q[channel].put("REPEAT:" + state.upper())
     return ui_status()
 
 @app.route("/player/<int:channel>/playonload/<int:state>")
-def autoadvance(channel: int, state: int):
+def playonload(channel: int, state: int):
     channel_to_q[channel].put("PLAYONLOAD:" + str(state))
     return ui_status()
 

@@ -13,6 +13,7 @@
 """
 
 from typing import Dict
+import os
 
 class PlanObject:
     _timeslotitemid: int = 0
@@ -47,4 +48,10 @@ class PlanObject:
         self._filename = new_item["filename"]
         self._title = new_item["title"]
         self._artist = new_item["artist"]
+
+        # Fix any OS specific / or \'s
+        if os.path.sep == "/":
+            self._filename = self.filename.replace("\\", '/')
+        else:
+            self._filename = self.filename.replace("/", '\\')
         

@@ -32,14 +32,14 @@ from plan import PlanObject
 
 import os
 import sys
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+
 from pygame import mixer
 from mutagen.mp3 import MP3
 
 from state_manager import StateManager
 from helpers.os_environment import isMacOS
 
-
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
 class Player():
     state = None
@@ -232,12 +232,6 @@ class Player():
     def load(self, timeslotitemid: int):
         if not self.isPlaying:
             self.unload()
-            # Fix any OS specific / or \'s
-            if os.path.sep == "/":
-                filename = filename.replace("\\", '/')
-            else:
-                filename = filename.replace("/", '\\')
-
 
             updated: bool = False
             
@@ -317,7 +311,7 @@ class Player():
 
             self.state.update("remaining", self.state.state["length"] - self.state.state["pos_true"])
 
-            if self.state.state["remaining"] == 0:
+            if self.state.state["remaining"] == 0 and self.state.state["loaded_item"]:
                 # Track has ended
                 print("Finished", self.state.state["loaded_item"].name)
                 
