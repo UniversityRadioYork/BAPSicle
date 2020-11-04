@@ -42,10 +42,22 @@ class StateManager:
             self.__state_in_file = copy(self.state)
         else:
             try:
-                self.__state = json.loads(file_state)
+                self.state = json.loads(file_state)
+
+                # Turn from JSON -> PlanObject
+                self.update(
+                    "loaded_item",
+                    PlanObject(self.__state["loaded_item"]) if self.state["loaded_item"] else None
+                )
+                self.update(
+                    "show_plan",
+                    [PlanObject(obj) for obj in self.state["show_plan"]]
+                )
+
             except:
                 self._logException("Failed to parse state JSON. Resetting to default state.")
-                self.state = default_state
+                self.state = copy(default_state)
+                self.__state_in_file = copy(self.state)
 
         # Now setup the rate limiting
         # Essentially rate limit all values to "now" to start with, allowing the first update
@@ -70,19 +82,22 @@ class StateManager:
         self.__state_in_file = state
 
         # Make sure we're not manipulating state
-        state = copy(state)
+        state_to_json = copy(state)
 
         now = datetime.now()
 
         current_time = now.strftime("%H:%M:%S")
-        state["last_updated"] = current_time
+        state_to_json["last_updated"] = current_time
+
+        # Not the biggest fan of this, but maybe I'll get a better solution for this later
+        state_to_json["loaded_item"] = state_to_json["loaded_item"].__dict__ if state_to_json["loaded_item"] else None
+        state_to_json["show_plan"] = [repr.__dict__ for repr in state_to_json["show_plan"]]
         try:
-            state_json = json.dumps(state, indent=2, sort_keys=True)
+            state_json = json.dumps(state_to_json, indent=2, sort_keys=True)
         except:
             self._logException("Failed to dump JSON state.")
         else:
             with open(self.filepath, "w") as file:
-
                 file.write(state_json)
 
     def update(self, key, value):
@@ -98,7 +113,7 @@ class StateManager:
 
         state_to_update = self.state
 
-        if state_to_update[key] == value:
+        if key in state_to_update and state_to_update[key] == value:
             # We're trying to update the state with the same value.
             # In this case, ignore the update
             return

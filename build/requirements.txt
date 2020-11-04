@@ -4,3 +4,4 @@ mutagen
 sounddevice
 autopep8
 setproctitle
+pyttsx3
