@@ -1,10 +1,12 @@
-from helpers.logging_manager import LoggingManager
 import json
 import os
 import logging
 import time
 from datetime import datetime
 from copy import copy
+
+from plan import PlanObject
+from helpers.logging_manager import LoggingManager
 from helpers.os_environment import resolve_external_file_path
 
 
@@ -38,25 +40,22 @@ class StateManager:
 
         if file_state == "":
             self._log("State file is empty. Setting default state.")
-            self.state = copy(default_state)
+            self.state = default_state
             self.__state_in_file = copy(self.state)
         else:
             try:
-                self.state = json.loads(file_state)
+                file_state = json.loads(file_state)
 
                 # Turn from JSON -> PlanObject
-                self.update(
-                    "loaded_item",
-                    PlanObject(self.__state["loaded_item"]) if self.state["loaded_item"] else None
-                )
-                self.update(
-                    "show_plan",
-                    [PlanObject(obj) for obj in self.state["show_plan"]]
-                )
+                file_state["loaded_item"] = PlanObject(file_state["loaded_item"]) if file_state["loaded_item"] else None
 
+                file_state["show_plan"] = [PlanObject(obj) for obj in file_state["show_plan"]]
+
+                # Now feed the loaded state into the initialised state manager.
+                self.state = file_state
             except:
                 self._logException("Failed to parse state JSON. Resetting to default state.")
-                self.state = copy(default_state)
+                self.state = default_state
                 self.__state_in_file = copy(self.state)
 
         # Now setup the rate limiting

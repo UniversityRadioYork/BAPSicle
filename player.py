@@ -244,7 +244,7 @@ class Player():
             self.unload()
 
             updated: bool = False
-            
+
             for i in range(len(self.state.state["show_plan"])):
                 if self.state.state["show_plan"][i].timeslotitemid == timeslotitemid:
                     self.state.update("loaded_item", self.state.state["show_plan"][i])
@@ -335,7 +335,7 @@ class Player():
             if self.state.state["remaining"] == 0 and self.state.state["loaded_item"]:
                 # Track has ended
                 print("Finished", self.state.state["loaded_item"].name)
-                
+
                 # Repeat 1
                 if self.state.state["repeat"] == "ONE":
                     self.play()
@@ -351,11 +351,11 @@ class Player():
                             # Repeat All
                             elif self.state.state["repeat"] == "ALL":
                                 self.load(self.state.state["show_plan"][0].timeslotitemid)
-                
+
                 # Play on Load
                 if self.state.state["play_on_load"]:
                     self.play()
-                
+
 
     def _retMsg(self, msg, okay_str=False):
         response = self.last_msg + ":"
@@ -431,7 +431,7 @@ class Player():
 
                         message_types: Dict[str, Callable[any, bool]] = { # TODO Check Types
                             "STATUS":       lambda: self._retMsg(self.status, True),
-                            
+
                             # Audio Playout
                             "PLAY":         lambda: self._retMsg(self.play()),
                             "PAUSE":        lambda: self._retMsg(self.pause()),

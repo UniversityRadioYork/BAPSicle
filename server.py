@@ -201,7 +201,7 @@ def add_to_plan(channel: int):
 @app.route("/player/<int:channel>/move/<int:timeslotitemid>/<int:position>")
 def move_plan(channel: int, timeslotitemid: int, position: int):
     channel_to_q[channel].put("MOVE:" + json.dumps({"timeslotitemid": timeslotitemid, "position": position}))
-    
+
     #TODO Return
     return True
 
@@ -254,7 +254,7 @@ def all_stop():
 @app.route("/player/all/clear")
 def clear_all_channels():
     for channel in channel_to_q:
-        channel.put("CLEAR") 
+        channel.put("CLEAR")
     return ui_status()
 
 
