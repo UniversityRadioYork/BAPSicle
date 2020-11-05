@@ -297,9 +297,10 @@ class Player():
 
     def output(self, name=None):
         wasPlaying = self.state.state["playing"]
+        name = None if name == "none" else name
+
         self.quit()
         self.state.update("output", name)
-        self.state.update("loaded_item", None)
         try:
             if name:
                 mixer.init(44100, -16, 2, 1024, devicename=name)
@@ -309,6 +310,9 @@ class Player():
             self.logger.log.exception("Failed to init mixer with device name: " + str(name))
             return False
 
+        loadedItem = self.state.state["loaded_item"]
+        if (loadedItem):
+            self.load(loadedItem.timeslotitemid)
         if wasPlaying:
             self.unpause()
 
