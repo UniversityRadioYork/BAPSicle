@@ -173,9 +173,9 @@ def playonload(channel: int, state: int):
 
 ### Channel Items
 
-@app.route("/player/<int:channel>/load/<int:timeslotitemid>")
-def load(channel:int, timeslotitemid: int):
-    channel_to_q[channel].put("LOAD:" + str(timeslotitemid))
+@app.route("/player/<int:channel>/load/<int:timeslotItemId>")
+def load(channel:int, timeslotItemId: int):
+    channel_to_q[channel].put("LOAD:" + str(timeslotItemId))
     return ui_status()
 
 @app.route("/player/<int:channel>/unload")
@@ -188,7 +188,7 @@ def unload(channel):
 @app.route("/player/<int:channel>/add", methods=["POST"])
 def add_to_plan(channel: int):
     new_item: Dict[str, any] = {
-        "timeslotitemid": int(request.form["timeslotitemid"]),
+        "timeslotItemId": int(request.form["timeslotItemId"]),
         "filename": request.form["filename"],
         "title":  request.form["title"],
         "artist":  request.form["artist"],
@@ -198,16 +198,16 @@ def add_to_plan(channel: int):
 
     return new_item
 
-@app.route("/player/<int:channel>/move/<int:timeslotitemid>/<int:position>")
-def move_plan(channel: int, timeslotitemid: int, position: int):
-    channel_to_q[channel].put("MOVE:" + json.dumps({"timeslotitemid": timeslotitemid, "position": position}))
+@app.route("/player/<int:channel>/move/<int:timeslotItemId>/<int:position>")
+def move_plan(channel: int, timeslotItemId: int, position: int):
+    channel_to_q[channel].put("MOVE:" + json.dumps({"timeslotItemId": timeslotItemId, "position": position}))
 
     #TODO Return
     return True
 
-@app.route("/player/<int:channel>/remove/<int:timeslotitemid>")
-def remove_plan(channel: int, timeslotitemid: int):
-    channel_to_q[channel].put("REMOVE:" + timeslotitemid)
+@app.route("/player/<int:channel>/remove/<int:timeslotItemId>")
+def remove_plan(channel: int, timeslotItemId: int):
+    channel_to_q[channel].put("REMOVE:" + timeslotItemId)
 
     #TODO Return
     return True
@@ -299,7 +299,7 @@ def startServer():
         text_to_speach.runAndWait()
 
     new_item: Dict[str, any] = {
-        "timeslotitemid": 0,
+        "timeslotItemId": 0,
         "filename": "dev/welcome.mp3",
         "title":  "Welcome to BAPSicle",
         "artist":  "University Radio York",

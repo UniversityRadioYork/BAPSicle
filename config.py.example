@@ -4,3 +4,7 @@ PORT: int = 13500
 
 # BAPSicle Details
 VERSION: float = 1.0
+
+# API Settings
+API_KEY: str = ""
+MYRADIO_BASE_URL: str = "https://ury.org.uk/myradio"
