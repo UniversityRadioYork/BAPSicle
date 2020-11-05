@@ -5,7 +5,7 @@ set service_name="BAPSicle"
 
 mkdir %install_path%
 mkdir %install_path%\state
-
+mkdir %install_path%\logs
 
 cd %~dp0\nssm
 nssm stop %service_name%

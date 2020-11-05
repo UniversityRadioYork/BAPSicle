@@ -25,27 +25,30 @@ import setproctitle
 import copy
 import json
 import time
+import sys
 
 from typing import Callable, Dict, List
 
 from plan import PlanObject
 
+# Stop the Pygame Hello message.
 import os
-import sys
-
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 from pygame import mixer
 from mutagen.mp3 import MP3
 
-from state_manager import StateManager
 from helpers.os_environment import isMacOS
+from helpers.state_manager import StateManager
+from helpers.logging_manager import LoggingManager
 
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+
 
 class Player():
     state = None
     running = False
     out_q = None
     last_msg = None
+    logger = None
 
     __default_state = {
         "initialised": False,
@@ -65,6 +68,13 @@ class Player():
         "output": None,
         "show_plan": []
     }
+
+    __rate_limited_params = [
+        "pos",
+        "pos_offset",
+        "pos_true",
+        "remaining"
+    ]
 
     @property
     def isInit(self):
@@ -103,6 +113,7 @@ class Player():
             try:
                 mixer.music.set_volume(1)
             except:
+                self.logger.log.exception("Failed to reset volume after attempting loaded test.")
                 pass
             return False
         if position > 0:
@@ -126,32 +137,31 @@ class Player():
     ### Audio Playout Related Methods
 
     def play(self, pos=0):
-        # if not self.isPlaying:
         try:
             mixer.music.play(0, pos)
             self.state.update("pos_offset", pos)
         except:
+            self.logger.log.exception("Failed to play at pos: " + str(pos))
             return False
         self.state.update("paused", False)
         return True
-        # return False
 
     def pause(self):
-        # if self.isPlaying:
-
         try:
             mixer.music.pause()
         except:
+            self.logger.log.exception("Failed to pause.")
             return False
         self.state.update("paused", True)
         return True
-        # return False
 
     def unpause(self):
         if not self.isPlaying:
+            position = self.state.state["pos_true"]
             try:
-                self.play(self.state.state["pos_true"])
+                self.play(position)
             except:
+                self.logger.log.exception("Failed to unpause from pos: " + str(position))
                 return False
             self.state.update("paused", False)
             return True
@@ -161,8 +171,8 @@ class Player():
         # if self.isPlaying or self.isPaused:
         try:
             mixer.music.stop()
-        except Exception as e:
-            print("Couldn't Stop Player:", e)
+        except:
+            self.logger.log.exception("Failed to stop playing.")
             return False
         self.state.update("pos", 0)
         self.state.update("pos_offset", 0)
@@ -176,6 +186,7 @@ class Player():
             try:
                 self.play(pos)
             except:
+                self.logger.log.exception("Failed to seek to pos: " + str(pos))
                 return False
             return True
         else:
@@ -234,7 +245,7 @@ class Player():
             self.unload()
 
             updated: bool = False
-            
+
             for i in range(len(self.state.state["show_plan"])):
                 if self.state.state["show_plan"][i].timeslotitemid == timeslotitemid:
                     self.state.update("loaded_item", self.state.state["show_plan"][i])
@@ -249,10 +260,11 @@ class Player():
 
 
             try:
+                self.logger.log.info("Loading file: " + str(filename))
                 mixer.music.load(filename)
             except:
                 # We couldn't load that file.
-                print("Couldn't load file:", filename)
+                self.logger.log.exception("Couldn't load file: " + str(filename))
                 return False
 
             try:
@@ -262,6 +274,7 @@ class Player():
                 else:
                     self.state.update("length", mixer.Sound(filename).get_length()/1000)
             except:
+                self.logger.log.exception("Failed to update the length of item.")
                 return False
         return True
 
@@ -272,40 +285,53 @@ class Player():
                 self.state.update("paused", False)
                 self.state.update("loaded_item", None)
             except:
+                self.logger.log.exception("Failed to unload channel.")
                 return False
         return not self.isLoaded
 
     def quit(self):
-        mixer.quit()
-        self.state.update("paused", False)
+        try:
+            mixer.quit()
+            self.state.update("paused", False)
+        except:
+            self.logger.log.exception("Failed to quit mixer.")
 
     def output(self, name=None):
+        wasPlaying = self.state.state["playing"]
+        name = None if name == "none" else name
+
         self.quit()
         self.state.update("output", name)
-        self.state.update("loaded_item", None)
         try:
             if name:
-                mixer.init(44100, -16, 1, 1024, devicename=name)
+                mixer.init(44100, -16, 2, 1024, devicename=name)
             else:
-                mixer.init(44100, -16, 1, 1024)
+                mixer.init(44100, -16, 2, 1024)
         except:
+            self.logger.log.exception("Failed to init mixer with device name: " + str(name))
             return False
+
+        loadedItem = self.state.state["loaded_item"]
+        if (loadedItem):
+            self.load(loadedItem.timeslotitemid)
+        if wasPlaying:
+            self.unpause()
 
         return True
 
     def _updateState(self, pos=None):
+
         self.state.update("initialised", self.isInit)
         if self.isInit:
-            # TODO: get_pos returns the time since the player started playing
-            # This is NOT the same as the position through the song.
-            if self.isPlaying:
+            if (pos):
+                self.state.update("pos", max(0, pos))
+            elif self.isPlaying:
                 # Get one last update in, incase we're about to pause/stop it.
                 self.state.update("pos", max(0, mixer.music.get_pos()/1000))
             self.state.update("playing", self.isPlaying)
             self.state.update("loaded", self.isLoaded)
 
-            if (pos):
-                self.state.update("pos", max(0, pos))
+
 
             self.state.update("pos_true", self.state.state["pos"] + self.state.state["pos_offset"])
 
@@ -314,7 +340,7 @@ class Player():
             if self.state.state["remaining"] == 0 and self.state.state["loaded_item"]:
                 # Track has ended
                 print("Finished", self.state.state["loaded_item"].name)
-                
+
                 # Repeat 1
                 if self.state.state["repeat"] == "ONE":
                     self.play()
@@ -330,11 +356,11 @@ class Player():
                             # Repeat All
                             elif self.state.state["repeat"] == "ALL":
                                 self.load(self.state.state["show_plan"][0].timeslotitemid)
-                
+
                 # Play on Load
                 if self.state.state["play_on_load"]:
                     self.play()
-                
+
 
     def _retMsg(self, msg, okay_str=False):
         response = self.last_msg + ":"
@@ -351,37 +377,41 @@ class Player():
             self.out_q.put(response)
 
     def __init__(self, channel, in_q, out_q):
+
+        process_title = "Player: Channel " + str(channel)
+        setproctitle.setproctitle(process_title)
+        multiprocessing.current_process().name = process_title
+
         self.running = True
         self.out_q = out_q
 
-        setproctitle.setproctitle("BAPSicle - Player " + str(channel))
+        self.logger = LoggingManager("channel" + str(channel))
 
-        self.state = StateManager("channel" + str(channel), self.__default_state)
-
+        self.state = StateManager("channel" + str(channel), self.logger, self.__default_state, self.__rate_limited_params)
         self.state.update("channel", channel)
 
         loaded_state = copy.copy(self.state.state)
 
         if loaded_state["output"]:
-            print("Setting output to: " + loaded_state["output"])
+            self.logger.log.info("Setting output to: " + loaded_state["output"])
             self.output(loaded_state["output"])
         else:
-            print("Using default output device.")
+            self.logger.log.info("Using default output device.")
             self.output()
 
         if loaded_state["loaded_item"]:
-            print("Loading filename: " + loaded_state["loaded_item"].filename)
+            self.logger.log.info("Loading filename: " + loaded_state["loaded_item"].filename)
             self.load(loaded_state["loaded_item"].timeslotitemid)
 
             if loaded_state["pos_true"] != 0:
-                print("Seeking to pos_true: " + str(loaded_state["pos_true"]))
+                self.logger.log.info("Seeking to pos_true: " + str(loaded_state["pos_true"]))
                 self.seek(loaded_state["pos_true"])
 
             if loaded_state["playing"] == True:
-                print("Resuming.")
+                self.logger.log.info("Resuming.")
                 self.unpause()
         else:
-            print("No file was previously loaded.")
+            self.logger.log.info("No file was previously loaded.")
 
         while self.running:
             time.sleep(0.1)
@@ -406,7 +436,7 @@ class Player():
 
                         message_types: Dict[str, Callable[any, bool]] = { # TODO Check Types
                             "STATUS":       lambda: self._retMsg(self.status, True),
-                            
+
                             # Audio Playout
                             "PLAY":         lambda: self._retMsg(self.play()),
                             "PAUSE":        lambda: self._retMsg(self.pause()),
@@ -445,13 +475,16 @@ class Player():
 
             # Catch the player being killed externally.
             except KeyboardInterrupt:
+                self.logger.log.info("Received KeyboardInterupt")
                 break
             except SystemExit:
+                self.logger.log.info("Received SystemExit")
                 break
             except:
-                raise
+                self.logger.log.exception("Received unexpected exception.")
+                break
 
-        print("Quiting player ", channel)
+        self.logger.log.info("Quiting player ", channel)
         self.quit()
         self._retMsg("EXIT")
         sys.exit(0)
@@ -466,7 +499,7 @@ def showOutput(in_q, out_q):
 
 
 if __name__ == "__main__":
-    if isMacOS:
+    if isMacOS():
         multiprocessing.set_start_method("spawn", True)
 
     in_q = multiprocessing.Queue()
@@ -485,7 +518,6 @@ if __name__ == "__main__":
     # Do some testing
     in_q.put("LOADED?")
     in_q.put("PLAY")
-
     in_q.put("LOAD:dev/test.mp3")
     in_q.put("LOADED?")
     in_q.put("PLAY")

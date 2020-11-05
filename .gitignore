@@ -31,3 +31,10 @@ dev/welcome.mp3
 
 build/build-exe-pyinstaller-command.sh
 
+logs/
+
+*.mp3
+
+*.oga
+
+*.ogg

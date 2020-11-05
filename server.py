@@ -33,7 +33,13 @@ setproctitle.setproctitle("BAPSicle - Server")
 
 
 class BAPSicleServer():
+
     def __init__(self):
+
+        process_title = "Server"
+        setproctitle.setproctitle(process_title)
+        multiprocessing.current_process().name = process_title
+
         startServer()
 
     def __del__(self):
@@ -195,7 +201,7 @@ def add_to_plan(channel: int):
 @app.route("/player/<int:channel>/move/<int:timeslotitemid>/<int:position>")
 def move_plan(channel: int, timeslotitemid: int, position: int):
     channel_to_q[channel].put("MOVE:" + json.dumps({"timeslotitemid": timeslotitemid, "position": position}))
-    
+
     #TODO Return
     return True
 
@@ -248,7 +254,7 @@ def all_stop():
 @app.route("/player/all/clear")
 def clear_all_channels():
     for channel in channel_to_q:
-        channel.put("CLEAR") 
+        channel.put("CLEAR")
     return ui_status()
 
 
@@ -300,8 +306,8 @@ def startServer():
     }
 
     channel_to_q[0].put("ADD:" + json.dumps(new_item))
-    channel_to_q[0].put("LOAD:0")
-    channel_to_q[0].put("PLAY")
+    #channel_to_q[0].put("LOAD:0")
+    #channel_to_q[0].put("PLAY")
 
     # Don't use reloader, it causes Nested Processes!
 
