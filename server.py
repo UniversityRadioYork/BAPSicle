@@ -306,8 +306,8 @@ def startServer():
     }
 
     channel_to_q[0].put("ADD:" + json.dumps(new_item))
-    channel_to_q[0].put("LOAD:0")
-    channel_to_q[0].put("PLAY")
+    #channel_to_q[0].put("LOAD:0")
+    #channel_to_q[0].put("PLAY")
 
     # Don't use reloader, it causes Nested Processes!
 
