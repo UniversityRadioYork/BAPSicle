@@ -19,8 +19,7 @@ class StateManager:
     __rate_limit_params_until = {}
     __rate_limit_period_s = 0
 
-
-    def __init__(self, name, logger: LoggingManager, default_state=None, rate_limit_params=[], rate_limit_period_s = 5):
+    def __init__(self, name, logger: LoggingManager, default_state=None, rate_limit_params=[], rate_limit_period_s=5):
         self.logger = logger
 
         self.filepath = resolve_external_file_path("/state/" + name + ".json")
@@ -47,9 +46,10 @@ class StateManager:
                 file_state = json.loads(file_state)
 
                 # Turn from JSON -> PlanObject
-                file_state["loaded_item"] = PlanObject(file_state["loaded_item"]) if file_state["loaded_item"] else None
-
-                file_state["show_plan"] = [PlanObject(obj) for obj in file_state["show_plan"]]
+                if "channel" in file_state:
+                    file_state["loaded_item"] = PlanObject(
+                        file_state["loaded_item"]) if file_state["loaded_item"] else None
+                    file_state["show_plan"] = [PlanObject(obj) for obj in file_state["show_plan"]]
 
                 # Now feed the loaded state into the initialised state manager.
                 self.state = file_state
@@ -73,7 +73,7 @@ class StateManager:
     def state(self, state):
         self.__state = copy(state)
 
-    def write_to_file(self,state):
+    def write_to_file(self, state):
         if self.__state_in_file == state:
             # No change to be updated.
             return
@@ -89,8 +89,9 @@ class StateManager:
         state_to_json["last_updated"] = current_time
 
         # Not the biggest fan of this, but maybe I'll get a better solution for this later
-        state_to_json["loaded_item"] = state_to_json["loaded_item"].__dict__ if state_to_json["loaded_item"] else None
-        state_to_json["show_plan"] = [repr.__dict__ for repr in state_to_json["show_plan"]]
+        if "channel" in state_to_json:  # If its a channel object
+            state_to_json["loaded_item"] = state_to_json["loaded_item"].__dict__ if state_to_json["loaded_item"] else None
+            state_to_json["show_plan"] = [repr.__dict__ for repr in state_to_json["show_plan"]]
         try:
             state_json = json.dumps(state_to_json, indent=2, sort_keys=True)
         except:
@@ -108,7 +109,6 @@ class StateManager:
                 update_file = False
             else:
                 self.__rate_limit_params_until[key] = self._currentTimeS + self.__rate_limit_period_s
-
 
         state_to_update = self.state
 

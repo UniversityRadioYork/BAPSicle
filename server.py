@@ -28,8 +28,18 @@ if not isMacOS():
 
 import config
 from typing import Dict, List
+from helpers.state_manager import StateManager
+from helpers.logging_manager import LoggingManager
 
 setproctitle.setproctitle("BAPSicle - Server")
+
+default_state = {
+    "server_version": 0,
+    "server_name": "URY BAPSicle",
+    "host": "localhost",
+    "port": 13500,
+    "num_channels": 3
+}
 
 
 class BAPSicleServer():
@@ -46,6 +56,11 @@ class BAPSicleServer():
         stopServer()
 
 
+logger = LoggingManager("BAPSicleServer")
+
+state = StateManager("BAPSicleServer", logger, default_state)
+state.update("server_version", config.VERSION)
+
 app = Flask(__name__, static_url_path='')
 
 log = logging.getLogger('werkzeug')
@@ -59,7 +74,7 @@ channel_p = []
 stopping = False
 
 
-### General Endpoints
+# General Endpoints
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -109,7 +124,8 @@ def ui_status():
     }
     return render_template('status.html', data=data)
 
-### Channel Audio Options
+# Channel Audio Options
+
 
 @app.route("/player/<int:channel>/play")
 def play(channel):
@@ -156,27 +172,32 @@ def output(channel, name):
     channel_to_q[channel].put("OUTPUT:" + name)
     return ui_status()
 
+
 @app.route("/player/<int:channel>/autoadvance/<int:state>")
 def autoadvance(channel: int, state: int):
     channel_to_q[channel].put("AUTOADVANCE:" + str(state))
     return ui_status()
+
 
 @app.route("/player/<int:channel>/repeat/<state>")
 def repeat(channel: int, state):
     channel_to_q[channel].put("REPEAT:" + state.upper())
     return ui_status()
 
+
 @app.route("/player/<int:channel>/playonload/<int:state>")
 def playonload(channel: int, state: int):
     channel_to_q[channel].put("PLAYONLOAD:" + str(state))
     return ui_status()
 
-### Channel Items
+# Channel Items
+
 
 @app.route("/player/<int:channel>/load/<int:timeslotitemid>")
-def load(channel:int, timeslotitemid: int):
+def load(channel: int, timeslotitemid: int):
     channel_to_q[channel].put("LOAD:" + str(timeslotitemid))
     return ui_status()
+
 
 @app.route("/player/<int:channel>/unload")
 def unload(channel):
@@ -184,6 +205,7 @@ def unload(channel):
     channel_to_q[channel].put("UNLOAD")
 
     return ui_status()
+
 
 @app.route("/player/<int:channel>/add", methods=["POST"])
 def add_to_plan(channel: int):
@@ -198,28 +220,32 @@ def add_to_plan(channel: int):
 
     return new_item
 
+
 @app.route("/player/<int:channel>/move/<int:timeslotitemid>/<int:position>")
 def move_plan(channel: int, timeslotitemid: int, position: int):
     channel_to_q[channel].put("MOVE:" + json.dumps({"timeslotitemid": timeslotitemid, "position": position}))
 
-    #TODO Return
+    # TODO Return
     return True
+
 
 @app.route("/player/<int:channel>/remove/<int:timeslotitemid>")
 def remove_plan(channel: int, timeslotitemid: int):
     channel_to_q[channel].put("REMOVE:" + timeslotitemid)
 
-    #TODO Return
+    # TODO Return
     return True
+
 
 @app.route("/player/<int:channel>/clear")
 def clear_channel_plan(channel: int):
     channel_to_q[channel].put("CLEAR")
 
-    #TODO Return
+    # TODO Return
     return True
 
-### General Channel Endpoints
+# General Channel Endpoints
+
 
 @app.route("/player/<int:channel>/status")
 def status(channel):
@@ -266,7 +292,7 @@ def send_static(path):
 def startServer():
     if isMacOS():
         multiprocessing.set_start_method("spawn", True)
-    for channel in range(3):
+    for channel in range(state.state["num_channels"]):
 
         channel_to_q.append(multiprocessing.Queue())
         channel_from_q.append(multiprocessing.Queue())
@@ -287,14 +313,13 @@ def startServer():
 
         text_to_speach = pyttsx3.init()
         text_to_speach.save_to_file(
-        """Thank-you for installing BAPSicle - the play-out server from the broadcasting and presenting suite.
-        This server is accepting connections on port {0}
-        The version of the server service is {1}
+            """Thank-you for installing BAPSicle - the play-out server from the broadcasting and presenting suite.
+        This server is accepting connections on port 13500
+        The version of the server service is {}
         Please refer to the documentation included with this application for further assistance.""".format(
-            config.PORT,
-            config.VERSION
-        ),
-        "dev/welcome.mp3"
+                config.VERSION
+            ),
+            "dev/welcome.mp3"
         )
         text_to_speach.runAndWait()
 
@@ -306,12 +331,12 @@ def startServer():
     }
 
     channel_to_q[0].put("ADD:" + json.dumps(new_item))
-    #channel_to_q[0].put("LOAD:0")
-    #channel_to_q[0].put("PLAY")
+    # channel_to_q[0].put("LOAD:0")
+    # channel_to_q[0].put("PLAY")
 
     # Don't use reloader, it causes Nested Processes!
+    app.run(host=state.state["host"], port=state.state["port"], debug=True, use_reloader=False)
 
-    app.run(host='0.0.0.0', port=13500, debug=True, use_reloader=False)
 
 def stopServer():
     print("Stopping server.py")

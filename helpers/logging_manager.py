@@ -16,8 +16,7 @@ class LoggingManager():
             try:
                 # Try creating the file.
                 open(filename, "x")
-            except Exception as e:
-                print(e)
+            except:
                 print("Failed to create log file")
                 return
 
