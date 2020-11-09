@@ -300,6 +300,28 @@ def send_static(path):
     return send_from_directory('ui-static', path)
 
 
+@app.route("/logs")
+def list_logs():
+    data = {
+        "ui_page": "loglist",
+        "ui_title": "Logs",
+        "logs": ["BAPSicleServer"] + ["channel{}".format(x) for x in range(state.state["num_channels"])]
+    }
+    return render_template("loglist.html", data=data)
+
+
+@app.route("/logs/<path:path>")
+def send_logs(path):
+    l = open("logs/{}.log".format(path))
+    data = {
+        "logs": l.read().splitlines(),
+        'ui_page': "log",
+        "ui_title": "Logs - {}".format(path)
+    }
+    l.close()
+    return render_template('log.html', data=data)
+
+
 def startServer():
     if isMacOS():
         multiprocessing.set_start_method("spawn", True)
