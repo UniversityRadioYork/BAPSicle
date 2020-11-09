@@ -114,7 +114,7 @@ def ui_config():
 @app.route("/status")
 def ui_status():
     channel_states = []
-    for i in range(3):
+    for i in range(state.state["num_channels"]):
         channel_states.append(status(i))
 
     data = {
@@ -123,6 +123,17 @@ def ui_status():
         "ui_title": "Status"
     }
     return render_template('status.html', data=data)
+
+
+@app.route("/status-json")
+def json_status():
+    channel_states = []
+    for i in range(state.state["num_channels"]):
+        channel_states.append(status(i))
+    return {
+        "server": state.state,
+        "channels": channel_states
+    }
 
 # Channel Audio Options
 
