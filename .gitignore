@@ -3,7 +3,6 @@
 
 __pycache__/
 
-state/*
 
 *.egg-info/
 
@@ -30,8 +29,6 @@ config.py
 dev/welcome.mp3
 
 build/build-exe-pyinstaller-command.sh
-
-logs/*
 
 *.mp3
 
