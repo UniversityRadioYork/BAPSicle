@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content_inner %}
+  {% if data %}
+    <form action="/restart" method="POST">
+      <label for="host">Server Host:</label>
+      <input type="text" id="host" name="host" class="form-control" value="{{data.state.host}}">
+      <br>
+      <label for="port">Server Port:</label>
+      <input type="number" id="port" name="port" class="form-control" value="{{data.state.port}}">
+      <br>
+      <label for="name">Server Name:</label>
+      <input type="text" id="name" name="name" class="form-control" value="{{data.state.server_name}}">
+      <br>
+      <label for="channels">Number of Channels:</label>
+      <input type="number" id="channels" name="channels" class="form-control" value="{{data.state.num_channels}}">
+      <br>  
+      <input type="submit" class="btn btn-primary" value="Restart Server">
+    </form>
+  {% endif %}
+{% endblock %}

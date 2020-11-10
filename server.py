@@ -99,7 +99,7 @@ def ui_index():
 @app.route("/config")
 def ui_config():
     channel_states = []
-    for i in range(3):
+    for i in range(state.state["num_channels"]):
         channel_states.append(status(i))
 
     outputs = DeviceManager.getOutputs()
@@ -136,6 +136,26 @@ def json_status():
         "server": state.state,
         "channels": channel_states
     }
+
+
+@app.route("/server")
+def server_config():
+    data = {
+        "ui_page": "server",
+        "ui_title": "Server Config",
+        "state": state.state
+    }
+    return render_template("server.html", data=data)
+
+
+@app.route("/restart", methods=["POST"])
+def restart_server():
+    state.update("server_name", request.form["name"])
+    state.update("host", request.form["host"])
+    state.update("port", int(request.form["port"]))
+    state.update("num_channels", int(request.form["channels"]))
+    stopServer(restart=True)
+    startServer()
 
 # Channel Audio Options
 
@@ -373,7 +393,10 @@ def startServer():
     app.run(host=state.state["host"], port=state.state["port"], debug=True, use_reloader=False)
 
 
-def stopServer():
+def stopServer(restart=False):
+    global channel_p
+    global channel_from_q
+    global channel_to_q
     print("Stopping server.py")
     for q in channel_to_q:
         q.put("QUIT")
@@ -382,6 +405,10 @@ def stopServer():
             player.join()
         except:
             pass
+        finally:
+            channel_p = []
+            channel_from_q = []
+            channel_to_q = []
     print("Stopped all players.")
     global stopping
     if stopping == False:
@@ -392,7 +419,8 @@ def stopServer():
 
         else:
             print("Shutting down Flask.")
-            shutdown()
+            if not restart:
+                shutdown()
 
 
 if __name__ == "__main__":
