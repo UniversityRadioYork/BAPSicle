@@ -369,7 +369,7 @@ def startServer():
         text_to_speach = pyttsx3.init()
         text_to_speach.save_to_file(
             """Thank-you for installing BAPSicle - the play-out server from the broadcasting and presenting suite.
-        This server is accepting connections on port 13500
+        By defulat, this server is accepting connections on port 13500
         The version of the server service is {}
         Please refer to the documentation included with this application for further assistance.""".format(
                 config.VERSION
