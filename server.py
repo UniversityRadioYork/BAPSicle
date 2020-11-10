@@ -89,7 +89,9 @@ def page_not_found(e):
 def ui_index():
     data = {
         'ui_page': "index",
-        "ui_title": ""
+        "ui_title": "",
+        "server_version": config.VERSION,
+        "server_name": state.state["server_name"]
     }
     return render_template('index.html', data=data)
 
