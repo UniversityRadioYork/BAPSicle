@@ -1,5 +1,6 @@
 import logging
 from helpers.os_environment import resolve_external_file_path
+import os
 
 
 class LoggingManager():
@@ -9,8 +10,18 @@ class LoggingManager():
     def __init__(self, name):
         self.logger = logging.getLogger(name)
 
+        filename: str = resolve_external_file_path("/logs/" + name + ".log")
+
+        if not os.path.isfile(filename):
+            try:
+                # Try creating the file.
+                open(filename, "x")
+            except:
+                print("Failed to create log file")
+                return
+
         logging.basicConfig(
-            filename=resolve_external_file_path("/logs/" + name + ".log"),
+            filename=filename,
             format='%(asctime)s  | %(levelname)s | %(message)s',
             level=logging.INFO,
             filemode='a'
