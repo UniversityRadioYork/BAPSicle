@@ -30,13 +30,16 @@ async def websocket_handler(websocket, path):
                 elif data["command"] == "LOAD":
                     channel_to_q[channel].put("LOAD:" + str(data["weight"]))
                 elif data["command"] == "ADD":
+                    print(data)
                     new_item: Dict[str, any] = {
-                        "channel_weight": int(data["weight"]),
+                        "channel_weight": int(data["newItem"]["weight"]),
                         "filename": "dev\\test.mp3",
-                        "title":  data["title"],
-                        "artist":  None
+                        "title":  data["newItem"]["title"],
+                        "artist":  data["newItem"]["artist"] if "artist" in data["newItem"].keys() else None
                     }
                     channel_to_q[channel].put("ADD:" + json.dumps(new_item))
+                elif data["command"] == "REMOVE":
+                    channel_to_q[channel].put("REMOVE:" + str(data["weight"]))
 
             await asyncio.wait([conn.send(message) for conn in baps_clients])
 
