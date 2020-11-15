@@ -15,15 +15,16 @@
 from typing import Dict
 import os
 
+
 class PlanObject:
-    _timeslotitemid: int = 0
+    _channel_weight: int = 0
     _filename: str = ""
     _title: str = ""
     _artist: str = ""
 
     @property
-    def timeslotitemid(self) -> int:
-        return self._timeslotitemid
+    def channel_weight(self) -> int:
+        return self._channel_weight
 
     @property
     def filename(self) -> str:
@@ -36,7 +37,7 @@ class PlanObject:
     @property
     def __dict__(self) -> Dict[str, any]:
         return {
-            "timeslotitemid": self.timeslotitemid,
+            "channel_weight": self.channel_weight,
             "title": self._title,
             "artist": self._artist,
             "name": self.name,
@@ -44,7 +45,7 @@ class PlanObject:
         }
 
     def __init__(self, new_item: Dict[str, any]):
-        self._timeslotitemid = new_item["timeslotitemid"]
+        self._channel_weight = new_item["channel_weight"]
         self._filename = new_item["filename"]
         self._title = new_item["title"]
         self._artist = new_item["artist"]
@@ -54,4 +55,3 @@ class PlanObject:
             self._filename = self.filename.replace("\\", '/')
         else:
             self._filename = self.filename.replace("/", '\\')
-        

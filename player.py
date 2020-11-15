@@ -42,7 +42,6 @@ from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
 
 
-
 class Player():
     state = None
     running = False
@@ -63,7 +62,7 @@ class Player():
         "remaining": 0,
         "length": 0,
         "auto_advance": True,
-        "repeat": "NONE", #NONE, ONE or ALL
+        "repeat": "NONE",  # NONE, ONE or ALL
         "play_on_load": False,
         "output": None,
         "show_plan": []
@@ -134,7 +133,7 @@ class Player():
         res = json.dumps(state)
         return res
 
-    ### Audio Playout Related Methods
+    # Audio Playout Related Methods
 
     def play(self, pos=0):
         try:
@@ -197,7 +196,7 @@ class Player():
     def set_auto_advance(self, message: int) -> bool:
         if message == 0:
             self.state.update("auto_advance", False)
-            return True # It did it
+            return True  # It did it
         elif message == 1:
             self.state.update("auto_advance", True)
             return True
@@ -214,23 +213,23 @@ class Player():
     def set_play_on_load(self, message: int) -> bool:
         if message == 0:
             self.state.update("play_on_load", False)
-            return True # It did it
+            return True  # It did it
         elif message == 1:
             self.state.update("play_on_load", True)
             return True
         else:
             return False
 
-    ### Show Plan Related Methods
+    # Show Plan Related Methods
 
     def add_to_plan(self, new_item: Dict[str, any]) -> bool:
         self.state.update("show_plan", self.state.state["show_plan"] + [PlanObject(new_item)])
         return True
 
-    def remove_from_plan(self, timeslotitemid: int) -> bool:
+    def remove_from_plan(self, channel_weight: int) -> bool:
         plan_copy = copy.copy(self.state.state["show_plan"])
         for i in range(len(plan_copy)):
-            if plan_copy[i].timeslotitemid == timeslotitemid:
+            if plan_copy[i].channel_weight == channel_weight:
                 plan_copy.remove(i)
                 self.state.update("show_plan", plan_copy)
                 return True
@@ -240,24 +239,23 @@ class Player():
         self.state.update("show_plan", [])
         return True
 
-    def load(self, timeslotitemid: int):
+    def load(self, channel_weight: int):
         if not self.isPlaying:
             self.unload()
 
             updated: bool = False
 
             for i in range(len(self.state.state["show_plan"])):
-                if self.state.state["show_plan"][i].timeslotitemid == timeslotitemid:
+                if self.state.state["show_plan"][i].channel_weight == channel_weight:
                     self.state.update("loaded_item", self.state.state["show_plan"][i])
                     updated = True
                     break
 
             if not updated:
-                print("Failed to find timeslotitemid:", timeslotitemid)
+                print("Failed to find channel_weight:", channel_weight)
                 return False
 
             filename: str = self.state.state["loaded_item"].filename
-
 
             try:
                 self.logger.log.info("Loading file: " + str(filename))
@@ -313,7 +311,7 @@ class Player():
 
         loadedItem = self.state.state["loaded_item"]
         if (loadedItem):
-            self.load(loadedItem.timeslotitemid)
+            self.load(loadedItem.channel_weight)
         if wasPlaying:
             self.unpause()
 
@@ -331,8 +329,6 @@ class Player():
             self.state.update("playing", self.isPlaying)
             self.state.update("loaded", self.isLoaded)
 
-
-
             self.state.update("pos_true", self.state.state["pos"] + self.state.state["pos_offset"])
 
             self.state.update("remaining", self.state.state["length"] - self.state.state["pos_true"])
@@ -348,19 +344,18 @@ class Player():
                 # Auto Advance
                 elif self.state.state["auto_advance"]:
                     for i in range(len(self.state.state["show_plan"])):
-                        if self.state.state["show_plan"][i].timeslotitemid == self.state.state["loaded_item"].timeslotitemid:
+                        if self.state.state["show_plan"][i].channel_weight == self.state.state["loaded_item"].channel_weight:
                             if len(self.state.state["show_plan"]) > i+1:
-                                self.load(self.state.state["show_plan"][i+1].timeslotitemid)
+                                self.load(self.state.state["show_plan"][i+1].channel_weight)
                                 break
 
                             # Repeat All
                             elif self.state.state["repeat"] == "ALL":
-                                self.load(self.state.state["show_plan"][0].timeslotitemid)
+                                self.load(self.state.state["show_plan"][0].channel_weight)
 
                 # Play on Load
                 if self.state.state["play_on_load"]:
                     self.play()
-
 
     def _retMsg(self, msg, okay_str=False):
         response = self.last_msg + ":"
@@ -387,7 +382,8 @@ class Player():
 
         self.logger = LoggingManager("channel" + str(channel))
 
-        self.state = StateManager("channel" + str(channel), self.logger, self.__default_state, self.__rate_limited_params)
+        self.state = StateManager("channel" + str(channel), self.logger,
+                                  self.__default_state, self.__rate_limited_params)
         self.state.update("channel", channel)
 
         loaded_state = copy.copy(self.state.state)
@@ -401,7 +397,7 @@ class Player():
 
         if loaded_state["loaded_item"]:
             self.logger.log.info("Loading filename: " + loaded_state["loaded_item"].filename)
-            self.load(loaded_state["loaded_item"].timeslotitemid)
+            self.load(loaded_state["loaded_item"].channel_weight)
 
             if loaded_state["pos_true"] != 0:
                 self.logger.log.info("Seeking to pos_true: " + str(loaded_state["pos_true"]))
@@ -434,26 +430,26 @@ class Player():
 
                     elif self.isInit:
 
-                        message_types: Dict[str, Callable[any, bool]] = { # TODO Check Types
-                            "STATUS":       lambda: self._retMsg(self.status, True),
+                        message_types: Dict[str, Callable[any, bool]] = {  # TODO Check Types
+                            "STATUS": lambda: self._retMsg(self.status, True),
 
                             # Audio Playout
-                            "PLAY":         lambda: self._retMsg(self.play()),
-                            "PAUSE":        lambda: self._retMsg(self.pause()),
-                            "UNPAUSE":      lambda: self._retMsg(self.unpause()),
-                            "STOP":         lambda: self._retMsg(self.stop()),
-                            "SEEK":         lambda: self._retMsg(self.seek(float(self.last_msg.split(":")[1]))),
-                            "AUTOADVANCE":  lambda: self._retMsg(self.set_auto_advance(int(self.last_msg.split(":")[1]))),
-                            "REPEAT":       lambda: self._retMsg(self.set_repeat(self.last_msg.split(":")[1])),
-                            "PLAYONLOAD":   lambda: self._retMsg(self.set_play_on_load(int(self.last_msg.split(":")[1]))),
+                            "PLAY": lambda: self._retMsg(self.play()),
+                            "PAUSE": lambda: self._retMsg(self.pause()),
+                            "UNPAUSE": lambda: self._retMsg(self.unpause()),
+                            "STOP": lambda: self._retMsg(self.stop()),
+                            "SEEK": lambda: self._retMsg(self.seek(float(self.last_msg.split(":")[1]))),
+                            "AUTOADVANCE": lambda: self._retMsg(self.set_auto_advance(int(self.last_msg.split(":")[1]))),
+                            "REPEAT": lambda: self._retMsg(self.set_repeat(self.last_msg.split(":")[1])),
+                            "PLAYONLOAD": lambda: self._retMsg(self.set_play_on_load(int(self.last_msg.split(":")[1]))),
 
                             # Show Plan Items
-                            "LOAD":         lambda: self._retMsg(self.load(int(self.last_msg.split(":")[1]))),
-                            "LOADED?":      lambda: self._retMsg(self.isLoaded),
-                            "UNLOAD":       lambda: self._retMsg(self.unload()),
-                            "ADD":          lambda: self._retMsg(self.add_to_plan(json.loads(":".join(self.last_msg.split(":")[1:])))),
-                            "REMOVE":       lambda: self._retMsg(self.remove_from_plan(int(self.last_msg.split(":")[1]))),
-                            "CLEAR":        lambda: self._retMsg(self.clear_channel_plan())
+                            "LOAD": lambda: self._retMsg(self.load(int(self.last_msg.split(":")[1]))),
+                            "LOADED?": lambda: self._retMsg(self.isLoaded),
+                            "UNLOAD": lambda: self._retMsg(self.unload()),
+                            "ADD": lambda: self._retMsg(self.add_to_plan(json.loads(":".join(self.last_msg.split(":")[1:])))),
+                            "REMOVE": lambda: self._retMsg(self.remove_from_plan(int(self.last_msg.split(":")[1]))),
+                            "CLEAR": lambda: self._retMsg(self.clear_channel_plan())
                         }
 
                         message_type: str = self.last_msg.split(":")[0]

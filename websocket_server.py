@@ -28,15 +28,23 @@ async def websocket_handler(websocket, path):
                 elif data["command"] == "SEEK":
                     channel_to_q[channel].put("SEEK:" + str(data["time"]))
                 elif data["command"] == "LOAD":
-                    pass
+                    channel_to_q[channel].put("LOAD:" + str(data["weight"]))
+                elif data["command"] == "ADD":
+                    new_item: Dict[str, any] = {
+                        "channel_weight": int(data["weight"]),
+                        "filename": "dev\\test.mp3",
+                        "title":  data["title"],
+                        "artist":  None
+                    }
+                    channel_to_q[channel].put("ADD:" + json.dumps(new_item))
 
-            asyncio.wait([await conn.send(message) for conn in baps_clients])
+            await asyncio.wait([conn.send(message) for conn in baps_clients])
 
     except websockets.exceptions.ConnectionClosedError:
         print("RIP {}".format(websocket))
 
     except Exception as e:
-        print(e)
+        print("Exception", e)
 
     finally:
         baps_clients.remove(websocket)
