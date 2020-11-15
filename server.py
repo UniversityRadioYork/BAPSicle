@@ -156,6 +156,7 @@ def restart_server():
     state.update("host", request.form["host"])
     state.update("port", int(request.form["port"]))
     state.update("num_channels", int(request.form["channels"]))
+    state.update("ws_port", int(request.form["ws_port"]))
     stopServer(restart=True)
     startServer()
 

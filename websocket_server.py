@@ -4,11 +4,12 @@ import json
 
 baps_clients = set()
 channel_to_q = None
+server_name = None
 
 
 async def websocket_handler(websocket, path):
     baps_clients.add(websocket)
-    await websocket.send(json.dumps({"message": "Hello"}))
+    await websocket.send(json.dumps({"message": "Hello", "serverName": server_name}))
     print("New Client: {}".format(websocket))
 
     try:
@@ -46,6 +47,9 @@ class WebsocketServer:
     def __init__(self, in_q, state):
         global channel_to_q
         channel_to_q = in_q
+
+        global server_name
+        server_name = state.state["server_name"]
 
         websocket_server = websockets.serve(websocket_handler, state.state["host"], state.state["ws_port"])
 
