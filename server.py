@@ -30,6 +30,7 @@ import config
 from typing import Dict, List
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
+from websocket_server import WebsocketServer
 
 setproctitle.setproctitle("BAPSicle - Server")
 
@@ -38,6 +39,7 @@ default_state = {
     "server_name": "URY BAPSicle",
     "host": "localhost",
     "port": 13500,
+    "ws_port": 13501,
     "num_channels": 3
 }
 
@@ -359,6 +361,9 @@ def startServer():
             )
         )
         channel_p[channel].start()
+
+    websockets_server = multiprocessing.Process(target=WebsocketServer, args=[channel_to_q, state])
+    websockets_server.start()
 
     if not isMacOS():
 
