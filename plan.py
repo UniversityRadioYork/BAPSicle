@@ -40,6 +40,10 @@ class PlanItem:
         return self._trackId
 
     @property
+    def managedId(self) -> int:
+        return self._managedId
+
+    @property
     def __dict__(self) -> Dict[str, any]:
         return {
             "timeslotItemId": self.timeslotItemId,
@@ -60,7 +64,8 @@ class PlanItem:
         self._artist = new_item["artist"]
 
         # Fix any OS specific / or \'s
-        if os.path.sep == "/":
-            self._filename = self.filename.replace("\\", '/')
-        else:
-            self._filename = self.filename.replace("/", '\\')
+        if self.filename:
+            if os.path.sep == "/":
+                self._filename = self.filename.replace("\\", '/')
+            else:
+                self._filename = self.filename.replace("/", '\\')

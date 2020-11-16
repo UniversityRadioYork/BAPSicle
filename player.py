@@ -260,7 +260,7 @@ class Player():
             filename: str = self.state.state["loaded_item"].filename
 
             if (filename == "" or filename == None):
-                filename = MyRadioAPI.secure_play(trackId = self.state.state["loaded_item"].trackId)
+                filename = MyRadioAPI.get_filename(item = self.state.state["loaded_item"])
                 # TODO: Update the show plan filenames
 
             try:
@@ -404,7 +404,7 @@ class Player():
             self.output()
 
         if loaded_state["loaded_item"]:
-            self.logger.log.info("Loading filename: " + loaded_state["loaded_item"].filename)
+            self.logger.log.info("Loading filename: " + str(loaded_state["loaded_item"].filename))
             self.load(loaded_state["loaded_item"].timeslotItemId)
 
             if loaded_state["pos_true"] != 0:

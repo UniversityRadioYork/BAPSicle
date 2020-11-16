@@ -45,11 +45,11 @@ class StateManager:
             try:
                 file_state = json.loads(file_state)
 
-                # Turn from JSON -> PlanObject
+                # Turn from JSON -> PlanItem
                 if "channel" in file_state:
-                    file_state["loaded_item"] = PlanObject(
+                    file_state["loaded_item"] = PlanItem(
                         file_state["loaded_item"]) if file_state["loaded_item"] else None
-                    file_state["show_plan"] = [PlanObject(obj) for obj in file_state["show_plan"]]
+                    file_state["show_plan"] = [PlanItem(obj) for obj in file_state["show_plan"]]
 
                 # Now feed the loaded state into the initialised state manager.
                 self.state = file_state
