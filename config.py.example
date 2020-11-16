@@ -1,7 +1,3 @@
-# Flask Details
-HOST: str = "localhost"
-PORT: int = 13500
-
 # BAPSicle Details
 VERSION: float = 1.0
 
