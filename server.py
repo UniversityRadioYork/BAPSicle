@@ -15,7 +15,7 @@
 
 import multiprocessing
 import player
-from flask import Flask, render_template, send_from_directory, request
+from flask import Flask, render_template, send_from_directory, request, jsonify
 import json
 import setproctitle
 import logging
@@ -287,7 +287,7 @@ def status(channel):
             response = response[7:]
             response = response[response.index(":")+1:]
             try:
-                response = json.loads(response)
+                response = jsonify(json.loads(response))
             except:
                 pass
 
