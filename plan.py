@@ -31,6 +31,10 @@ class PlanItem:
     def filename(self) -> str:
         return self._filename
 
+    @filename.setter
+    def filename(self, value: str):
+        self._filename = value
+
     @property
     def name(self) -> str:
         return "{0} - {1}".format(self._title, self._artist) if self._artist else self._title

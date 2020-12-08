@@ -4,6 +4,7 @@ import logging
 import time
 from datetime import datetime
 from copy import copy
+from typing import List
 
 from plan import PlanItem
 from helpers.logging_manager import LoggingManager
@@ -100,7 +101,7 @@ class StateManager:
             with open(self.filepath, "w") as file:
                 file.write(state_json)
 
-    def update(self, key, value):
+    def update(self, key, value, index = -1):
         update_file = True
         if (key in self.__rate_limit_params_until.keys()):
             # The key we're trying to update is expected to be updating very often,
@@ -112,12 +113,22 @@ class StateManager:
 
         state_to_update = self.state
 
-        if key in state_to_update and state_to_update[key] == value:
+
+        if key in state_to_update and index == -1 and state_to_update[key] == value:
             # We're trying to update the state with the same value.
             # In this case, ignore the update
             return
 
-        state_to_update[key] = value
+        if index > -1 and key in state_to_update:
+            if not isinstance(state_to_update[key], list):
+                return
+            list_items = state_to_update[key]
+            if index >= len(list_items):
+                return
+            list_items[index] = value
+            state_to_update[key] = list_items
+        else:
+            state_to_update[key] = value
 
         self.state = state_to_update
 

@@ -245,30 +245,39 @@ class Player():
         if not self.isPlaying:
             self.unload()
 
-            updated: bool = False
+            found: bool = False
 
-            for i in range(len(self.state.state["show_plan"])):
-                if self.state.state["show_plan"][i].timeslotItemId == timeslotItemId:
-                    self.state.update("loaded_item", self.state.state["show_plan"][i])
-                    updated = True
+            showplan = self.state.state["show_plan"]
+
+            loaded_item: PlanItem
+
+            for i in range(len(showplan)):
+                if showplan[i].timeslotItemId == timeslotItemId:
+                    loaded_item = showplan[i]
+                    found = True
                     break
 
-            if not updated:
+            if not found:
                 self.logger.log.error("Failed to find timeslotItemId: {}".format(timeslotItemId))
                 return False
 
-            filename: str = self.state.state["loaded_item"].filename
+            if (loaded_item.filename == "" or loaded_item.filename == None):
+                loaded_item.filename = MyRadioAPI.get_filename(item = loaded_item)
 
-            if (filename == "" or filename == None):
-                filename = MyRadioAPI.get_filename(item = self.state.state["loaded_item"])
+            self.state.update("loaded_item", loaded_item)
+
+            for i in range(len(showplan)):
+                if showplan[i].timeslotItemId == timeslotItemId:
+                    self.state.update("show_plan", index=i, value=loaded_item)
+                break
                 # TODO: Update the show plan filenames
 
             try:
-                self.logger.log.info("Loading file: " + str(filename))
-                mixer.music.load(filename)
+                self.logger.log.info("Loading file: " + str(loaded_item.filename))
+                mixer.music.load(loaded_item.filename)
             except:
                 # We couldn't load that file.
-                self.logger.log.exception("Couldn't load file: " + str(filename))
+                self.logger.log.exception("Couldn't load file: " + str(loaded_item.filename))
                 return False
 
             try:
