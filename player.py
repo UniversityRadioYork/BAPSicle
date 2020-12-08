@@ -29,7 +29,7 @@ import sys
 
 from typing import Callable, Dict, List
 
-from plan import PlanObject
+from plan import PlanItem
 
 # Stop the Pygame Hello message.
 import os
@@ -37,6 +37,7 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 from pygame import mixer
 from mutagen.mp3 import MP3
 
+from helpers.myradio_api import MyRadioAPI
 from helpers.os_environment import isMacOS
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
@@ -224,13 +225,13 @@ class Player():
     ### Show Plan Related Methods
 
     def add_to_plan(self, new_item: Dict[str, any]) -> bool:
-        self.state.update("show_plan", self.state.state["show_plan"] + [PlanObject(new_item)])
+        self.state.update("show_plan", self.state.state["show_plan"] + [PlanItem(new_item)])
         return True
 
-    def remove_from_plan(self, timeslotitemid: int) -> bool:
+    def remove_from_plan(self, timeslotItemId: int) -> bool:
         plan_copy = copy.copy(self.state.state["show_plan"])
         for i in range(len(plan_copy)):
-            if plan_copy[i].timeslotitemid == timeslotitemid:
+            if plan_copy[i].timeslotItemId == timeslotItemId:
                 plan_copy.remove(i)
                 self.state.update("show_plan", plan_copy)
                 return True
@@ -240,31 +241,43 @@ class Player():
         self.state.update("show_plan", [])
         return True
 
-    def load(self, timeslotitemid: int):
+    def load(self, timeslotItemId: int):
         if not self.isPlaying:
             self.unload()
 
-            updated: bool = False
+            found: bool = False
 
-            for i in range(len(self.state.state["show_plan"])):
-                if self.state.state["show_plan"][i].timeslotitemid == timeslotitemid:
-                    self.state.update("loaded_item", self.state.state["show_plan"][i])
-                    updated = True
+            showplan = self.state.state["show_plan"]
+
+            loaded_item: PlanItem
+
+            for i in range(len(showplan)):
+                if showplan[i].timeslotItemId == timeslotItemId:
+                    loaded_item = showplan[i]
+                    found = True
                     break
 
-            if not updated:
-                print("Failed to find timeslotitemid:", timeslotitemid)
+            if not found:
+                self.logger.log.error("Failed to find timeslotItemId: {}".format(timeslotItemId))
                 return False
 
-            filename: str = self.state.state["loaded_item"].filename
+            if (loaded_item.filename == "" or loaded_item.filename == None):
+                loaded_item.filename = MyRadioAPI.get_filename(item = loaded_item)
 
+            self.state.update("loaded_item", loaded_item)
+
+            for i in range(len(showplan)):
+                if showplan[i].timeslotItemId == timeslotItemId:
+                    self.state.update("show_plan", index=i, value=loaded_item)
+                break
+                # TODO: Update the show plan filenames
 
             try:
-                self.logger.log.info("Loading file: " + str(filename))
-                mixer.music.load(filename)
+                self.logger.log.info("Loading file: " + str(loaded_item.filename))
+                mixer.music.load(loaded_item.filename)
             except:
                 # We couldn't load that file.
-                self.logger.log.exception("Couldn't load file: " + str(filename))
+                self.logger.log.exception("Couldn't load file: " + str(loaded_item.filename))
                 return False
 
             try:
@@ -313,7 +326,7 @@ class Player():
 
         loadedItem = self.state.state["loaded_item"]
         if (loadedItem):
-            self.load(loadedItem.timeslotitemid)
+            self.load(loadedItem.timeslotItemId)
         if wasPlaying:
             self.unpause()
 
@@ -348,14 +361,14 @@ class Player():
                 # Auto Advance
                 elif self.state.state["auto_advance"]:
                     for i in range(len(self.state.state["show_plan"])):
-                        if self.state.state["show_plan"][i].timeslotitemid == self.state.state["loaded_item"].timeslotitemid:
+                        if self.state.state["show_plan"][i].timeslotItemId == self.state.state["loaded_item"].timeslotItemId:
                             if len(self.state.state["show_plan"]) > i+1:
-                                self.load(self.state.state["show_plan"][i+1].timeslotitemid)
+                                self.load(self.state.state["show_plan"][i+1].timeslotItemId)
                                 break
 
                             # Repeat All
                             elif self.state.state["repeat"] == "ALL":
-                                self.load(self.state.state["show_plan"][0].timeslotitemid)
+                                self.load(self.state.state["show_plan"][0].timeslotItemId)
 
                 # Play on Load
                 if self.state.state["play_on_load"]:
@@ -400,8 +413,8 @@ class Player():
             self.output()
 
         if loaded_state["loaded_item"]:
-            self.logger.log.info("Loading filename: " + loaded_state["loaded_item"].filename)
-            self.load(loaded_state["loaded_item"].timeslotitemid)
+            self.logger.log.info("Loading filename: " + str(loaded_state["loaded_item"].filename))
+            self.load(loaded_state["loaded_item"].timeslotItemId)
 
             if loaded_state["pos_true"] != 0:
                 self.logger.log.info("Seeking to pos_true: " + str(loaded_state["pos_true"]))
