@@ -278,8 +278,13 @@ def clear_channel_plan(channel: int):
 
 
 @app.route("/player/<int:channel>/status")
-def status(channel):
+def channel_json(channel: int):
+    try:
+        return jsonify(status(channel))
+    except:
+        return status(channel)
 
+def status(channel):
     channel_to_q[channel].put("STATUS")
     while True:
         response = channel_from_q[channel].get()
@@ -287,7 +292,7 @@ def status(channel):
             response = response[7:]
             response = response[response.index(":")+1:]
             try:
-                response = jsonify(json.loads(response))
+                response = json.loads(response)
             except:
                 pass
 
