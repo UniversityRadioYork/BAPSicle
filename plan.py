@@ -12,7 +12,7 @@
         November 2020
 """
 
-from typing import Dict
+from typing import Any, Dict, Optional
 import os
 
 class PlanItem:
@@ -20,8 +20,8 @@ class PlanItem:
     _filename: str = ""
     _title: str = ""
     _artist: str = ""
-    _trackId: int = None
-    _managedId: int = None
+    _trackId: Optional[int] = None
+    _managedId: Optional[int] = None
 
     @property
     def timeslotItemId(self) -> int:
@@ -40,15 +40,15 @@ class PlanItem:
         return "{0} - {1}".format(self._title, self._artist) if self._artist else self._title
 
     @property
-    def trackId(self) -> int:
+    def trackId(self) -> Optional[int]:
         return self._trackId
 
     @property
-    def managedId(self) -> int:
+    def managedId(self) -> Optional[int]:
         return self._managedId
 
     @property
-    def __dict__(self) -> Dict[str, any]:
+    def __dict__(self):
         return {
             "timeslotItemId": self.timeslotItemId,
             "trackId": self._trackId,
@@ -59,7 +59,7 @@ class PlanItem:
             "filename": self.filename
         }
 
-    def __init__(self, new_item: Dict[str, any]):
+    def __init__(self, new_item: Dict[str, Any]):
         self._timeslotItemId = new_item["timeslotItemId"]
         self._trackId = new_item["trackId"] if "trackId" in new_item else None
         self._managedId = new_item["managedId"] if "managedId" in new_item else None

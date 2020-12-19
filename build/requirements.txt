@@ -5,3 +5,4 @@ sounddevice
 autopep8
 setproctitle
 pyttsx3
+typing_extensions

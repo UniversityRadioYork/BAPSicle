@@ -1,15 +1,18 @@
+from helpers.types import PlayerState
 import json
 import os
-import logging
+from logging import CRITICAL, INFO
+
 import time
 from datetime import datetime
 from copy import copy
-from typing import List
 
 from plan import PlanItem
 from helpers.logging_manager import LoggingManager
 from helpers.os_environment import resolve_external_file_path
+from helpers.types import ServerState
 
+from typing import Any, Dict, List, NewType, Optional, Union
 
 class StateManager:
     filepath = None
@@ -32,7 +35,7 @@ class StateManager:
                 # Try creating the file.
                 open(self.filepath, "x")
             except:
-                self._log("Failed to create state file.", logging.CRITICAL)
+                self._log("Failed to create state file.", CRITICAL)
                 return
 
         with open(self.filepath, 'r') as file:
@@ -101,7 +104,7 @@ class StateManager:
             with open(self.filepath, "w") as file:
                 file.write(state_json)
 
-    def update(self, key, value, index = -1):
+    def update(self, key: str, value: Any, index: int = -1):
         update_file = True
         if (key in self.__rate_limit_params_until.keys()):
             # The key we're trying to update is expected to be updating very often,
@@ -135,10 +138,10 @@ class StateManager:
         if (update_file == True):
             self.write_to_file(state_to_update)
 
-    def _log(self, text, level=logging.INFO):
+    def _log(self, text:str, level: int = INFO):
         self.logger.log.log(level, "State Manager: " + text)
 
-    def _logException(self, text):
+    def _logException(self, text:str):
         self.logger.log.exception("State Manager: " + text)
 
     @property

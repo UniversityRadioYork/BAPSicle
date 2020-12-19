@@ -26,7 +26,7 @@ from helpers.os_environment import resolve_external_file_path
 class MyRadioAPI():
 
   @classmethod
-  def get_filename(self, item: PlanItem):
+  def get_filename(cls, item: PlanItem):
     format = "mp3" # TODO: Maybe we want this customisable?
     if item.trackId:
       itemType = "track"

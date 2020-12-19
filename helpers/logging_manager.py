@@ -5,9 +5,9 @@ import os
 
 class LoggingManager():
 
-    logger = None
+    logger: logging.Logger
 
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.logger = logging.getLogger(name)
 
         filename: str = resolve_external_file_path("/logs/" + name + ".log")
@@ -33,5 +33,5 @@ class LoggingManager():
         logging.shutdown()
 
     @property
-    def log(self):
+    def log(self) -> logging.Logger:
         return self.logger

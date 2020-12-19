@@ -6,14 +6,14 @@
   {% if data %}
     <code>
       {% for player in data.channels %}
-      <a href="/player/{{player.channel}}/play">Play</a> 
+      <a href="/player/{{player.channel}}/play">Play</a>
       {% if player.paused %}
       <a href="/player/{{player.channel}}/unpause">UnPause</a>
       {% else %}
       <a href="/player/{{player.channel}}/pause">Pause</a>
       {% endif %}
       <a href="/player/{{player.channel}}/stop">Stop</a>
-      <a href="/player/{{player.channel}}/seek/50">Seek 50</a>
+      <a href="/player/{{player.channel}}/seek/50.0">Seek 50</a>
       {{player}}<br>
       {% endfor %}
     </code>
