@@ -19,6 +19,7 @@
 # It is key that whenever the parent server tells us to do something
 # that we respond with something, FAIL or OKAY. The server doesn't like to be kept waiting.
 
+from helpers.types import PlayerState, RepeatMode
 from queue import Empty
 import multiprocessing
 import setproctitle
@@ -27,7 +28,7 @@ import json
 import time
 import sys
 
-from typing import Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 from plan import PlanItem
 
@@ -93,7 +94,7 @@ class Player():
         return False
 
     @property
-    def isPaused(self):
+    def isPaused(self) -> bool:
         return self.state.state["paused"]
 
     @property
@@ -107,7 +108,7 @@ class Player():
         # We're not playing now, so we can quickly test run
         # If that works, we're loaded.
         try:
-            position = self.state.state["pos"]
+            position: float = self.state.state["pos"]
             mixer.music.set_volume(0)
             mixer.music.play(0)
         except:
@@ -137,7 +138,7 @@ class Player():
 
     ### Audio Playout Related Methods
 
-    def play(self, pos=0):
+    def play(self, pos: float = 0):
         try:
             mixer.music.play(0, pos)
             self.state.update("pos_offset", pos)
@@ -158,7 +159,7 @@ class Player():
 
     def unpause(self):
         if not self.isPlaying:
-            position = self.state.state["pos_true"]
+            position: float = self.state.state["pos_true"]
             try:
                 self.play(position)
             except:
@@ -182,7 +183,7 @@ class Player():
         return True
         # return False
 
-    def seek(self, pos):
+    def seek(self, pos: float) -> bool:
         if self.isPlaying:
             try:
                 self.play(pos)
@@ -224,14 +225,14 @@ class Player():
 
     ### Show Plan Related Methods
 
-    def add_to_plan(self, new_item: Dict[str, any]) -> bool:
+    def add_to_plan(self, new_item: Dict[str, Any]) -> bool:
         self.state.update("show_plan", self.state.state["show_plan"] + [PlanItem(new_item)])
         return True
 
     def remove_from_plan(self, timeslotItemId: int) -> bool:
-        plan_copy = copy.copy(self.state.state["show_plan"])
-        for i in range(len(plan_copy)):
-            if plan_copy[i].timeslotItemId == timeslotItemId:
+        plan_copy: List[PlanItem] = copy.copy(self.state.state["show_plan"])
+        for i in plan_copy:
+            if i.timeslotItemId == timeslotItemId:
                 plan_copy.remove(i)
                 self.state.update("show_plan", plan_copy)
                 return True
@@ -245,24 +246,24 @@ class Player():
         if not self.isPlaying:
             self.unload()
 
-            found: bool = False
-
             showplan = self.state.state["show_plan"]
 
-            loaded_item: PlanItem
+            loaded_item: Optional[PlanItem] = None
 
             for i in range(len(showplan)):
                 if showplan[i].timeslotItemId == timeslotItemId:
                     loaded_item = showplan[i]
-                    found = True
                     break
 
-            if not found:
+            if loaded_item == None:
                 self.logger.log.error("Failed to find timeslotItemId: {}".format(timeslotItemId))
                 return False
 
             if (loaded_item.filename == "" or loaded_item.filename == None):
                 loaded_item.filename = MyRadioAPI.get_filename(item = loaded_item)
+
+            if not loaded_item.filename:
+                return False
 
             self.state.update("loaded_item", loaded_item)
 
@@ -281,11 +282,11 @@ class Player():
                 return False
 
             try:
-                if ".mp3" in filename:
-                    song = MP3(filename)
+                if ".mp3" in loaded_item.filename:
+                    song = MP3(loaded_item.filename)
                     self.state.update("length", song.info.length)
                 else:
-                    self.state.update("length", mixer.Sound(filename).get_length()/1000)
+                    self.state.update("length", mixer.Sound(loaded_item.filename).get_length()/1000)
             except:
                 self.logger.log.exception("Failed to update the length of item.")
                 return False
@@ -309,7 +310,7 @@ class Player():
         except:
             self.logger.log.exception("Failed to quit mixer.")
 
-    def output(self, name=None):
+    def output(self, name: Optional[str] = None):
         wasPlaying = self.state.state["playing"]
         name = None if name == "none" else name
 
@@ -332,7 +333,7 @@ class Player():
 
         return True
 
-    def _updateState(self, pos=None):
+    def _updateState(self, pos: Optional[float] = None):
 
         self.state.update("initialised", self.isInit)
         if self.isInit:
@@ -350,32 +351,35 @@ class Player():
 
             self.state.update("remaining", self.state.state["length"] - self.state.state["pos_true"])
 
-            if self.state.state["remaining"] == 0 and self.state.state["loaded_item"]:
-                # Track has ended
-                print("Finished", self.state.state["loaded_item"].name)
+            loaded_item = self.state.state["loaded_item"]
+            if loaded_item == None or self.state.state["remaining"] != 0:
+                return
 
-                # Repeat 1
-                if self.state.state["repeat"] == "ONE":
-                    self.play()
+            # Track has ended
+            print("Finished", loaded_item.name)
 
-                # Auto Advance
-                elif self.state.state["auto_advance"]:
-                    for i in range(len(self.state.state["show_plan"])):
-                        if self.state.state["show_plan"][i].timeslotItemId == self.state.state["loaded_item"].timeslotItemId:
-                            if len(self.state.state["show_plan"]) > i+1:
-                                self.load(self.state.state["show_plan"][i+1].timeslotItemId)
-                                break
+            # Repeat 1
+            if self.state.state["repeat"] == "ONE":
+                self.play()
 
-                            # Repeat All
-                            elif self.state.state["repeat"] == "ALL":
-                                self.load(self.state.state["show_plan"][0].timeslotItemId)
+            # Auto Advance
+            elif self.state.state["auto_advance"]:
+                for i in range(len(self.state.state["show_plan"])):
+                    if self.state.state["show_plan"][i].timeslotItemId == loaded_item.timeslotItemId:
+                        if len(self.state.state["show_plan"]) > i+1:
+                            self.load(self.state.state["show_plan"][i+1].timeslotItemId)
+                            break
 
-                # Play on Load
-                if self.state.state["play_on_load"]:
-                    self.play()
+                        # Repeat All
+                        elif self.state.state["repeat"] == "ALL":
+                            self.load(self.state.state["show_plan"][0].timeslotItemId)
+
+            # Play on Load
+            if self.state.state["play_on_load"]:
+                self.play()
 
 
-    def _retMsg(self, msg, okay_str=False):
+    def _retMsg(self, msg: Any, okay_str: Any = False):
         response = self.last_msg + ":"
         if msg == True:
             response += "OKAY"
@@ -389,7 +393,7 @@ class Player():
         if self.out_q:
             self.out_q.put(response)
 
-    def __init__(self, channel, in_q, out_q):
+    def __init__(self, channel: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue):
 
         process_title = "Player: Channel " + str(channel)
         setproctitle.setproctitle(process_title)
@@ -406,15 +410,16 @@ class Player():
         loaded_state = copy.copy(self.state.state)
 
         if loaded_state["output"]:
-            self.logger.log.info("Setting output to: " + loaded_state["output"])
+            self.logger.log.info("Setting output to: " + str(loaded_state["output"]))
             self.output(loaded_state["output"])
         else:
             self.logger.log.info("Using default output device.")
             self.output()
 
-        if loaded_state["loaded_item"]:
-            self.logger.log.info("Loading filename: " + str(loaded_state["loaded_item"].filename))
-            self.load(loaded_state["loaded_item"].timeslotItemId)
+        loaded_item = loaded_state["loaded_item"]
+        if loaded_item:
+            self.logger.log.info("Loading filename: " + str(loaded_item.filename))
+            self.load(loaded_item.timeslotItemId)
 
             if loaded_state["pos_true"] != 0:
                 self.logger.log.info("Seeking to pos_true: " + str(loaded_state["pos_true"]))
@@ -447,7 +452,7 @@ class Player():
 
                     elif self.isInit:
 
-                        message_types: Dict[str, Callable[any, bool]] = { # TODO Check Types
+                        message_types: Dict[str, Callable[..., Any]] = { # TODO Check Types
                             "STATUS":       lambda: self._retMsg(self.status, True),
 
                             # Audio Playout
@@ -503,7 +508,7 @@ class Player():
         sys.exit(0)
 
 
-def showOutput(in_q, out_q):
+def showOutput(in_q: multiprocessing.Queue, out_q: multiprocessing.Queue):
     print("Starting showOutput().")
     while True:
         time.sleep(0.01)
@@ -515,8 +520,8 @@ if __name__ == "__main__":
     if isMacOS():
         multiprocessing.set_start_method("spawn", True)
 
-    in_q = multiprocessing.Queue()
-    out_q = multiprocessing.Queue()
+    in_q: multiprocessing.Queue[Any] = multiprocessing.Queue()
+    out_q: multiprocessing.Queue[Any] = multiprocessing.Queue()
 
     outputProcess = multiprocessing.Process(
         target=showOutput,

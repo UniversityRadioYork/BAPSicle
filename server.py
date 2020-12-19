@@ -12,10 +12,10 @@
     Date:
         October, November 2020
 """
-
 import multiprocessing
 import player
 from flask import Flask, render_template, send_from_directory, request, jsonify
+from typing import Any, Optional
 import json
 import setproctitle
 import logging
@@ -77,7 +77,7 @@ stopping = False
 # General Endpoints
 
 @app.errorhandler(404)
-def page_not_found(e):
+def page_not_found(e: Any):
     data = {
         'ui_page': "404",
         "ui_title": "404"
@@ -161,7 +161,7 @@ def restart_server():
 
 
 @app.route("/player/<int:channel>/play")
-def play(channel):
+def play(channel: int):
 
     channel_to_q[channel].put("PLAY")
 
@@ -169,7 +169,7 @@ def play(channel):
 
 
 @app.route("/player/<int:channel>/pause")
-def pause(channel):
+def pause(channel: int):
 
     channel_to_q[channel].put("PAUSE")
 
@@ -177,7 +177,7 @@ def pause(channel):
 
 
 @app.route("/player/<int:channel>/unpause")
-def unPause(channel):
+def unPause(channel: int):
 
     channel_to_q[channel].put("UNPAUSE")
 
@@ -185,15 +185,15 @@ def unPause(channel):
 
 
 @app.route("/player/<int:channel>/stop")
-def stop(channel):
+def stop(channel: int):
 
     channel_to_q[channel].put("STOP")
 
     return ui_status()
 
 
-@app.route("/player/<int:channel>/seek/<int:pos>")
-def seek(channel, pos):
+@app.route("/player/<int:channel>/seek/<float:pos>")
+def seek(channel: int, pos: float):
 
     channel_to_q[channel].put("SEEK:" + str(pos))
 
@@ -201,8 +201,8 @@ def seek(channel, pos):
 
 
 @app.route("/player/<int:channel>/output/<name>")
-def output(channel, name):
-    channel_to_q[channel].put("OUTPUT:" + name)
+def output(channel: int, name: Optional[str]):
+    channel_to_q[channel].put("OUTPUT:" + str(name))
     return ui_status()
 
 
@@ -213,7 +213,7 @@ def autoadvance(channel: int, state: int):
 
 
 @app.route("/player/<int:channel>/repeat/<state>")
-def repeat(channel: int, state):
+def repeat(channel: int, state: str):
     channel_to_q[channel].put("REPEAT:" + state.upper())
     return ui_status()
 
@@ -232,7 +232,7 @@ def load(channel:int, timeslotItemId: int):
 
 
 @app.route("/player/<int:channel>/unload")
-def unload(channel):
+def unload(channel: int):
 
     channel_to_q[channel].put("UNLOAD")
 
@@ -241,7 +241,7 @@ def unload(channel):
 
 @app.route("/player/<int:channel>/add", methods=["POST"])
 def add_to_plan(channel: int):
-    new_item: Dict[str, any] = {
+    new_item: Dict[str, Any] = {
         "timeslotItemId": int(request.form["timeslotItemId"]),
         "filename": request.form["filename"],
         "title":  request.form["title"],
@@ -252,8 +252,8 @@ def add_to_plan(channel: int):
 
     return new_item
 
-@app.route("/player/<int:channel>/move/<int:timeslotItemId>/<int:position>")
-def move_plan(channel: int, timeslotItemId: int, position: int):
+@app.route("/player/<int:channel>/move/<int:timeslotItemId>/<float:position>")
+def move_plan(channel: int, timeslotItemId: int, position: float):
     channel_to_q[channel].put("MOVE:" + json.dumps({"timeslotItemId": timeslotItemId, "position": position}))
 
     # TODO Return
@@ -261,7 +261,7 @@ def move_plan(channel: int, timeslotItemId: int, position: int):
 
 @app.route("/player/<int:channel>/remove/<int:timeslotItemId>")
 def remove_plan(channel: int, timeslotItemId: int):
-    channel_to_q[channel].put("REMOVE:" + timeslotItemId)
+    channel_to_q[channel].put("REMOVE:" + str(timeslotItemId))
 
     # TODO Return
     return True
@@ -284,7 +284,7 @@ def channel_json(channel: int):
     except:
         return status(channel)
 
-def status(channel):
+def status(channel: int):
     channel_to_q[channel].put("STATUS")
     while True:
         response = channel_from_q[channel].get()
@@ -320,7 +320,7 @@ def clear_all_channels():
 
 
 @app.route('/static/<path:path>')
-def send_static(path):
+def send_static(path: str):
     return send_from_directory('ui-static', path)
 
 
@@ -380,7 +380,7 @@ def startServer():
         )
         text_to_speach.runAndWait()
 
-    new_item: Dict[str, any] = {
+    new_item: Dict[str,Any] = {
         "timeslotItemId": 0,
         "filename": "dev/welcome.mp3",
         "title":  "Welcome to BAPSicle",

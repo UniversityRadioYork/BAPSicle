@@ -22,11 +22,11 @@ def isMacOS():
 # This must be used to that relative file paths resolve inside the bundled versions.
 
 
-def resolve_local_file_path(relative_path):
+def resolve_local_file_path(relative_path: str):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
+        base_path:str = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
 
@@ -35,7 +35,7 @@ def resolve_local_file_path(relative_path):
 # Use this to resolve paths to resources not bundled within the bundled exe.
 
 
-def resolve_external_file_path(relative_path):
+def resolve_external_file_path(relative_path: str):
     if (not relative_path.startswith("/")):
         relative_path = "/" + relative_path
     # Pass through abspath to correct any /'s with \'s on Windows
