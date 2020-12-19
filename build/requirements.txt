@@ -5,4 +5,5 @@ sounddevice
 autopep8
 setproctitle
 pyttsx3
+websockets
 typing_extensions

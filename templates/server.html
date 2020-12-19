@@ -14,6 +14,9 @@
       <label for="channels">Number of Channels:</label>
       <input type="number" id="channels" name="channels" class="form-control" value="{{data.state.num_channels}}">
       <br>  
+      <label for="port">WebSockets Port:</label>
+      <input type="number" id="ws_port" name="ws_port" class="form-control" value="{{data.state.ws_port}}">
+      <br>  
       <input type="submit" class="btn btn-primary" value="Restart Server">
     </form>
   {% endif %}

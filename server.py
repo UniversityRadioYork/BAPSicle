@@ -30,6 +30,7 @@ import config
 from typing import Dict, List
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
+from websocket_server import WebsocketServer
 
 setproctitle.setproctitle("BAPSicle - Server")
 
@@ -38,6 +39,7 @@ default_state = {
     "server_name": "URY BAPSicle",
     "host": "localhost",
     "port": 13500,
+    "ws_port": 13501,
     "num_channels": 3
 }
 
@@ -154,6 +156,7 @@ def restart_server():
     state.update("host", request.form["host"])
     state.update("port", int(request.form["port"]))
     state.update("num_channels", int(request.form["channels"]))
+    state.update("ws_port", int(request.form["ws_port"]))
     stopServer(restart=True)
     startServer()
 
@@ -225,9 +228,10 @@ def playonload(channel: int, state: int):
 
 # Channel Items
 
-@app.route("/player/<int:channel>/load/<int:timeslotItemId>")
-def load(channel:int, timeslotItemId: int):
-    channel_to_q[channel].put("LOAD:" + str(timeslotItemId))
+
+@app.route("/player/<int:channel>/load/<int:channel_weight>")
+def load(channel: int, channel_weight: int):
+    channel_to_q[channel].put("LOAD:" + str(channel_weight))
     return ui_status()
 
 
@@ -241,8 +245,8 @@ def unload(channel: int):
 
 @app.route("/player/<int:channel>/add", methods=["POST"])
 def add_to_plan(channel: int):
-    new_item: Dict[str, Any] = {
-        "timeslotItemId": int(request.form["timeslotItemId"]),
+    new_item: Dict[str, any] = {
+        "channel_weight": int(request.form["channel_weight"]),
         "filename": request.form["filename"],
         "title":  request.form["title"],
         "artist":  request.form["artist"],
@@ -256,12 +260,20 @@ def add_to_plan(channel: int):
 def move_plan(channel: int, timeslotItemId: int, position: float):
     channel_to_q[channel].put("MOVE:" + json.dumps({"timeslotItemId": timeslotItemId, "position": position}))
 
+@app.route("/player/<int:channel>/move/<int:channel_weight>/<int:position>")
+def move_plan(channel: int, channel_weight: int, position: int):
+    channel_to_q[channel].put("MOVE:" + json.dumps({"channel_weight": channel_weight, "position": position}))
+
     # TODO Return
     return True
 
 @app.route("/player/<int:channel>/remove/<int:timeslotItemId>")
 def remove_plan(channel: int, timeslotItemId: int):
     channel_to_q[channel].put("REMOVE:" + str(timeslotItemId))
+
+@app.route("/player/<int:channel>/remove/<int:channel_weight>")
+def remove_plan(channel: int, channel_weight: int):
+    channel_to_q[channel].put("REMOVE:" + channel_weight)
 
     # TODO Return
     return True
@@ -362,6 +374,9 @@ def startServer():
         )
         channel_p[channel].start()
 
+    websockets_server = multiprocessing.Process(target=WebsocketServer, args=[channel_to_q, state])
+    websockets_server.start()
+
     if not isMacOS():
 
         # Temporary RIP.
@@ -381,7 +396,7 @@ def startServer():
         text_to_speach.runAndWait()
 
     new_item: Dict[str,Any] = {
-        "timeslotItemId": 0,
+        "channel_weight": 0,
         "filename": "dev/welcome.mp3",
         "title":  "Welcome to BAPSicle",
         "artist":  "University Radio York",
