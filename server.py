@@ -12,7 +12,9 @@
     Date:
         October, November 2020
 """
+import asyncio
 import multiprocessing
+import time
 import player
 from flask import Flask, render_template, send_from_directory, request, jsonify
 from typing import Any, Optional
@@ -52,11 +54,23 @@ class BAPSicleServer():
         setproctitle.setproctitle(process_title)
         multiprocessing.current_process().name = process_title
 
-        startServer()
+        asyncio.get_event_loop().run_until_complete(startServer())
+        asyncio.get_event_loop().run_forever()
 
     def __del__(self):
         stopServer()
 
+class PlayerHandler():
+    def __init__(self,channel_from_q, websocket_to_q, ui_to_q):
+        while True:
+            for channel in range(len(channel_from_q)):
+                try:
+                    message = channel_from_q[channel].get_nowait()
+                    websocket_to_q[channel].put(message)
+                    ui_to_q[channel].put(message)
+                except:
+                    pass
+            time.sleep(0.01)
 
 logger = LoggingManager("BAPSicleServer")
 
@@ -71,6 +85,8 @@ app.logger.disabled = True
 
 channel_to_q = []
 channel_from_q = []
+ui_to_q = []
+websocket_to_q = []
 channel_p = []
 
 stopping = False
@@ -245,7 +261,7 @@ def unload(channel: int):
 
 @app.route("/player/<int:channel>/add", methods=["POST"])
 def add_to_plan(channel: int):
-    new_item: Dict[str, any] = {
+    new_item: Dict[str, Any] = {
         "channel_weight": int(request.form["channel_weight"]),
         "filename": request.form["filename"],
         "title":  request.form["title"],
@@ -256,20 +272,12 @@ def add_to_plan(channel: int):
 
     return new_item
 
-@app.route("/player/<int:channel>/move/<int:timeslotItemId>/<float:position>")
-def move_plan(channel: int, timeslotItemId: int, position: float):
-    channel_to_q[channel].put("MOVE:" + json.dumps({"timeslotItemId": timeslotItemId, "position": position}))
-
 @app.route("/player/<int:channel>/move/<int:channel_weight>/<int:position>")
 def move_plan(channel: int, channel_weight: int, position: int):
     channel_to_q[channel].put("MOVE:" + json.dumps({"channel_weight": channel_weight, "position": position}))
 
     # TODO Return
     return True
-
-@app.route("/player/<int:channel>/remove/<int:timeslotItemId>")
-def remove_plan(channel: int, timeslotItemId: int):
-    channel_to_q[channel].put("REMOVE:" + str(timeslotItemId))
 
 @app.route("/player/<int:channel>/remove/<int:channel_weight>")
 def remove_plan(channel: int, channel_weight: int):
@@ -299,8 +307,9 @@ def channel_json(channel: int):
 def status(channel: int):
     channel_to_q[channel].put("STATUS")
     while True:
-        response = channel_from_q[channel].get()
+        response = ui_to_q[channel].get()
         if response.startswith("STATUS:"):
+            print("Got my status message")
             response = response[7:]
             response = response[response.index(":")+1:]
             try:
@@ -309,6 +318,7 @@ def status(channel: int):
                 pass
 
             return response
+        time.sleep(0.1)
 
 
 @app.route("/quit")
@@ -358,13 +368,15 @@ def send_logs(path):
     return render_template('log.html', data=data)
 
 
-def startServer():
+async def startServer():
     if isMacOS():
         multiprocessing.set_start_method("spawn", True)
     for channel in range(state.state["num_channels"]):
 
         channel_to_q.append(multiprocessing.Queue())
         channel_from_q.append(multiprocessing.Queue())
+        ui_to_q.append(multiprocessing.Queue())
+        websocket_to_q.append(multiprocessing.Queue())
         channel_p.append(
             multiprocessing.Process(
                 target=player.Player,
@@ -374,7 +386,13 @@ def startServer():
         )
         channel_p[channel].start()
 
-    websockets_server = multiprocessing.Process(target=WebsocketServer, args=[channel_to_q, state])
+
+
+
+    player_handler = multiprocessing.Process(target=PlayerHandler, args=[channel_from_q, websocket_to_q, ui_to_q])
+    player_handler.start()
+
+    websockets_server = multiprocessing.Process(target=WebsocketServer, args=[channel_to_q, channel_from_q, state])
     websockets_server.start()
 
     if not isMacOS():
@@ -402,13 +420,16 @@ def startServer():
         "artist":  "University Radio York",
     }
 
-    channel_to_q[0].put("ADD:" + json.dumps(new_item))
+    #channel_to_q[0].put("ADD:" + json.dumps(new_item))
     # channel_to_q[0].put("LOAD:0")
     # channel_to_q[0].put("PLAY")
 
     # Don't use reloader, it causes Nested Processes!
     app.run(host=state.state["host"], port=state.state["port"], debug=True, use_reloader=False)
 
+async def player_message_handler():
+    print("Handling")
+    pass
 
 def stopServer(restart=False):
     global channel_p

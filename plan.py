@@ -17,7 +17,7 @@ import os
 
 class PlanItem:
     _timeslotItemId: int = 0
-    _channel_weight: int = 0
+    _channelWeight: int = 0
     _filename: str = ""
     _title: str = ""
     _artist: str = ""
@@ -25,9 +25,10 @@ class PlanItem:
     _managedId: Optional[int] = None
 
     @property
-    def channel_weight(self) -> int:
-        return self._channel_weight
-        
+    def channelWeight(self) -> int:
+        return self._channelWeight
+
+    @property
     def timeslotItemId(self) -> int:
         return self._timeslotItemId
 
@@ -52,9 +53,17 @@ class PlanItem:
         return self._managedId
 
     @property
+    def title(self) -> Optional[str]:
+        return self._title
+
+    @property
+    def artist(self) -> Optional[str]:
+        return self._artist
+
+    @property
     def __dict__(self):
         return {
-            "channel_weight": self.channel_weight,
+            "channelWeight": self.channelWeight,
             "timeslotItemId": self.timeslotItemId,
             "trackId": self._trackId,
             "managedId": self._managedId,
@@ -69,7 +78,7 @@ class PlanItem:
         self._trackId = new_item["trackId"] if "trackId" in new_item else None
         self._managedId = new_item["managedId"] if "managedId" in new_item else None
         self._filename = new_item["filename"] # This could be a temp dir for API-downloaded items, or a mapped drive.
-        self._channel_weight = new_item["channel_weight"]
+        self._channelWeight = new_item["channelWeight"]
         self._title = new_item["title"]
         self._artist = new_item["artist"]
 

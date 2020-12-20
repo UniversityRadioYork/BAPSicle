@@ -44,6 +44,7 @@ class MyRadioAPI():
     request = requests.get(url, timeout=10)
 
     if request.status_code != 200:
+      # TODO: Log something here
       return None
 
     filename: str = resolve_external_file_path("/music-tmp/{}-{}.{}".format(itemType, id, format))
