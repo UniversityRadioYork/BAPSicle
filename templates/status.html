@@ -20,7 +20,7 @@
         <br>
         <label for="file">{{ player.pos_true | int }} / {{ player.length | int }}s ({{ player.remaining | int }}s)</label>
         <br>
-        <progress id="file" value="{{player.pos_true / player.length * 100}}" max="100" style="width: 100%"></progress>
+        <progress id="file" value="{% if player.length > 0 %}{{player.pos_true / player.length * 100}}{% else %}0{% endif %}" max="100" style="width: 100%"></progress>
 
         <hr />
         <h4 class="h6">Loaded Item</h3>

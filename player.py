@@ -48,7 +48,7 @@ class Player():
     state = None
     running = False
     out_q = None
-    last_msg = None
+    last_msg = ""
     logger = None
 
     __default_state = {
