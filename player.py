@@ -35,7 +35,7 @@ from plan import PlanItem
 # Stop the Pygame Hello message.
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-from pygame import mixer
+from pygame import mixer, NOEVENT, USEREVENT, event
 from mutagen.mp3 import MP3
 
 from helpers.myradio_api import MyRadioAPI
@@ -43,7 +43,7 @@ from helpers.os_environment import isMacOS
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
 
-
+PLAYBACK_END = USEREVENT + 1
 class Player():
     state = None
     running = False
@@ -140,6 +140,7 @@ class Player():
     def play(self, pos: float = 0):
         try:
             mixer.music.play(0, pos)
+            mixer.music.set_endevent(PLAYBACK_END)
             self.state.update("pos_offset", pos)
         except:
             self.logger.log.exception("Failed to play at pos: " + str(pos))
@@ -490,6 +491,18 @@ class Player():
                         else:
                             self._retMsg(False)
 
+                #try:
+                #callback_event = event.poll()
+                #print(callback_event)
+                #if callback_event.type == PLAYBACK_END:
+                #    if self.out_q:
+                #        print("Playback endded at end of Track.")
+                #        self.out_q.put("STOP") # Tell clients that we've stopped playing.
+                #elif callback_event.type == NOEVENT:
+                #    pass
+                #print("Another message")
+                #except:
+                #    pass
             # Catch the player being killed externally.
             except KeyboardInterrupt:
                 self.logger.log.info("Received KeyboardInterupt")

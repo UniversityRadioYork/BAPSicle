@@ -1,12 +1,13 @@
 import asyncio
 import multiprocessing
+import queue
 from typing import List
 import websockets
 import json
 
 baps_clients = set()
 channel_to_q = None
-channel_from_q: List[multiprocessing.Queue]
+webstudio_to_q: List[multiprocessing.Queue]
 server_name = None
 
 
@@ -15,6 +16,8 @@ async def websocket_handler(websocket, path):
     baps_clients.add(websocket)
     await websocket.send(json.dumps({"message": "Hello", "serverName": server_name}))
     print("New Client: {}".format(websocket))
+    for channel in channel_to_q:
+        channel.put("STATUS")
 
     async def handle_from_webstudio():
         try:
@@ -50,6 +53,7 @@ async def websocket_handler(websocket, path):
                             "artist":  data["newItem"]["artist"] if "artist" in data["newItem"].keys() else None,
                             "timeslotItemId": int(data["newItem"]["timeslotItemId"]) if "timeslotItemId" in data["newItem"].keys() and data["newItem"]["timeslotItemId"] != None else None,
                             "trackId": int(data["newItem"]["trackId"]) if "trackId" in data["newItem"].keys() and data["newItem"]["trackId"] != None else None,
+                            "recordId": int(data["newItem"]["trackId"]) if "trackId" in data["newItem"].keys() and data["newItem"]["trackId"] != None else None,
                             "managedId": managed_id
                         }
                         channel_to_q[channel].put("ADD:" + json.dumps(new_item))
@@ -68,37 +72,44 @@ async def websocket_handler(websocket, path):
             baps_clients.remove(websocket)
 
     async def handle_to_webstudio():
-        global channel_from_q
         while True:
-            for channel in range(len(channel_from_q)):
+            for channel in range(len(webstudio_to_q)):
                 try:
-                    message = channel_from_q[channel].get_nowait()
+                    message = webstudio_to_q[channel].get_nowait()
+                    if not message.startswith("STATUS"):
+                        continue # Ignore non state updates for now.
+                    try:
+                        message = message.split("OKAY:")[1]
+                        message = json.loads(message)
+                    except:
+                        pass
                     data = json.dumps({
-                        "message": message,
-                        "channel:": channel
+                        "command": "STATUS",
+                        "data": message,
+                        "channel": channel
                     })
                     await asyncio.wait([conn.send(data) for conn in baps_clients])
-                except:
+                except queue.Empty:
                     pass
             await asyncio.sleep(0.01)
 
     from_webstudio = asyncio.create_task(handle_from_webstudio())
-    #to_webstudio = asyncio.create_task(handle_to_webstudio())
+    to_webstudio = asyncio.create_task(handle_to_webstudio())
 
     try:
-        await asyncio.gather(from_webstudio)#, to_webstudio)
+        await asyncio.gather(from_webstudio, to_webstudio)
     finally:
         from_webstudio.cancel()
-        #to_webstudio.cancel()
+        to_webstudio.cancel()
 
 
 class WebsocketServer:
 
     def __init__(self, in_q, out_q, state):
         global channel_to_q
-        global channel_from_q
+        global webstudio_to_q
         channel_to_q = in_q
-        channel_from_q = out_q
+        webstudio_to_q = out_q
 
         global server_name
         server_name = state.state["server_name"]

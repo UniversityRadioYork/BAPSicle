@@ -13,7 +13,10 @@
         October, November 2020
 """
 import asyncio
+import copy
 import multiprocessing
+import queue
+import threading
 import time
 import player
 from flask import Flask, render_template, send_from_directory, request, jsonify
@@ -272,22 +275,22 @@ def add_to_plan(channel: int):
 
     return new_item
 
-@app.route("/player/<int:channel>/move/<int:channel_weight>/<int:position>")
+#@app.route("/player/<int:channel>/move/<int:channel_weight>/<int:position>")
 def move_plan(channel: int, channel_weight: int, position: int):
     channel_to_q[channel].put("MOVE:" + json.dumps({"channel_weight": channel_weight, "position": position}))
 
     # TODO Return
     return True
 
-@app.route("/player/<int:channel>/remove/<int:channel_weight>")
+#@app.route("/player/<int:channel>/remove/<int:channel_weight>")
 def remove_plan(channel: int, channel_weight: int):
-    channel_to_q[channel].put("REMOVE:" + channel_weight)
+    channel_to_q[channel].put("REMOVE:" + str(channel_weight))
 
     # TODO Return
     return True
 
 
-@app.route("/player/<int:channel>/clear")
+#@app.route("/player/<int:channel>/clear")
 def clear_channel_plan(channel: int):
     channel_to_q[channel].put("CLEAR")
 
@@ -306,18 +309,22 @@ def channel_json(channel: int):
 
 def status(channel: int):
     channel_to_q[channel].put("STATUS")
+    i = 0
     while True:
-        response = ui_to_q[channel].get()
-        if response.startswith("STATUS:"):
-            print("Got my status message")
-            response = response[7:]
-            response = response[response.index(":")+1:]
-            try:
-                response = json.loads(response)
-            except:
-                pass
+        try:
+            response = ui_to_q[channel].get_nowait()
+            if response.startswith("STATUS:"):
+                response = response[7:]
+                response = response[response.index(":")+1:]
+                try:
+                    response = json.loads(response)
+                except Exception as e:
+                    raise e
+                return response
 
-            return response
+        except queue.Empty:
+            pass
+
         time.sleep(0.1)
 
 
@@ -369,6 +376,9 @@ def send_logs(path):
 
 
 async def startServer():
+    process_title="startServer"
+    threading.current_thread().name = process_title
+
     if isMacOS():
         multiprocessing.set_start_method("spawn", True)
     for channel in range(state.state["num_channels"]):
@@ -381,7 +391,7 @@ async def startServer():
             multiprocessing.Process(
                 target=player.Player,
                 args=(channel, channel_to_q[-1], channel_from_q[-1]),
-                daemon=True
+                #daemon=True
             )
         )
         channel_p[channel].start()
