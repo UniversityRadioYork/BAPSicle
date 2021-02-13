@@ -20,12 +20,20 @@ class LoggingManager():
                 print("Failed to create log file")
                 return
 
+        # Set root the logging options.
         logging.basicConfig(
             filename=filename,
             format='%(asctime)s  | %(levelname)s | %(message)s',
             level=logging.INFO,
             filemode='a'
         )
+
+        self.logger.setLevel(logging.INFO)
+        fh = logging.FileHandler(filename)
+        formatter = logging.Formatter('%(asctime)s  | %(levelname)s | %(message)s')
+        fh.setFormatter(formatter)
+        # add the handler to the logger
+        self.logger.addHandler(fh)
         self.logger.info("** LOGGER STARTED **")
 
     def __del__(self):
