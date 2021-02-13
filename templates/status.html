@@ -30,7 +30,7 @@
         {% for planitem in player.show_plan %}
 
           <small>
-            {{ planitem }}
+            <a href="/player/{{player.channel}}/load/{{planitem.channelWeight}}">Load</a> {{ planitem }}
           </small>
           <hr />
 
