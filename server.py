@@ -13,6 +13,7 @@
         October, November 2020
 """
 import asyncio
+from controllers.mattchbox_usb import MattchBox
 import copy
 import multiprocessing
 import queue
@@ -419,6 +420,10 @@ async def startServer():
 
     websockets_server = multiprocessing.Process(target=WebsocketServer, args=(channel_to_q, channel_from_q, state))
     websockets_server.start()
+
+
+    controller_handler = multiprocessing.Process(target=MattchBox, args=(channel_to_q, channel_from_q))
+    controller_handler.start()
 
     if not isMacOS():
 

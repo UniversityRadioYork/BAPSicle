@@ -7,3 +7,4 @@ setproctitle
 pyttsx3
 websockets
 typing_extensions
+pyserial
