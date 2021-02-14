@@ -38,6 +38,18 @@ async def websocket_handler(websocket, path):
                         channel_to_q[channel].put("SEEK:" + str(data["time"]))
                     elif data["command"] == "LOAD":
                         channel_to_q[channel].put("LOAD:" + str(data["weight"]))
+
+                    elif data["command"] == "AUTOADVANCE":
+                        channel_to_q[channel].put("AUTOADVANCE:" + str(data["enabled"]))
+
+                    elif data["command"] == "PLAYONLOAD":
+                        channel_to_q[channel].put("PLAYONLOAD:" + str(data["enabled"]))
+
+                    elif data["command"] == "REPEAT":
+                        channel_to_q[channel].put("REPEAT:" + str(data["mode"]).lower())
+
+
+                    # Wasteland
                     elif data["command"] == "ADD":
                         if "managedId" in data["newItem"].keys() and isinstance(data["newItem"]["managedId"], str):
                             if data["newItem"]["managedId"].startswith("managed"):
@@ -77,7 +89,7 @@ async def websocket_handler(websocket, path):
                 try:
                     message = webstudio_to_q[channel].get_nowait()
                     command = message.split(":")[0]
-                    print("Websocket Out:", command)
+                    #print("Websocket Out:", command)
                     if command == "STATUS":
                         try:
                             message = message.split("OKAY:")[1]

@@ -68,7 +68,7 @@ class Player():
         "remaining": 0,
         "length": 0,
         "auto_advance": True,
-        "repeat": "NONE",  # NONE, ONE or ALL
+        "repeat": "none",  # none, one or all
         "play_on_load": False,
         "output": None,
         "show_plan": []
@@ -209,32 +209,21 @@ class Player():
             self._updateState(pos=pos)
         return True
 
-    def set_auto_advance(self, message: int) -> bool:
-        if message == 0:
-            self.state.update("auto_advance", False)
-            return True  # It did it
-        elif message == 1:
-            self.state.update("auto_advance", True)
-            return True
-        else:
-            return False
+    def set_auto_advance(self, message: bool) -> bool:
+        self.state.update("auto_advance", message)
+        return True
+
 
     def set_repeat(self, message: str) -> bool:
-        if message in ["ALL", "ONE", "NONE"]:
+        if message in ["all", "one", "none"]:
             self.state.update("repeat", message)
             return True
         else:
             return False
 
-    def set_play_on_load(self, message: int) -> bool:
-        if message == 0:
-            self.state.update("play_on_load", False)
-            return True  # It did it
-        elif message == 1:
-            self.state.update("play_on_load", True)
-            return True
-        else:
-            return False
+    def set_play_on_load(self, message: bool) -> bool:
+        self.state.update("play_on_load", message)
+        return True
 
     # Show Plan Related Methods
     def get_plan(self, message: int):
@@ -389,7 +378,7 @@ class Player():
 
         global already_stopped
 
-        print(already_stopped, self.state.state["remaining"], self.isPlaying)
+        #print(already_stopped, self.state.state["remaining"], self.isPlaying)
 
         if loaded_item == None or already_stopped or (self.state.state["remaining"] > 1):
             return
@@ -465,7 +454,7 @@ class Player():
                 response += "FAIL:" + msg
         else:
             response += "FAIL"
-        self.logger.log.info(("Preparing to send: {}".format(response)))
+        self.logger.log.debug(("Preparing to send: {}".format(response)))
         if self.out_q:
             self.logger.log.info(("Sending: {}".format(response)))
             self.out_q.put(response)
@@ -528,6 +517,7 @@ class Player():
             try:
                 try:
                     self.last_msg = in_q.get_nowait()
+                    self.logger.log.info("Recieved message: {}".format(self.last_msg))
                 except Empty:
                     # The incomming message queue was empty,
                     # skip message processing
@@ -542,7 +532,6 @@ class Player():
                         self._retMsg(self.output(split[1]))
 
                     elif self.isInit:
-
                         message_types: Dict[str, Callable[..., Any]] = { # TODO Check Types
                             "STATUS": lambda: self._retMsg(self.status, True),
 
@@ -552,9 +541,9 @@ class Player():
                             "UNPAUSE": lambda: self._retMsg(self.unpause()),
                             "STOP": lambda: self._retMsg(self.stop()),
                             "SEEK": lambda: self._retMsg(self.seek(float(self.last_msg.split(":")[1]))),
-                            "AUTOADVANCE": lambda: self._retMsg(self.set_auto_advance(int(self.last_msg.split(":")[1]))),
+                            "AUTOADVANCE": lambda: self._retMsg(self.set_auto_advance((self.last_msg.split(":")[1] == "True"))),
                             "REPEAT": lambda: self._retMsg(self.set_repeat(self.last_msg.split(":")[1])),
-                            "PLAYONLOAD": lambda: self._retMsg(self.set_play_on_load(int(self.last_msg.split(":")[1]))),
+                            "PLAYONLOAD": lambda: self._retMsg(self.set_play_on_load((self.last_msg.split(":")[1] == "True"))),
 
                             # Show Plan Items
                             "GET_PLAN": lambda: self._retMsg(self.get_plan(int(self.last_msg.split(":")[1]))),

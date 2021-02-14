@@ -80,7 +80,7 @@ class PlayerHandler():
                 try:
                     message = channel_from_q[channel].get_nowait()
                     websocket_to_q[channel].put(message)
-                    print("Player Handler saw:", message.split(":")[0])
+                    #print("Player Handler saw:", message.split(":")[0])
                     ui_to_q[channel].put(message)
                 except:
                     pass

@@ -12,9 +12,9 @@ class ServerState(TypedDict):
   num_channels: int
 
 class RepeatMode(Enum):
-  NONE = 0
-  ONE = 1
-  ALL = 2
+  none = 0
+  one = 1
+  all = 2
 
 class PlayerState(TypedDict):
   initialised: bool
