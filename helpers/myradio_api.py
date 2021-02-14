@@ -17,34 +17,77 @@
         November 2020
 """
 import requests
-
+import json
 import config
 from plan import PlanItem
 from helpers.os_environment import resolve_external_file_path
-
-
+from helpers.logging_manager import LoggingManager
+from logging import CRITICAL, INFO, DEBUG
 class MyRadioAPI():
+  logger = None
 
-  @classmethod
-  def get_filename(cls, item: PlanItem):
+  def __init__(self, logger: LoggingManager):
+    self.logger = logger
+
+  def get_non_api_call(self, url):
+
+    url = "{}{}".format(config.MYRADIO_BASE_URL, url)
+
+    if "?" in url:
+      url += "&api_key={}".format(config.API_KEY)
+    else:
+      url += "?api_key={}".format(config.API_KEY)
+
+    self._log("Requesting non-API URL: " + url)
+    request = requests.get(url, timeout=10)
+    self._log("Finished request.")
+
+    if request.status_code != 200:
+      self._logException("Failed to get API request. Status code: " + str(request.status_code))
+      self._logException(str(request.content))
+      return None
+
+    return request
+
+  def get_apiv2_call(self, url):
+
+    url = "{}/v2{}".format(config.MYRADIO_API_URL, url)
+
+    if "?" in url:
+      url += "&api_key={}".format(config.API_KEY)
+    else:
+      url += "?api_key={}".format(config.API_KEY)
+
+    self._log("Requesting API V2 URL: " + url)
+    request = requests.get(url, timeout=10)
+    self._log("Finished request.")
+
+    if request.status_code != 200:
+      self._logException("Failed to get API request. Status code: " + str(request.status_code))
+      self._logException(str(request.content))
+      return None
+
+    return request
+
+  def get_filename(self, item: PlanItem):
     format = "mp3" # TODO: Maybe we want this customisable?
     if item.trackId:
       itemType = "track"
       id = item.trackId
-      url = "{}/NIPSWeb/secure_play?trackid={}&{}&api_key={}".format(config.MYRADIO_BASE_URL, id, format, config.API_KEY)
+      url = "/NIPSWeb/secure_play?trackid={}&{}".format(id, format)
 
     elif item.managedId:
       itemType = "managed"
       id = item.managedId
-      url = "{}/NIPSWeb/managed_play?managedid={}&api_key={}".format(config.MYRADIO_BASE_URL, id, config.API_KEY)
+      url = "/NIPSWeb/managed_play?managedid={}".format(id)
 
     else:
       return None
 
-    request = requests.get(url, timeout=10)
 
-    if request.status_code != 200:
-      # TODO: Log something here
+    request = self.get_non_api_call(url)
+
+    if not request:
       return None
 
     filename: str = resolve_external_file_path("/music-tmp/{}-{}.{}".format(itemType, id, format))
@@ -53,3 +96,23 @@ class MyRadioAPI():
       file.write(request.content)
 
     return filename
+
+  def get_showplan(self, timeslotid: int):
+
+    url = "/timeslot/{}/showplan".format(timeslotid)
+    request = self.get_apiv2_call(url)
+
+    if not request:
+      self._logException("Failed to get show plan.")
+      return None
+
+    return json.loads(request.content)["payload"]
+
+
+
+  def _log(self, text:str, level: int = INFO):
+      self.logger.log.log(level, "MyRadio API: " + text)
+
+  def _logException(self, text:str):
+      self.logger.log.exception("MyRadio API: " + text)
+

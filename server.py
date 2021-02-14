@@ -24,6 +24,7 @@ from typing import Any, Optional
 import json
 import setproctitle
 import logging
+
 from helpers.os_environment import isMacOS
 from helpers.device_manager import DeviceManager
 
@@ -48,6 +49,8 @@ default_state = {
     "num_channels": 3
 }
 
+logger = None
+state = None
 
 class BAPSicleServer():
 
@@ -56,6 +59,13 @@ class BAPSicleServer():
         process_title = "Server"
         setproctitle.setproctitle(process_title)
         multiprocessing.current_process().name = process_title
+
+        global logger
+        global state
+        logger = LoggingManager("BAPSicleServer")
+
+        state = StateManager("BAPSicleServer", logger, default_state)
+        state.update("server_version", config.VERSION)
 
         asyncio.get_event_loop().run_until_complete(startServer())
         asyncio.get_event_loop().run_forever()
@@ -69,16 +79,21 @@ class PlayerHandler():
             for channel in range(len(channel_from_q)):
                 try:
                     message = channel_from_q[channel].get_nowait()
-                    websocket_to_q[channel].put(message)
-                    ui_to_q[channel].put(message)
+                    print("Player Handler saw:", message.split(":")[0])
+                    try:
+                        websocket_to_q[channel].put_nowait(message)
+                    except Exception as e:
+                        print(e)
+                        pass
+                    try:
+                        ui_to_q[channel].put_nowait(message)
+                    except Exception as e:
+                        print(e)
+                        pass
                 except:
                     pass
             time.sleep(0.01)
 
-logger = LoggingManager("BAPSicleServer")
-
-state = StateManager("BAPSicleServer", logger, default_state)
-state.update("server_version", config.VERSION)
 
 app = Flask(__name__, static_url_path='')
 
@@ -306,6 +321,14 @@ def channel_json(channel: int):
         return jsonify(status(channel))
     except:
         return status(channel)
+
+@app.route("/plan/load/<int:timeslotid>")
+def load_showplan(timeslotid: int):
+
+    for channel in channel_to_q:
+        channel.put("GET_PLAN:" + str(timeslotid))
+
+    return ui_status()
 
 def status(channel: int):
     channel_to_q[channel].put("STATUS")

@@ -24,6 +24,7 @@ async def websocket_handler(websocket, path):
             async for message in websocket:
                 data = json.loads(message)
                 channel = int(data["channel"])
+                print(data)
                 if "command" in data.keys():
                     if data["command"] == "PLAY":
                         channel_to_q[channel].put("PLAY")
@@ -38,7 +39,6 @@ async def websocket_handler(websocket, path):
                     elif data["command"] == "LOAD":
                         channel_to_q[channel].put("LOAD:" + str(data["weight"]))
                     elif data["command"] == "ADD":
-                        print(data)
                         if "managedId" in data["newItem"].keys() and isinstance(data["newItem"]["managedId"], str):
                             if data["newItem"]["managedId"].startswith("managed"):
                                 managed_id = int(data["newItem"]["managedId"].split(":")[1])
@@ -76,15 +76,21 @@ async def websocket_handler(websocket, path):
             for channel in range(len(webstudio_to_q)):
                 try:
                     message = webstudio_to_q[channel].get_nowait()
-                    if not message.startswith("STATUS"):
-                        continue # Ignore non state updates for now.
-                    try:
-                        message = message.split("OKAY:")[1]
-                        message = json.loads(message)
-                    except:
-                        pass
+                    command = message.split(":")[0]
+                    print("Websocket Out:", command)
+                    if command == "STATUS":
+                        try:
+                            message = message.split("OKAY:")[1]
+                            message = json.loads(message)
+                        except:
+                            continue
+                    elif command == "POS":
+                        message = message.split(":")[1]
+                    else:
+                        continue
+
                     data = json.dumps({
-                        "command": "STATUS",
+                        "command": command,
                         "data": message,
                         "channel": channel
                     })
