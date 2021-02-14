@@ -71,14 +71,14 @@ class MyRadioAPI():
 
   def get_filename(self, item: PlanItem):
     format = "mp3" # TODO: Maybe we want this customisable?
-    if item.trackId:
+    if item.trackid:
       itemType = "track"
-      id = item.trackId
+      id = item.trackid
       url = "/NIPSWeb/secure_play?trackid={}&{}".format(id, format)
 
-    elif item.managedId:
+    elif item.managedid:
       itemType = "managed"
-      id = item.managedId
+      id = item.managedid
       url = "/NIPSWeb/managed_play?managedid={}".format(id)
 
     else:

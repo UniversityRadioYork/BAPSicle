@@ -49,26 +49,8 @@ async def websocket_handler(websocket, path):
                         channel_to_q[channel].put("REPEAT:" + str(data["mode"]).lower())
 
 
-                    # Wasteland
                     elif data["command"] == "ADD":
-                        if "managedId" in data["newItem"].keys() and isinstance(data["newItem"]["managedId"], str):
-                            if data["newItem"]["managedId"].startswith("managed"):
-                                managed_id = int(data["newItem"]["managedId"].split(":")[1])
-                            else:
-                                managed_id = int(data["newItem"]["managedId"])
-                        else:
-                            managed_id = None
-                        new_item: Dict[str, any] = {
-                            "channelWeight": int(data["newItem"]["weight"]),
-                            "filename": None,
-                            "title":  data["newItem"]["title"],
-                            "artist":  data["newItem"]["artist"] if "artist" in data["newItem"].keys() else None,
-                            "timeslotItemId": int(data["newItem"]["timeslotItemId"]) if "timeslotItemId" in data["newItem"].keys() and data["newItem"]["timeslotItemId"] != None else None,
-                            "trackId": int(data["newItem"]["trackId"]) if "trackId" in data["newItem"].keys() and data["newItem"]["trackId"] != None else None,
-                            "recordId": int(data["newItem"]["trackId"]) if "trackId" in data["newItem"].keys() and data["newItem"]["trackId"] != None else None,
-                            "managedId": managed_id
-                        }
-                        channel_to_q[channel].put("ADD:" + json.dumps(new_item))
+                        channel_to_q[channel].put("ADD:" + json.dumps(data["newItem"]))
                     elif data["command"] == "REMOVE":
                         channel_to_q[channel].put("REMOVE:" + str(data["weight"]))
 

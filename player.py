@@ -142,6 +142,8 @@ class Player():
     # Audio Playout Related Methods
 
     def play(self, pos: float = 0):
+        if self.isPlaying or not self.isLoaded:
+            return
         global starting
         global already_stopped
         starting = True
@@ -233,18 +235,9 @@ class Player():
         if len(plan) > channel:
             for plan_item in plan[str(channel)]:
                 try:
-                    new_item: Dict[str, any] = {
-                        "channelWeight": int(plan_item["weight"]),
-                        "filename": None,
-                        "title":  plan_item["title"],
-                        "artist":  plan_item["artist"] if "artist" in plan_item.keys() else None,
-                        "timeslotItemId": int(plan_item["timeslotitemid"]) if "timeslotitemid" in plan_item.keys() and plan_item["timeslotitemid"] != None else None,
-                        "trackId": int(plan_item["trackid"]) if "managedid" not in plan_item.keys() and plan_item["trackid"] != None else None,
-                        "recordId": int(plan_item["trackid"]) if "trackid" in plan_item.keys() and plan_item["trackid"] != None else None, # TODO This is wrong.
-                        "managedId": int(plan_item["managedid"]) if "managedid" in plan_item.keys() and plan_item["managedid"] != None else None,
-                    }
-                    self.add_to_plan(new_item)
-                except:
+                    self.add_to_plan(plan_item)
+                except Exception as e:
+                    self.logger.log.critical("Failed to add item to show plan: {}".format(e))
                     continue
 
         return True
@@ -254,10 +247,10 @@ class Player():
         self.state.update("show_plan", self.state.state["show_plan"] + [PlanItem(new_item)])
         return True
 
-    def remove_from_plan(self, channel_weight: int) -> bool:
+    def remove_from_plan(self, weight: int) -> bool:
         plan_copy: List[PlanItem] = copy.copy(self.state.state["show_plan"])
         for i in plan_copy:
-            if i.channelWeight == channel_weight:
+            if i.weight == weight:
                 plan_copy.remove(i)
                 self.state.update("show_plan", plan_copy)
                 return True
@@ -267,7 +260,7 @@ class Player():
         self.state.update("show_plan", [])
         return True
 
-    def load(self, channelWeight: int):
+    def load(self, weight: int):
         if not self.isPlaying:
             self.unload()
 
@@ -276,12 +269,12 @@ class Player():
             loaded_item: Optional[PlanItem] = None
 
             for i in range(len(showplan)):
-                if showplan[i].channelWeight == channelWeight:
+                if showplan[i].weight == weight:
                     loaded_item = showplan[i]
                     break
 
             if loaded_item == None:
-                self.logger.log.error("Failed to find channelWeight: {}".format(channelWeight))
+                self.logger.log.error("Failed to find weight: {}".format(weight))
                 return False
 
             if (loaded_item.filename == "" or loaded_item.filename == None):
@@ -293,7 +286,7 @@ class Player():
             self.state.update("loaded_item", loaded_item)
 
             for i in range(len(showplan)):
-                if showplan[i].channelWeight == channelWeight:
+                if showplan[i].weight == weight:
                     self.state.update("show_plan", index=i, value=loaded_item)
                 break
                 # TODO: Update the show plan filenames
@@ -356,7 +349,7 @@ class Player():
 
         loadedItem = self.state.state["loaded_item"]
         if (loadedItem):
-            self.load(loadedItem.channelWeight)
+            self.load(loadedItem.weight)
         if wasPlaying:
             self.unpause()
 
@@ -401,14 +394,14 @@ class Player():
         # Auto Advance
         elif self.state.state["auto_advance"]:
             for i in range(len(self.state.state["show_plan"])):
-                if self.state.state["show_plan"][i].channelWeight == loaded_item.channelWeight:
+                if self.state.state["show_plan"][i].weight == loaded_item.weight:
                     if len(self.state.state["show_plan"]) > i+1:
-                        self.load(self.state.state["show_plan"][i+1].channelWeight)
+                        self.load(self.state.state["show_plan"][i+1].weight)
                         break
 
                     # Repeat All
                     elif self.state.state["repeat"] == "ALL":
-                        self.load(self.state.state["show_plan"][0].channelWeight)
+                        self.load(self.state.state["show_plan"][0].weight)
 
         # Play on Load
         if self.state.state["play_on_load"]:
@@ -498,7 +491,7 @@ class Player():
         loaded_item = loaded_state["loaded_item"]
         if loaded_item:
             self.logger.log.info("Loading filename: " + str(loaded_item.filename))
-            self.load(loaded_item.channelWeight)
+            self.load(loaded_item.weight)
 
             if loaded_state["pos_true"] != 0:
                 self.logger.log.info("Seeking to pos_true: " + str(loaded_state["pos_true"]))
