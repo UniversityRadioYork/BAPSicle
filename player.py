@@ -470,6 +470,10 @@ class Player():
             self.logger.log.info(("Sending: {}".format(response)))
             self.out_q.put(response)
 
+    def _send_status(self):
+        self.last_msg = "STATUS"
+        self._retMsg(self.status, True)
+
     def __init__(self, channel: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue):
 
         process_title = "Player: Channel " + str(channel)
@@ -488,6 +492,9 @@ class Player():
 
         self.state = StateManager("channel" + str(channel), self.logger,
                                   self.__default_state, self.__rate_limited_params)
+
+        self.state.add_callback(self._send_status)
+
         self.state.update("channel", channel)
 
         loaded_state = copy.copy(self.state.state)
@@ -565,11 +572,7 @@ class Player():
                         if message_type in message_types.keys():
                             message_types[message_type]()
 
-                            if message_type != "STATUS":
-                                ## Then a super hacky hack. Send the status again to update Webstudio
-                                self._updateState()
-                                self.last_msg = "STATUS"
-                                self._retMsg(self.status, True)
+
 
                         elif (self.last_msg == 'QUIT'):
                             self.running = False
