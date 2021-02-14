@@ -1,14 +1,14 @@
 import asyncio
 import multiprocessing
 import queue
-from typing import List
+from typing import Dict, List, Optional
 import websockets
 import json
 
 baps_clients = set()
-channel_to_q = None
+channel_to_q: List[multiprocessing.Queue]
 webstudio_to_q: List[multiprocessing.Queue]
-server_name = None
+server_name: str
 
 
 
@@ -97,6 +97,8 @@ async def websocket_handler(websocket, path):
                     await asyncio.wait([conn.send(data) for conn in baps_clients])
                 except queue.Empty:
                     pass
+                except Exception as e:
+                    raise e
             await asyncio.sleep(0.01)
 
     from_webstudio = asyncio.create_task(handle_from_webstudio())

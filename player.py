@@ -52,6 +52,8 @@ class Player():
     last_time_update = None
     logger = None
     api = None
+    already_stopped = False
+    starting = False
 
     __default_state = {
         "initialised": False,
@@ -140,6 +142,9 @@ class Player():
     # Audio Playout Related Methods
 
     def play(self, pos: float = 0):
+        global starting
+        global already_stopped
+        starting = True
         try:
             mixer.music.play(0, pos)
             mixer.music.set_endevent(PLAYBACK_END)
@@ -148,6 +153,8 @@ class Player():
             self.logger.log.exception("Failed to play at pos: " + str(pos))
             return False
         self.state.update("paused", False)
+
+        already_stopped = False
         return True
 
     def pause(self):
@@ -182,6 +189,9 @@ class Player():
         self.state.update("pos_offset", 0)
         self.state.update("pos_true", 0)
         self.state.update("paused", False)
+
+        global already_stopped
+        already_stopped = True
 
         return True
         # return False
@@ -316,6 +326,10 @@ class Player():
             except:
                 self.logger.log.exception("Failed to update the length of item.")
                 return False
+
+            if self.state.state["play_on_load"]:
+                self.play()
+
         return True
 
     def unload(self):
@@ -363,11 +377,29 @@ class Player():
         loaded_item = self.state.state["loaded_item"]
         # check the existing state (not self.isPlaying)
         # Since this is called multiple times when pygame isn't playing.
-        if loaded_item == None or not self.isPlaying:
+
+        global starting
+
+        if starting:
+            print("Starting")
+            starting = False
             return
 
-        if self.out_q:
-            self.out_q.put("STOPPED") # Tell clients that we've stopped playing.
+
+
+        global already_stopped
+
+        print(already_stopped, self.state.state["remaining"], self.isPlaying)
+
+        if loaded_item == None or already_stopped or (self.state.state["remaining"] > 1):
+            return
+
+        mixer.music.set_endevent(NOEVENT)
+
+        already_stopped = True
+
+
+        stopping = True
 
         # Track has ended
         print("Finished", loaded_item.name)
@@ -375,6 +407,7 @@ class Player():
         # Repeat 1
         if self.state.state["repeat"] == "ONE":
             self.play()
+            stopping = False
 
         # Auto Advance
         elif self.state.state["auto_advance"]:
@@ -391,6 +424,12 @@ class Player():
         # Play on Load
         if self.state.state["play_on_load"]:
             self.play()
+            stopping = False
+
+        if stopping:
+            self.stop()
+            if self.out_q:
+                self.out_q.put("STOPPED") # Tell clients that we've stopped playing.
 
     def _updateState(self, pos: Optional[float] = None):
 

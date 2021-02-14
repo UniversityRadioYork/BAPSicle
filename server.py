@@ -79,20 +79,12 @@ class PlayerHandler():
             for channel in range(len(channel_from_q)):
                 try:
                     message = channel_from_q[channel].get_nowait()
+                    websocket_to_q[channel].put(message)
                     print("Player Handler saw:", message.split(":")[0])
-                    try:
-                        websocket_to_q[channel].put_nowait(message)
-                    except Exception as e:
-                        print(e)
-                        pass
-                    try:
-                        ui_to_q[channel].put_nowait(message)
-                    except Exception as e:
-                        print(e)
-                        pass
+                    ui_to_q[channel].put(message)
                 except:
                     pass
-            time.sleep(0.01)
+            time.sleep(0.1)
 
 
 app = Flask(__name__, static_url_path='')
@@ -409,7 +401,7 @@ async def startServer():
         channel_to_q.append(multiprocessing.Queue())
         channel_from_q.append(multiprocessing.Queue())
         ui_to_q.append(multiprocessing.Queue())
-        websocket_to_q.append(multiprocessing.Queue())
+        websocket_to_q.append(multiprocessing.Manager().Queue())
         channel_p.append(
             multiprocessing.Process(
                 target=player.Player,
@@ -422,10 +414,10 @@ async def startServer():
 
 
 
-    player_handler = multiprocessing.Process(target=PlayerHandler, args=[channel_from_q, websocket_to_q, ui_to_q])
+    player_handler = multiprocessing.Process(target=PlayerHandler, args=(channel_from_q, websocket_to_q, ui_to_q))
     player_handler.start()
 
-    websockets_server = multiprocessing.Process(target=WebsocketServer, args=[channel_to_q, channel_from_q, state])
+    websockets_server = multiprocessing.Process(target=WebsocketServer, args=(channel_to_q, channel_from_q, state))
     websockets_server.start()
 
     if not isMacOS():
