@@ -232,6 +232,7 @@ class Player():
         plan = self.api.get_showplan(message)
         self.clear_channel_plan()
         channel = self.state.state["channel"]
+        self.logger.log.info(plan)
         if len(plan) > channel:
             for plan_item in plan[str(channel)]:
                 try:
@@ -242,18 +243,37 @@ class Player():
 
         return True
 
-
     def add_to_plan(self, new_item: Dict[str, Any]) -> bool:
-        self.state.update("show_plan", self.state.state["show_plan"] + [PlanItem(new_item)])
+        new_item_obj = PlanItem(new_item)
+        plan_copy: List[PlanItem] = copy.copy(self.state.state["show_plan"])
+        # Shift any plan items after the new position down one to make space.
+        for item in plan_copy:
+            if item.weight >= new_item_obj.weight:
+                item.weight += 1
+
+
+        plan_copy += [new_item_obj] # Add the new item.
+
+        def sort_weight(e: PlanItem):
+            return e.weight
+
+        plan_copy.sort(key=sort_weight) # Sort into weighted order.
+
+        self.state.update("show_plan", plan_copy)
         return True
 
     def remove_from_plan(self, weight: int) -> bool:
         plan_copy: List[PlanItem] = copy.copy(self.state.state["show_plan"])
+        found = False
         for i in plan_copy:
             if i.weight == weight:
                 plan_copy.remove(i)
-                self.state.update("show_plan", plan_copy)
-                return True
+                found = True
+            elif i.weight > weight: # Shuffle up the weights of the items following the deleted one.
+                i.weight -= 1
+        if found:
+            self.state.update("show_plan", plan_copy)
+            return True
         return False
 
     def clear_channel_plan(self) -> bool:

@@ -48,6 +48,13 @@ async def websocket_handler(websocket, path):
                     elif data["command"] == "REPEAT":
                         channel_to_q[channel].put("REPEAT:" + str(data["mode"]).lower())
 
+                    elif data["command"] == "MOVE":
+                        # Should we trust the client with the item info?
+                        new_channel = int(data["new_channel"])
+                        channel_to_q[channel].put("REMOVE:" + str(data["weight"]))
+                        item = data["item"]
+                        item["weight"] = int(data["new_weight"])
+                        channel_to_q[new_channel].put("ADD:" + json.dumps(item))
 
                     elif data["command"] == "ADD":
                         channel_to_q[channel].put("ADD:" + json.dumps(data["newItem"]))

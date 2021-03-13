@@ -28,6 +28,10 @@ class PlanItem:
     def weight(self) -> int:
         return self._weight
 
+    @weight.setter
+    def weight(self, value: int):
+        self._weight = value
+
     @property
     def timeslotitemid(self) -> int:
         return self._timeslotitemid
