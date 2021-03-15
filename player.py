@@ -142,7 +142,7 @@ class Player():
     # Audio Playout Related Methods
 
     def play(self, pos: float = 0):
-        if self.isPlaying or not self.isLoaded:
+        if not self.isLoaded:
             return
         global starting
         global already_stopped
