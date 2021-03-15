@@ -20,7 +20,8 @@ import queue
 import threading
 import time
 import player
-from flask import Flask, render_template, send_from_directory, request, jsonify
+from flask import Flask, render_template, send_from_directory, request, jsonify, abort
+from flask_cors import CORS, cross_origin
 from typing import Any, Optional
 import json
 import setproctitle
@@ -89,6 +90,7 @@ class PlayerHandler():
 
 
 app = Flask(__name__, static_url_path='')
+CORS(app, supports_credentials=True) # Allow ALL CORS!!!
 
 log = logging.getLogger('werkzeug')
 log.disabled = True
@@ -186,6 +188,19 @@ def restart_server():
     state.update("ws_port", int(request.form["ws_port"]))
     stopServer(restart=True)
     startServer()
+
+
+# Get audio for UI to generate waveforms.
+
+@app.route("/audiofile/<type>/<int:id>")
+#@cross_origin()
+def audio_file(type: str, id: int):
+    print("Hit!")
+    if type not in ["managed", "track"]:
+        abort(404)
+    return send_from_directory('music-tmp', type + "-" + str(id) + ".mp3")
+
+
 
 # Channel Audio Options
 
