@@ -94,10 +94,10 @@ log = logging.getLogger('werkzeug')
 log.disabled = True
 app.logger.disabled = True
 
-channel_to_q = []
-channel_from_q = []
-ui_to_q = []
-websocket_to_q = []
+channel_to_q: List[queue.Queue] = []
+channel_from_q: List[queue.Queue] = []
+ui_to_q: List[queue.Queue] = []
+websocket_to_q: List[queue.Queue] = []
 channel_p = []
 
 stopping = False
@@ -284,11 +284,11 @@ def add_to_plan(channel: int):
     return new_item
 
 #@app.route("/player/<int:channel>/move/<int:channel_weight>/<int:position>")
-def move_plan(channel: int, channel_weight: int, position: int):
-    channel_to_q[channel].put("MOVE:" + json.dumps({"channel_weight": channel_weight, "position": position}))
+#def move_plan(channel: int, channel_weight: int, position: int):
+#    channel_to_q[channel].put("MOVE:" + json.dumps({"channel_weight": channel_weight, "position": position}))#
 
     # TODO Return
-    return True
+#    return True
 
 #@app.route("/player/<int:channel>/remove/<int:channel_weight>")
 def remove_plan(channel: int, channel_weight: int):
@@ -324,6 +324,9 @@ def load_showplan(timeslotid: int):
     return ui_status()
 
 def status(channel: int):
+    while (not ui_to_q[channel].empty()):
+        ui_to_q[channel].get() # Just waste any previous status responses.
+
     channel_to_q[channel].put("STATUS")
     i = 0
     while True:
