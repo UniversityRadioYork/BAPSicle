@@ -442,6 +442,9 @@ class Player():
             elif self.isPlaying:
                 # Get one last update in, incase we're about to pause/stop it.
                 self.state.update("pos", max(0, mixer.music.get_pos()/1000))
+            elif not self.isPaused:
+                self.state.update("pos", 0) # Reset back to 0 if stopped.
+                self.state.update("pos_offset", 0)
             self.state.update("playing", self.isPlaying)
             self.state.update("loaded", self.isLoaded)
 
@@ -450,7 +453,9 @@ class Player():
             self.state.update("remaining", self.state.state["length"] - self.state.state["pos_true"])
 
     def _ping_times(self):
-        if self.last_time_update == None or self.last_time_update + 1 < time.time():
+
+        UPDATES_FREQ_SECS = 0.2
+        if self.last_time_update == None or self.last_time_update + UPDATES_FREQ_SECS < time.time():
             self.last_time_update = time.time()
             self.out_q.put("POS:" + str(int(self.state.state["pos_true"])))
 
