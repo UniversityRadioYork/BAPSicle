@@ -16,6 +16,7 @@
     Date:
         November 2020
 """
+from typing import Optional
 import requests
 import json
 import config
@@ -69,6 +70,37 @@ class MyRadioAPI():
 
     return request
 
+
+
+
+  # Show plans
+
+
+  def get_showplans(self):
+    url = "/timeslot/currentandnext"
+    request = self.get_apiv2_call(url)
+
+    if not request:
+      self._logException("Failed to get list of show plans.")
+      return None
+
+    return json.loads(request.content)["payload"]
+
+  def get_showplan(self, timeslotid: int):
+
+    url = "/timeslot/{}/showplan".format(timeslotid)
+    request = self.get_apiv2_call(url)
+
+    if not request:
+      self._logException("Failed to get show plan.")
+      return None
+
+    return json.loads(request.content)["payload"]
+
+
+
+  # Audio Library
+
   def get_filename(self, item: PlanItem):
     format = "mp3" # TODO: Maybe we want this customisable?
     if item.trackid:
@@ -97,13 +129,12 @@ class MyRadioAPI():
 
     return filename
 
-  def get_showplan(self, timeslotid: int):
-
-    url = "/timeslot/{}/showplan".format(timeslotid)
+  def get_track_search(self, title: Optional[str], artist: Optional[str], limit: int = 100):
+    url = "/track/search?title={}&artist={}&digitised=1&limit={}".format(title if title else "", artist if artist else "", limit)
     request = self.get_apiv2_call(url)
 
     if not request:
-      self._logException("Failed to get show plan.")
+      self._logException("Failed to search for track.")
       return None
 
     return json.loads(request.content)["payload"]

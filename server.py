@@ -12,6 +12,7 @@
     Date:
         October, November 2020
 """
+from api_handler import APIHandler
 import asyncio
 from controllers.mattchbox_usb import MattchBox
 import copy
@@ -40,6 +41,8 @@ from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
 from websocket_server import WebsocketServer
 
+from helpers.myradio_api import MyRadioAPI
+
 setproctitle.setproctitle("BAPSicle - Server")
 
 default_state = {
@@ -51,8 +54,9 @@ default_state = {
     "num_channels": 3
 }
 
-logger = None
-state = None
+logger: LoggingManager
+state: StateManager
+api: MyRadioAPI
 
 class BAPSicleServer():
 
@@ -65,6 +69,8 @@ class BAPSicleServer():
         global logger
         global state
         logger = LoggingManager("BAPSicleServer")
+        global api
+        api = MyRadioAPI(logger)
 
         state = StateManager("BAPSicleServer", logger, default_state)
         state.update("server_version", config.VERSION)
@@ -94,7 +100,11 @@ CORS(app, supports_credentials=True) # Allow ALL CORS!!!
 
 log = logging.getLogger('werkzeug')
 log.disabled = True
+
 app.logger.disabled = True
+
+api_from_q: queue.Queue
+api_to_q: queue.Queue
 
 channel_to_q: List[queue.Queue] = []
 channel_from_q: List[queue.Queue] = []
@@ -330,6 +340,65 @@ def channel_json(channel: int):
     except:
         return status(channel)
 
+
+
+@app.route("/plan/list")
+def list_showplans():
+    while (not api_from_q.empty()):
+        api_from_q.get() # Just waste any previous status responses.
+
+    api_to_q.put("LIST_PLANS")
+
+    while True:
+        try:
+            response = api_from_q.get_nowait()
+            if response.startswith("LIST_PLANS:"):
+                response = response[response.index(":")+1:]
+                #try:
+                #    response = json.loads(response)
+                #except Exception as e:
+                #    raise e
+                return response
+
+        except queue.Empty:
+            pass
+
+        time.sleep(0.1)
+
+@app.route("/library/search/<type>")
+def search_library(type: str):
+
+    if type not in ["managed", "track"]:
+        abort(404)
+
+    while (not api_from_q.empty()):
+        api_from_q.get() # Just waste any previous status responses.
+
+    params = json.dumps({
+        "title": request.args.get('title'),
+        "artist": request.args.get('artist')
+    })
+    api_to_q.put("SEARCH_TRACK:{}".format(params))
+
+    while True:
+        try:
+            response = api_from_q.get_nowait()
+            if response.startswith("SEARCH_TRACK:"):
+                response = response[response.index(":")+1:]
+                #try:
+                #    response = json.loads(response)
+                #except Exception as e:
+                #    raise e
+                return response
+
+        except queue.Empty:
+            pass
+
+        time.sleep(0.1)
+
+
+
+
 @app.route("/plan/load/<int:timeslotid>")
 def load_showplan(timeslotid: int):
 
@@ -338,12 +407,17 @@ def load_showplan(timeslotid: int):
 
     return ui_status()
 
+
+
+
+
+
 def status(channel: int):
     while (not ui_to_q[channel].empty()):
         ui_to_q[channel].get() # Just waste any previous status responses.
 
     channel_to_q[channel].put("STATUS")
-    i = 0
+
     while True:
         try:
             response = ui_to_q[channel].get_nowait()
@@ -430,8 +504,11 @@ async def startServer():
         )
         channel_p[channel].start()
 
-
-
+    global api_from_q, api_to_q
+    api_to_q = multiprocessing.Queue()
+    api_from_q = multiprocessing.Queue()
+    api_handler = multiprocessing.Process(target=APIHandler, args=(api_to_q, api_from_q))
+    api_handler.start()
 
     player_handler = multiprocessing.Process(target=PlayerHandler, args=(channel_from_q, websocket_to_q, ui_to_q))
     player_handler.start()

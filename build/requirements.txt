@@ -1,5 +1,6 @@
 pygame==2.0.0.dev24
 flask
+flask-cors
 mutagen
 sounddevice
 autopep8
