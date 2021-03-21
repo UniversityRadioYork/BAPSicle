@@ -23,54 +23,66 @@ async def websocket_handler(websocket, path):
         try:
             async for message in websocket:
                 data = json.loads(message)
-                channel = int(data["channel"])
                 print(data)
-                if "command" in data.keys():
-                    if data["command"] == "PLAY":
-                        channel_to_q[channel].put("PLAY")
-                    elif data["command"] == "PAUSE":
-                        channel_to_q[channel].put("PAUSE")
-                    elif data["command"] == "UNPAUSE":
-                        channel_to_q[channel].put("UNPAUSE")
-                    elif data["command"] == "STOP":
-                        channel_to_q[channel].put("STOP")
-                    elif data["command"] == "SEEK":
-                        channel_to_q[channel].put("SEEK:" + str(data["time"]))
-                    elif data["command"] == "LOAD":
-                        channel_to_q[channel].put("LOAD:" + str(data["weight"]))
+                if not "channel" in data:
+                    # Didn't specify a channel, send to all.
+                    for channel in range(len(channel_to_q)):
+                        sendCommand(channel, data)
+                else:
+                    channel = int(data["channel"])
+                    sendCommand(channel, data)
 
-                    elif data["command"] == "AUTOADVANCE":
-                        channel_to_q[channel].put("AUTOADVANCE:" + str(data["enabled"]))
-
-                    elif data["command"] == "PLAYONLOAD":
-                        channel_to_q[channel].put("PLAYONLOAD:" + str(data["enabled"]))
-
-                    elif data["command"] == "REPEAT":
-                        channel_to_q[channel].put("REPEAT:" + str(data["mode"]).lower())
-
-                    elif data["command"] == "MOVE":
-                        # Should we trust the client with the item info?
-                        new_channel = int(data["new_channel"])
-                        channel_to_q[channel].put("REMOVE:" + str(data["weight"]))
-                        item = data["item"]
-                        item["weight"] = int(data["new_weight"])
-                        channel_to_q[new_channel].put("ADD:" + json.dumps(item))
-
-                    elif data["command"] == "ADD":
-                        channel_to_q[channel].put("ADD:" + json.dumps(data["newItem"]))
-                    elif data["command"] == "REMOVE":
-                        channel_to_q[channel].put("REMOVE:" + str(data["weight"]))
 
                 await asyncio.wait([conn.send(message) for conn in baps_clients])
 
         except websockets.exceptions.ConnectionClosedError as e:
             print("RIP {}, {}".format(websocket, e))
 
+        # TODO: Proper Logging
         except Exception as e:
             print("Exception", e)
 
         finally:
             baps_clients.remove(websocket)
+
+    def sendCommand(channel, data):
+        if "command" in data.keys():
+            if data["command"] == "PLAY":
+                channel_to_q[channel].put("PLAY")
+            elif data["command"] == "PAUSE":
+                channel_to_q[channel].put("PAUSE")
+            elif data["command"] == "UNPAUSE":
+                channel_to_q[channel].put("UNPAUSE")
+            elif data["command"] == "STOP":
+                channel_to_q[channel].put("STOP")
+            elif data["command"] == "SEEK":
+                channel_to_q[channel].put("SEEK:" + str(data["time"]))
+            elif data["command"] == "LOAD":
+                channel_to_q[channel].put("LOAD:" + str(data["weight"]))
+
+            elif data["command"] == "AUTOADVANCE":
+                channel_to_q[channel].put("AUTOADVANCE:" + str(data["enabled"]))
+
+            elif data["command"] == "PLAYONLOAD":
+                channel_to_q[channel].put("PLAYONLOAD:" + str(data["enabled"]))
+
+            elif data["command"] == "REPEAT":
+                channel_to_q[channel].put("REPEAT:" + str(data["mode"]).lower())
+
+            elif data["command"] == "MOVE":
+                # Should we trust the client with the item info?
+                new_channel = int(data["new_channel"])
+                channel_to_q[channel].put("REMOVE:" + str(data["weight"]))
+                item = data["item"]
+                item["weight"] = int(data["new_weight"])
+                channel_to_q[new_channel].put("ADD:" + json.dumps(item))
+
+            elif data["command"] == "ADD":
+                channel_to_q[channel].put("ADD:" + json.dumps(data["newItem"]))
+            elif data["command"] == "REMOVE":
+                channel_to_q[channel].put("REMOVE:" + str(data["weight"]))
+            elif data["command"] == "GET_PLAN":
+                channel_to_q[channel].put("GET_PLAN:"+ str(data["timeslotId"]))
 
     async def handle_to_webstudio():
         while True:

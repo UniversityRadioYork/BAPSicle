@@ -77,14 +77,29 @@ class MyRadioAPI():
 
 
   def get_showplans(self):
-    url = "/timeslot/currentandnext"
+    url = "/timeslot/currentandnextobjects?n=10"
     request = self.get_apiv2_call(url)
 
     if not request:
       self._logException("Failed to get list of show plans.")
       return None
 
-    return json.loads(request.content)["payload"]
+    payload = json.loads(request.content)["payload"]
+
+    if not payload["current"]:
+      self._logException("API did not return a current show.")
+      return []
+
+    if not payload["next"]:
+      self._logException("API did not return a list of next shows.")
+      return []
+
+    shows = []
+    shows.append(payload["current"])
+    shows.extend(payload["next"])
+
+    # TODO filter out jukebox
+    return shows
 
   def get_showplan(self, timeslotid: int):
 

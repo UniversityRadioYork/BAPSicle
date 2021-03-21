@@ -41,8 +41,6 @@ from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
 from websocket_server import WebsocketServer
 
-from helpers.myradio_api import MyRadioAPI
-
 setproctitle.setproctitle("BAPSicle - Server")
 
 default_state = {
@@ -56,7 +54,6 @@ default_state = {
 
 logger: LoggingManager
 state: StateManager
-api: MyRadioAPI
 
 class BAPSicleServer():
 
@@ -69,8 +66,6 @@ class BAPSicleServer():
         global logger
         global state
         logger = LoggingManager("BAPSicleServer")
-        global api
-        api = MyRadioAPI(logger)
 
         state = StateManager("BAPSicleServer", logger, default_state)
         state.update("server_version", config.VERSION)
@@ -396,9 +391,6 @@ def search_library(type: str):
 
         time.sleep(0.1)
 
-
-
-
 @app.route("/plan/load/<int:timeslotid>")
 def load_showplan(timeslotid: int):
 
@@ -407,17 +399,11 @@ def load_showplan(timeslotid: int):
 
     return ui_status()
 
-
-
-
-
-
 def status(channel: int):
     while (not ui_to_q[channel].empty()):
         ui_to_q[channel].get() # Just waste any previous status responses.
 
     channel_to_q[channel].put("STATUS")
-
     while True:
         try:
             response = ui_to_q[channel].get_nowait()
