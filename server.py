@@ -260,7 +260,7 @@ def seek(channel: int, pos: float):
 @app.route("/player/<int:channel>/output/<name>")
 def output(channel: int, name: Optional[str]):
     channel_to_q[channel].put("UI:OUTPUT:" + str(name))
-    return ui_status()
+    return ui_config()
 
 
 @app.route("/player/<int:channel>/autoadvance/<int:state>")
@@ -443,11 +443,6 @@ def clear_all_channels():
     return ui_status()
 
 
-@app.route('/static/<path:path>')
-def send_static(path: str):
-    return send_from_directory('ui-static', path)
-
-
 @app.route("/logs")
 def list_logs():
     data = {
@@ -469,6 +464,13 @@ def send_logs(path):
     l.close()
     return render_template('log.html', data=data)
 
+@app.route('/favicon.ico')
+def serve_favicon():
+    return send_from_directory('ui-static', 'favicon.ico')
+
+@app.route('/static/<path:path>')
+def serve_static(path: str):
+    return send_from_directory('ui-static', path)
 
 async def startServer():
     process_title="startServer"
