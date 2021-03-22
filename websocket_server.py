@@ -17,7 +17,7 @@ async def websocket_handler(websocket, path):
     await websocket.send(json.dumps({"message": "Hello", "serverName": server_name}))
     print("New Client: {}".format(websocket))
     for channel in channel_to_q:
-        channel.put("STATUS")
+        channel.put("WEBSOCKET:STATUS")
 
     async def handle_from_webstudio():
         try:
@@ -46,59 +46,97 @@ async def websocket_handler(websocket, path):
             baps_clients.remove(websocket)
 
     def sendCommand(channel, data):
+        if channel not in range(len(channel_to_q)):
+            print("ERROR: Received channel number larger than server supported channels.")
+            return
+
         if "command" in data.keys():
-            if data["command"] == "PLAY":
-                channel_to_q[channel].put("PLAY")
-            elif data["command"] == "PAUSE":
-                channel_to_q[channel].put("PAUSE")
-            elif data["command"] == "UNPAUSE":
-                channel_to_q[channel].put("UNPAUSE")
-            elif data["command"] == "STOP":
-                channel_to_q[channel].put("STOP")
-            elif data["command"] == "SEEK":
-                channel_to_q[channel].put("SEEK:" + str(data["time"]))
-            elif data["command"] == "LOAD":
-                channel_to_q[channel].put("LOAD:" + str(data["weight"]))
+            command = data["command"]
 
-            elif data["command"] == "AUTOADVANCE":
-                channel_to_q[channel].put("AUTOADVANCE:" + str(data["enabled"]))
+            # Handle the general case
+            # Message format:
+            ## SOURCE:COMMAND:EXTRADATA
 
-            elif data["command"] == "PLAYONLOAD":
-                channel_to_q[channel].put("PLAYONLOAD:" + str(data["enabled"]))
+            message = "WEBSOCKET:" + command
 
-            elif data["command"] == "REPEAT":
-                channel_to_q[channel].put("REPEAT:" + str(data["mode"]).lower())
+            # If we just want PLAY, PAUSE etc, we're all done.
+            # Else, let's pipe in some extra info.
+            extra = ""
 
-            elif data["command"] == "MOVE":
-                # Should we trust the client with the item info?
-                new_channel = int(data["new_channel"])
-                channel_to_q[channel].put("REMOVE:" + str(data["weight"]))
-                item = data["item"]
-                item["weight"] = int(data["new_weight"])
-                channel_to_q[new_channel].put("ADD:" + json.dumps(item))
+            try:
+                if command == "SEEK":
+                    extra += str(data["time"])
+                elif command == "LOAD":
+                    extra += str(data["weight"])
+                elif command == "AUTOADVANCE":
+                    extra += str(data["enabled"])
+                elif command == "PLAYONLOAD":
+                    extra += str(data["enabled"])
+                elif command == "REPEAT":
+                    extra += str(data["mode"]).lower()
+                elif command == "ADD":
+                    extra += json.dumps(data["newItem"])
+                elif command == "REMOVE":
+                    extra += str(data["weight"])
+                elif command == "GET_PLAN":
+                    extra += str(data["timeslotId"])
 
-            elif data["command"] == "ADD":
-                channel_to_q[channel].put("ADD:" + json.dumps(data["newItem"]))
-            elif data["command"] == "REMOVE":
-                channel_to_q[channel].put("REMOVE:" + str(data["weight"]))
-            elif data["command"] == "GET_PLAN":
-                channel_to_q[channel].put("GET_PLAN:"+ str(data["timeslotId"]))
+                # SPECIAL CASE ALERT! We need to talk to two channels here.
+                elif command == "MOVE":
+                    # TODO Should we trust the client with the item info?
+
+                    # Tell the old channel to remove "weight"
+                    extra += str(data["weight"])
+
+                    # Now modify the item with the weight in the new channel
+                    new_channel = int(data["new_channel"])
+                    item = data["item"]
+                    item["weight"] = int(data["new_weight"])
+                    # Now send the special case.
+                    channel_to_q[new_channel].put("ADD:" + json.dumps(item))
+
+
+            except ValueError as e:
+                print("ERROR decoding extra data {} for command {} ".format(e, command))
+                pass
+
+            # Stick the message together and send!
+            if extra != "":
+                message += ":" + extra
+
+            try:
+                channel_to_q[channel].put(message)
+            except Exception as e:
+                print("ERRORL: Failed to send message {} to channel {}: {}".format(message, channel, e))
+
+        else:
+            print("ERROR: Command missing from message.")
 
     async def handle_to_webstudio():
         while True:
             for channel in range(len(webstudio_to_q)):
                 try:
                     message = webstudio_to_q[channel].get_nowait()
-                    command = message.split(":")[0]
+                    source = message.split(":")[0]
+
+                    # TODO ENUM
+                    if source not in ["WEBSOCKET","ALL"]:
+                        print("ERROR: Message received from invalid source to websocket_handler. Ignored.", source, message)
+                        continue
+
+                    command = message.split(":")[1]
                     #print("Websocket Out:", command)
                     if command == "STATUS":
                         try:
                             message = message.split("OKAY:")[1]
                             message = json.loads(message)
                         except:
-                            continue
+                            continue # TODO more logging
                     elif command == "POS":
-                        message = message.split(":")[1]
+                        try:
+                            message = message.split(":", 2)[2]
+                        except:
+                            continue
                     else:
                         continue
 
@@ -109,7 +147,7 @@ async def websocket_handler(websocket, path):
                     })
                     await asyncio.wait([conn.send(data) for conn in baps_clients])
                 except queue.Empty:
-                    pass
+                    continue
                 except Exception as e:
                     raise e
             await asyncio.sleep(0.01)

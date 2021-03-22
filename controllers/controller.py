@@ -8,7 +8,7 @@ class Controller():
   player_from_q: List[Queue]
 
   def __init__(self, player_to_q: List[Queue], player_from_q: List[Queue]):
-    self.receive()
+    self.handler()
     return
 
   # Registers a function for the controller class to call to tell BAPSicle to do something.
@@ -17,7 +17,7 @@ class Controller():
     return
 
   # Loop etc in here to process the data from your controller and call the callbacks.
-  def receive(self):
+  def handler(self):
     return
 
 

@@ -9,7 +9,7 @@ class MattchBox(Controller):
 
   def __init__(self, player_to_q: List[Queue], player_from_q: List[Queue]):
     # connect to serial port
-    self.ser = serial.serial_for_url("/dev/cu.usbserial-310", do_not_open=True)
+    self.ser = serial.serial_for_url("/dev/cu.usbserial-210", do_not_open=True)
     self.ser.baudrate = 2400
 
     # TOOD: These need to be split in the player handler.
@@ -22,22 +22,26 @@ class MattchBox(Controller):
         sys.stderr.write('Could not open serial port {}: {}\n'.format(self.ser.name, e))
         return
 
-    self.receive()
+    self.handler()
 
-  def receive(self):
-      while self.ser.is_open:
+  def handler(self):
+      while True:
         try:
-          line = int.from_bytes(self.ser.read(1), "big") # Endianness doesn't matter for 1 byte.
-          print("Controller got:", line)
-          if (line == 255):
-            print("Sending back KeepAlive")
-            self.ser.write(b'\xff') # Send 255 back.
-          elif (line in [1,3,5]):
-            self.player_to_q[int(line / 2)].put("PLAY")
-          elif (line in [2,4,6]):
-            self.player_to_q[int(line / 2)-1].put("STOP")
+          if self.ser.is_open:
+            line = int.from_bytes(self.ser.read(1), "big") # Endianness doesn't matter for 1 byte.
+            print("Controller got:", line)
+            if (line == 255):
+              print("Sending back KeepAlive")
+              self.ser.write(b'\xff') # Send 255 back.
+            elif (line in [1,3,5]):
+              self.sendToPlayer(int(line / 2), "PLAY")
+            elif (line in [2,4,6]):
+              self.sendToPlayer(int(line / 2)-1, "STOP")
 
         except:
           continue
+
+  def sendToPlayer(self, channel: int, msg:str):
+    self.player_to_q[channel].put("CONTROLLER:" + msg)
 
 

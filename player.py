@@ -44,11 +44,14 @@ from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
 
 PLAYBACK_END = USEREVENT + 1
+# TODO ENUM
+VALID_MESSAGE_SOURCES = ["WEBSOCKET", "UI", "CONTROLLER", "ALL"]
 class Player():
     state = None
     running = False
     out_q = None
     last_msg = ""
+    last_msg_source = ""
     last_time_update = None
     logger = None
     api = None
@@ -431,7 +434,7 @@ class Player():
         if stopping:
             self.stop()
             if self.out_q:
-                self.out_q.put("STOPPED") # Tell clients that we've stopped playing.
+                self._retAll("STOPPED") # Tell clients that we've stopped playing.
 
     def _updateState(self, pos: Optional[float] = None):
 
@@ -457,12 +460,18 @@ class Player():
         UPDATES_FREQ_SECS = 0.2
         if self.last_time_update == None or self.last_time_update + UPDATES_FREQ_SECS < time.time():
             self.last_time_update = time.time()
-            self.out_q.put("POS:" + str(int(self.state.state["pos_true"])))
+            self._retAll("POS:" + str(int(self.state.state["pos_true"])))
 
 
+    def _retAll(self, msg):
+        self.out_q.put("ALL:" + msg)
 
-    def _retMsg(self, msg: Any, okay_str: Any = False):
-        response = self.last_msg + ":"
+    def _retMsg(self, msg: Any, okay_str: bool = False, custom_prefix: Optional[str] = None):
+        # Make sure to add the message source back, so that it can be sent to the correct destination in the main server.
+        if custom_prefix:
+            response = custom_prefix
+        else:
+            response = "{}:{}:".format(self.last_msg_source, self.last_msg)
         if msg == True:
             response += "OKAY"
         elif isinstance(msg, str):
@@ -478,8 +487,8 @@ class Player():
             self.out_q.put(response)
 
     def _send_status(self):
-        self.last_msg = "STATUS"
-        self._retMsg(self.status, True)
+        # TODO This is hacky
+        self._retMsg(str(self.status),okay_str=True,custom_prefix="ALL:STATUS:")
 
     def __init__(self, channel: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue):
 
@@ -534,8 +543,18 @@ class Player():
             self._ping_times()
             try:
                 try:
-                    self.last_msg = in_q.get_nowait()
-                    self.logger.log.info("Recieved message: {}".format(self.last_msg))
+                    message = in_q.get_nowait()
+                    source = message.split(":")[0]
+                    if source not in VALID_MESSAGE_SOURCES:
+                        self.last_msg_source = ""
+                        self.last_msg = ""
+                        self.logger.log.warn("Message from unknown sender source: {}".format(source))
+                        continue
+
+                    self.last_msg_source = source
+                    self.last_msg = message.split(":", 1)[1]
+
+                    self.logger.log.info("Recieved message from source {}: {}".format(self.last_msg_source, self.last_msg))
                 except Empty:
                     # The incomming message queue was empty,
                     # skip message processing
@@ -624,37 +643,5 @@ class Player():
         sys.exit(0)
 
 
-def showOutput(in_q: multiprocessing.Queue, out_q: multiprocessing.Queue):
-    print("Starting showOutput().")
-    while True:
-        time.sleep(0.01)
-        last_msg = out_q.get()
-        print(last_msg)
-
-
 if __name__ == "__main__":
-    if isMacOS():
-        multiprocessing.set_start_method("spawn", True)
-
-    in_q: multiprocessing.Queue[Any] = multiprocessing.Queue()
-    out_q: multiprocessing.Queue[Any] = multiprocessing.Queue()
-
-    outputProcess = multiprocessing.Process(
-        target=showOutput,
-        args=(in_q, out_q),
-    ).start()
-
-    playerProcess = multiprocessing.Process(
-        target=Player,
-        args=(-1, in_q, out_q),
-    ).start()
-
-    # Do some testing
-    in_q.put("LOADED?")
-    in_q.put("PLAY")
-    in_q.put("LOAD:dev/test.mp3")
-    in_q.put("LOADED?")
-    in_q.put("PLAY")
-    print("Entering infinite loop.")
-    while True:
-        pass
+    raise Exception("This BAPSicle Player is a subcomponenet, it will not run individually.")
