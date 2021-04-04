@@ -144,6 +144,54 @@ class MyRadioAPI():
 
     return filename
 
+  # Gets the list of managed music playlists.
+  def get_playlist_music(self):
+    url = "/playlist/allitonesplaylists"
+    request = self.get_apiv2_call(url)
+
+    if not request:
+      self._logException("Failed to retrieve music playlists.")
+      return None
+
+    return json.loads(request.content)["payload"]
+
+  # Gets the list of managed aux playlists (sfx, beds etc.)
+  def get_playlist_aux(self):
+    url = "/nipswebPlaylist/allmanagedplaylists"
+    request = self.get_apiv2_call(url)
+
+    if not request:
+      self._logException("Failed to retrieve music playlists.")
+      return None
+
+    return json.loads(request.content)["payload"]
+
+  # Loads the playlist items for a certain managed aux playlist
+  def get_playlist_aux_items(self, library_id: str):
+    # Sometimes they have "aux-<ID>", we only need the index.
+    if library_id.index("-") > -1:
+      library_id = library_id[library_id.index("-")+1:]
+
+    url = "/nipswebPlaylist/{}/items".format(library_id)
+    request = self.get_apiv2_call(url)
+
+    if not request:
+      self._logException("Failed to retrieve items for aux playlist {}.".format(library_id))
+      return None
+
+    return json.loads(request.content)["payload"]
+
+    # Loads the playlist items for a certain managed playlist
+  def get_playlist_music_items(self, library_id: str):
+    url = "/playlist/{}/tracks".format(library_id)
+    request = self.get_apiv2_call(url)
+
+    if not request:
+      self._logException("Failed to retrieve items for music playlist {}.".format(library_id))
+      return None
+
+    return json.loads(request.content)["payload"]
+
   def get_track_search(self, title: Optional[str], artist: Optional[str], limit: int = 100):
     url = "/track/search?title={}&artist={}&digitised=1&limit={}".format(title if title else "", artist if artist else "", limit)
     request = self.get_apiv2_call(url)

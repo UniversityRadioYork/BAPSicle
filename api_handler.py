@@ -27,12 +27,27 @@ class APIHandler():
       self.logger.log.info("Recieved Request: {}".format(request))
       if request == "LIST_PLANS":
         self.server_to_q.put(request + ":" + json.dumps(self.api.get_showplans()))
-      elif request.startswith("SEARCH_TRACK:"):
+      elif request == "LIST_PLAYLIST_MUSIC":
+        self.server_to_q.put(request + ":" + json.dumps(self.api.get_playlist_music()))
+      elif request == "LIST_PLAYLIST_AUX":
+        self.server_to_q.put(request + ":" + json.dumps(self.api.get_playlist_aux()))
+
+      else:
+        # Commands with params
+        command = request[:request.index(":")]
         params = request[request.index(":")+1:]
 
-        try:
-          params = json.loads(params)
-        except Exception as e:
-          raise e
 
-        self.server_to_q.put("SEARCH_TRACK:" + json.dumps(self.api.get_track_search(params["title"], params["artist"])))
+
+        if command == "GET_PLAYLIST_AUX":
+          self.server_to_q.put(request + ":" + json.dumps(self.api.get_playlist_aux_items(str(params))))
+        elif command == "GET_PLAYLIST_MUSIC":
+          self.server_to_q.put(request + ":" + json.dumps(self.api.get_playlist_music_items(str(params))))
+        elif command == "SEARCH_TRACK":
+          try:
+            params = json.loads(params)
+
+            self.server_to_q.put(request + ":" + json.dumps(self.api.get_track_search(str(params["title"]), str(params["artist"]))))
+          except Exception as e:
+            self.logger.log.exception("Failed to parse params with message {}, command {}, params {}\n{}".format(request, command, params, e))
+

@@ -27,6 +27,7 @@ from typing import Any, Optional
 import json
 import setproctitle
 import logging
+import requests
 
 from helpers.os_environment import isMacOS
 from helpers.device_manager import DeviceManager
@@ -381,6 +382,57 @@ def search_library(type: str):
             response = api_from_q.get_nowait()
             if response.startswith("SEARCH_TRACK:"):
                 response = response.split(":", 1)[1]
+                return response
+
+        except queue.Empty:
+            pass
+
+        time.sleep(0.1)
+
+@app.route("/library/playlists/<type>")
+def get_playlists(type: str):
+
+    if type not in ["music", "aux"]:
+        abort(401)
+
+    while (not api_from_q.empty()):
+        api_from_q.get() # Just waste any previous status responses.
+
+    command = "LIST_PLAYLIST_{}".format(type.upper())
+    api_to_q.put(command)
+
+    while True:
+        try:
+            response = api_from_q.get_nowait()
+            if response.startswith(command):
+                response = response.split(":", 1)[1]
+                return response
+
+        except queue.Empty:
+            pass
+
+        time.sleep(0.1)
+
+@app.route("/library/playlist/<type>/<library_id>")
+def get_playlist(type: str, library_id: str):
+
+    if type not in ["music", "aux"]:
+        abort(401)
+
+
+    while (not api_from_q.empty()):
+        api_from_q.get() # Just waste any previous status responses.
+
+    command = "GET_PLAYLIST_{}:{}".format(type.upper(), library_id)
+    api_to_q.put(command)
+
+    while True:
+        try:
+            response = api_from_q.get_nowait()
+            if response.startswith(command):
+                response = response[len(command)+1:]
+                if response == "null":
+                    abort(401)
                 return response
 
         except queue.Empty:
