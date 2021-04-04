@@ -130,7 +130,7 @@ def ui_config():
     for i in range(state.state["num_channels"]):
         channel_states.append(status(i))
 
-    outputs = DeviceManager.getOutputs()
+    outputs = DeviceManager.getAudioOutputs()
 
     data = {
         'channels': channel_states,

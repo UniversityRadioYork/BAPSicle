@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 import sounddevice as sd
 from helpers.os_environment import isMacOS
 
@@ -10,7 +10,7 @@ class DeviceManager():
         return device["max_output_channels"] > 0
 
     @classmethod
-    def _getDevices(cls) -> sd.DeviceList:
+    def _getAudioDevices(cls) -> sd.DeviceList:
         # To update the list of devices
         # Sadly this doesn't work on MacOS.
         if not isMacOS():
@@ -20,7 +20,7 @@ class DeviceManager():
         return devices
 
     @classmethod
-    def getOutputs(cls) -> sd.DeviceList:
-        outputs: sd.DeviceList = filter(cls._isOutput, cls._getDevices())
-
-        return outputs
+    def getAudioOutputs(cls) -> List[Dict]:
+        outputs: List[Dict] = list(filter(cls._isOutput, cls._getAudioDevices()))
+        outputs = sorted(outputs, key=lambda k: k['name'])
+        return [{"name": None}] + outputs
