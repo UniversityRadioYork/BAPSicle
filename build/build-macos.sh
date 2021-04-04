@@ -16,4 +16,6 @@ rm ./*.spec
 brew install platypus
 
 platypus --load-profile ./BAPSicle.platypus --overwrite ./output/BAPSicle.app
-
+mkdir ./output/state
+mkdir ./output/logs
+mkdir ./output/music-tmp

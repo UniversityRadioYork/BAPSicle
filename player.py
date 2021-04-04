@@ -26,7 +26,6 @@ import setproctitle
 import copy
 import json
 import time
-import sys
 
 from typing import Any, Callable, Dict, List, Optional
 
@@ -47,16 +46,18 @@ PLAYBACK_END = USEREVENT + 1
 # TODO ENUM
 VALID_MESSAGE_SOURCES = ["WEBSOCKET", "UI", "CONTROLLER", "ALL"]
 class Player():
-    state = None
-    running = False
-    out_q = None
-    last_msg = ""
-    last_msg_source = ""
+    out_q: multiprocessing.Queue
+    last_msg: str
+    last_msg_source: str
     last_time_update = None
-    logger = None
-    api = None
-    already_stopped = False
-    starting = False
+
+    state: StateManager
+    logger: LoggingManager
+    api: MyRadioAPI
+
+    running: bool = False
+    already_stopped: bool = False
+    starting: bool = False
 
     __default_state = {
         "initialised": False,
@@ -352,6 +353,7 @@ class Player():
         try:
             mixer.quit()
             self.state.update("paused", False)
+            self.logger.log.info("Quit mixer.")
         except:
             self.logger.log.exception("Failed to quit mixer.")
 
@@ -497,7 +499,7 @@ class Player():
         multiprocessing.current_process().name = process_title
 
         # Init pygame, only used really for the end of playback trigger.
-        init()
+        #init()
 
         self.running = True
         self.out_q = out_q
@@ -537,11 +539,11 @@ class Player():
         else:
             self.logger.log.info("No file was previously loaded.")
 
-        while self.running:
-            time.sleep(0.1)
-            self._updateState()
-            self._ping_times()
-            try:
+        try:
+            while self.running:
+                time.sleep(0.01)
+                self._updateState()
+                self._ping_times()
                 try:
                     message = in_q.get_nowait()
                     source = message.split(":")[0]
@@ -626,21 +628,19 @@ class Player():
 
 
 
-            # Catch the player being killed externally.
-            except KeyboardInterrupt:
-                self.logger.log.info("Received KeyboardInterupt")
-                break
-            except SystemExit:
-                self.logger.log.info("Received SystemExit")
-                break
-            except Exception as e:
-                self.logger.log.exception("Received unexpected exception: {}".format(e))
-                break
+        # Catch the player being killed externally.
+        except KeyboardInterrupt:
+            self.logger.log.info("Received KeyboardInterupt")
+        except SystemExit:
+            self.logger.log.info("Received SystemExit")
+        except Exception as e:
+            self.logger.log.exception("Received unexpected exception: {}".format(e))
 
-        self.logger.log.info("Quiting player ", channel)
+        self.logger.log.info("Quiting player " + str(channel))
         self.quit()
-        self._retMsg("EXIT")
-        sys.exit(0)
+        self._retAll("EXIT")
+        del self.logger
+        os._exit(0)
 
 
 if __name__ == "__main__":

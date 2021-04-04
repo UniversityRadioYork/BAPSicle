@@ -3,11 +3,16 @@ from controllers.controller import Controller
 from multiprocessing import Queue
 import serial
 import sys
-
+from setproctitle import setproctitle
 class MattchBox(Controller):
   ser: serial.Serial
 
   def __init__(self, player_to_q: List[Queue], player_from_q: List[Queue]):
+
+    process_title = "ControllerHandler"
+    setproctitle(process_title)
+    #current_process().name = process_title
+
     # connect to serial port
     self.ser = serial.serial_for_url("/dev/cu.usbserial-210", do_not_open=True)
     self.ser.baudrate = 2400

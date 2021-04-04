@@ -29,9 +29,9 @@ class LoggingManager():
         self.logger.addHandler(fh)
         self.logger.info("** LOGGER STARTED **")
 
-    def __del__(self):
-        self.logger.info("** LOGGER EXITING **")
-        logging.shutdown()
+    #def __del__(self):
+        # Can't seem to close logger properly
+        #self.logger.info("** LOGGER EXITING **")
 
     @property
     def log(self) -> logging.Logger:

@@ -1,22 +1,31 @@
+#!/usr/bin/env python3
 import multiprocessing
 import time
 import sys
 import webbrowser
+from setproctitle import setproctitle
 
 from server import BAPSicleServer
-
 
 def startServer():
     server = multiprocessing.Process(target=BAPSicleServer)
     server.start()
 
-    while True:
-        time.sleep(5)
-        if server and server.is_alive():
-            pass
-        else:
-            print("Server dead. Exiting.")
-            sys.exit(0)
+    try:
+        while True:
+            time.sleep(5)
+            if server and server.is_alive():
+                pass
+            else:
+                print("Server dead. Exiting.")
+                sys.exit(0)
+        # Catch the handler being killed externally.
+    except KeyboardInterrupt:
+        print("Received KeyboardInterupt")
+    except SystemExit:
+        print("Received SystemExit")
+    except Exception as e:
+        print("Received unexpected exception: {}".format(e))
 
 
 if __name__ == '__main__':
@@ -27,6 +36,7 @@ if __name__ == '__main__':
     # If it's not here, multiprocessing just doesn't run in the package.
     # Freeze support refers to being packaged with Pyinstaller.
     multiprocessing.freeze_support()
+    setproctitle("BAPSicle - Standalone Launch")
     if len(sys.argv) > 1:
         # We got an argument! It's probably Platypus's UI.
         try:
@@ -42,6 +52,7 @@ if __name__ == '__main__':
                 webbrowser.open("http://localhost:13500/logs")
         except Exception as e:
             print("ALERT:BAPSicle failed with exception:\n", e)
+            sys.exit(1)
 
         sys.exit(0)
     else:

@@ -1,4 +1,4 @@
-pygame==2.0.0.dev24
+pygame==2.0.1
 flask
 flask-cors
 mutagen
@@ -9,3 +9,4 @@ pyttsx3
 websockets
 typing_extensions
 pyserial
+requests

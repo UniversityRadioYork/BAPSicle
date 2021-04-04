@@ -13,21 +13,20 @@
         October, November 2020
 """
 from api_handler import APIHandler
-import asyncio
 from controllers.mattchbox_usb import MattchBox
-import copy
 import multiprocessing
 import queue
-import threading
+#import threading
 import time
 import player
 from flask import Flask, render_template, send_from_directory, request, jsonify, abort
-from flask_cors import CORS, cross_origin
+from flask_cors import CORS
 from typing import Any, Optional
 import json
-import setproctitle
+from setproctitle import setproctitle
 import logging
-import requests
+
+from player_handler import PlayerHandler
 
 from helpers.os_environment import isMacOS
 from helpers.device_manager import DeviceManager
@@ -42,7 +41,33 @@ from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
 from websocket_server import WebsocketServer
 
-setproctitle.setproctitle("BAPSicle - Server")
+setproctitle("BAPSicleServer.py")
+
+logger: LoggingManager
+state: StateManager
+class BAPSicleServer():
+
+    def __init__(self):
+
+        process_title = "BAPSicleServer"
+        setproctitle(process_title)
+        #multiprocessing.current_process().name = process_title
+
+        global logger
+        global state
+        logger = LoggingManager("BAPSicleServer")
+
+        state = StateManager("BAPSicleServer", logger, default_state)
+        state.update("server_version", config.VERSION)
+
+        startServer()
+        #asyncio.get_event_loop().run_until_complete(startServer())
+        #asyncio.get_event_loop().run_forever()
+
+    def __del__(self):
+        stopServer()
+
+
 
 default_state = {
     "server_version": 0,
@@ -53,49 +78,6 @@ default_state = {
     "num_channels": 3
 }
 
-logger: LoggingManager
-state: StateManager
-
-class BAPSicleServer():
-
-    def __init__(self):
-
-        process_title = "Server"
-        setproctitle.setproctitle(process_title)
-        multiprocessing.current_process().name = process_title
-
-        global logger
-        global state
-        logger = LoggingManager("BAPSicleServer")
-
-        state = StateManager("BAPSicleServer", logger, default_state)
-        state.update("server_version", config.VERSION)
-
-        asyncio.get_event_loop().run_until_complete(startServer())
-        asyncio.get_event_loop().run_forever()
-
-    def __del__(self):
-        stopServer()
-
-class PlayerHandler():
-    def __init__(self,channel_from_q, websocket_to_q, ui_to_q, controller_to_q):
-        while True:
-            for channel in range(len(channel_from_q)):
-                try:
-                    message = channel_from_q[channel].get_nowait()
-                    source = message.split(":")[0]
-                    # TODO ENUM
-                    if source in ["ALL","WEBSOCKET"]:
-                        websocket_to_q[channel].put(message)
-                    if source in ["ALL","UI"]:
-                        if not message.split(":")[1] == "POS":
-                            # We don't care about position update spam
-                            ui_to_q[channel].put(message)
-                    if source in ["ALL","CONTROLLER"]:
-                        controller_to_q[channel].put(message)
-                except:
-                    pass
-            time.sleep(0.1)
 
 
 app = Flask(__name__, static_url_path='')
@@ -114,10 +96,11 @@ channel_from_q: List[queue.Queue] = []
 ui_to_q: List[queue.Queue] = []
 websocket_to_q: List[queue.Queue] = []
 controller_to_q: List[queue.Queue] = []
-channel_p = []
 
-stopping = False
-
+channel_p: List[multiprocessing.Process] = []
+websockets_server: multiprocessing.Process
+controller_handler: multiprocessing.Process
+webserver: multiprocessing.Process
 
 # General Endpoints
 
@@ -524,9 +507,10 @@ def serve_favicon():
 def serve_static(path: str):
     return send_from_directory('ui-static', path)
 
-async def startServer():
+def startServer():
     process_title="startServer"
-    threading.current_thread().name = process_title
+    #threading.current_thread().name = process_title
+    setproctitle(process_title)
 
     if isMacOS():
         multiprocessing.set_start_method("spawn", True)
@@ -540,13 +524,13 @@ async def startServer():
         channel_p.append(
             multiprocessing.Process(
                 target=player.Player,
-                args=(channel, channel_to_q[-1], channel_from_q[-1]),
+                args=(channel, channel_to_q[-1], channel_from_q[-1])
                 #daemon=True
             )
         )
         channel_p[channel].start()
 
-    global api_from_q, api_to_q
+    global api_from_q, api_to_q, api_handler, player_handler, websockets_server, controller_handler
     api_to_q = multiprocessing.Queue()
     api_from_q = multiprocessing.Queue()
     api_handler = multiprocessing.Process(target=APIHandler, args=(api_to_q, api_from_q))
@@ -595,37 +579,48 @@ async def startServer():
             channel_to_q[0].put("PLAY")
 
     # Don't use reloader, it causes Nested Processes!
-    app.run(host=state.state["host"], port=state.state["port"], debug=True, use_reloader=False)
+    global webserver
+    webserver = multiprocessing.Process(
+        app.run(host=state.state["host"], port=state.state["port"], debug=True, use_reloader=False)
+    )
+    webserver.start()
 
 
 def stopServer(restart=False):
-    global channel_p
-    global channel_from_q
-    global channel_to_q
+    global channel_p, channel_from_q, channel_to_q, websockets_server, webserver
+    print("Stopping Websockets")
+    websocket_to_q[0].put("WEBSOCKET:QUIT")
+    websockets_server.join()
+    del websockets_server
     print("Stopping server.py")
     for q in channel_to_q:
         q.put("QUIT")
     for player in channel_p:
         try:
             player.join()
-        except:
+        except Exception as e:
+            print("*** Ignoring exception:",e)
             pass
         finally:
-            channel_p = []
-            channel_from_q = []
-            channel_to_q = []
+            del player
+    del channel_from_q
+    del channel_to_q
     print("Stopped all players.")
-    global stopping
-    if stopping == False:
-        stopping = True
-        shutdown = request.environ.get('werkzeug.server.shutdown')
-        if shutdown is None:
-            print("Shutting down Server.")
 
-        else:
-            print("Shutting down Flask.")
-            if not restart:
-                shutdown()
+    global webserver
+    webserver.terminate()
+    webserver.join()
+    return
+
+    ## Caused an outside context error, presuably because called outside of a page request.
+    #shutdown = request.environ.get('werkzeug.server.shutdown')
+    #if shutdown is None:
+    #    print("Shutting down Server.")
+
+    #else:
+    #    print("Shutting down Flask.")
+    #    if not restart:
+    #        shutdown()
 
 
 if __name__ == "__main__":
