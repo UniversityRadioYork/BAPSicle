@@ -343,7 +343,7 @@ def list_showplans():
         except queue.Empty:
             pass
 
-        time.sleep(0.1)
+        time.sleep(0.02)
 
 @app.route("/library/search/<type>")
 def search_library(type: str):
@@ -370,7 +370,7 @@ def search_library(type: str):
         except queue.Empty:
             pass
 
-        time.sleep(0.1)
+        time.sleep(0.02)
 
 @app.route("/library/playlists/<type>")
 def get_playlists(type: str):
@@ -394,7 +394,7 @@ def get_playlists(type: str):
         except queue.Empty:
             pass
 
-        time.sleep(0.1)
+        time.sleep(0.02)
 
 @app.route("/library/playlist/<type>/<library_id>")
 def get_playlist(type: str, library_id: str):
@@ -421,7 +421,7 @@ def get_playlist(type: str, library_id: str):
         except queue.Empty:
             pass
 
-        time.sleep(0.1)
+        time.sleep(0.02)
 
 @app.route("/plan/load/<int:timeslotid>")
 def load_showplan(timeslotid: int):
@@ -455,7 +455,7 @@ def status(channel: int):
 
         retries += 1
 
-        time.sleep(0.1)
+        time.sleep(0.02)
 
 
 @app.route("/quit")

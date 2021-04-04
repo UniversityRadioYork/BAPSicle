@@ -198,7 +198,7 @@ class WebsocketServer:
                         continue
                     except Exception as e:
                         self.logger.log.exception("Exception trying to send to websocket:", e)
-                await asyncio.sleep(0.01)
+                await asyncio.sleep(0.02)
 
         self.from_webstudio = asyncio.create_task(handle_from_webstudio())
         self.to_webstudio = asyncio.create_task(handle_to_webstudio())

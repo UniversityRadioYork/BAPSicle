@@ -33,7 +33,7 @@ class PlayerHandler():
                     except:
                         pass
 
-                sleep(0.01)
+                sleep(0.02)
         # Catch the handler being killed externally.
         except KeyboardInterrupt:
             self.logger.log.info("Received KeyboardInterupt")
