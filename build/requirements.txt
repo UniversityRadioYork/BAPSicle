@@ -1,8 +1,12 @@
-pygame==2.0.0.dev24
+pygame==2.0.1
 flask
+flask-cors
 mutagen
 sounddevice
 autopep8
 setproctitle
 pyttsx3
+websockets
 typing_extensions
+pyserial
+requests

@@ -4,18 +4,44 @@
 {% endblock %}
 {% block content_inner %}
   {% if data %}
-    <code>
+    <div class="row">
+
       {% for player in data.channels %}
-      <a href="/player/{{player.channel}}/play">Play</a>
-      {% if player.paused %}
-      <a href="/player/{{player.channel}}/unpause">UnPause</a>
-      {% else %}
-      <a href="/player/{{player.channel}}/pause">Pause</a>
-      {% endif %}
-      <a href="/player/{{player.channel}}/stop">Stop</a>
-      <a href="/player/{{player.channel}}/seek/50.0">Seek 50</a>
-      {{player}}<br>
+      <div class="col-4">
+        {% if player %}
+          <h3 class="h5">Player {{player.channel}}</h3>
+          <a href="/player/{{player.channel}}/play">Play</a>
+          {% if player.paused %}
+          <a href="/player/{{player.channel}}/unpause">UnPause</a>
+          {% else %}
+          <a href="/player/{{player.channel}}/pause">Pause</a>
+          {% endif %}
+          <a href="/player/{{player.channel}}/stop">Stop</a>
+          <a href="/player/{{player.channel}}/seek/50.0">Seek 50</a>
+          <br>
+          <label for="file">{{ player.pos_true | int }} / {{ player.length | int }}s ({{ player.remaining | int }}s)</label>
+          <br>
+          <progress id="file" value="{% if player.length > 0 %}{{player.pos_true / player.length * 100}}{% else %}0{% endif %}" max="100" style="width: 100%"></progress>
+
+          <hr />
+          <h4 class="h6">Loaded Item</h3>
+          {{ player.loaded_item }}
+          <hr />
+          <h4 class="h6">Plan Items</h3>
+          {% for planitem in player.show_plan %}
+
+            <small>
+              <a href="/player/{{player.channel}}/load/{{planitem.weight}}">Load</a> {{ planitem }}
+            </small>
+            <hr />
+
+          {% endfor %}
+          <br>
+          {% else %}
+            <p>RIP. Failed to get this.</p>
+          {% endif %}
+      </div>
       {% endfor %}
-    </code>
+    </div>
   {% endif %}
 {% endblock %}

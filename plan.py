@@ -16,23 +16,32 @@ from typing import Any, Dict, Optional
 import os
 
 class PlanItem:
-    _timeslotItemId: int = 0
-    _filename: str = ""
-    _title: str = ""
-    _artist: str = ""
-    _trackId: Optional[int] = None
-    _managedId: Optional[int] = None
+    _timeslotitemid: int = 0
+    _weight: int = 0
+    _filename: Optional[str]
+    _title: str
+    _artist: Optional[str]
+    _trackid: Optional[int]
+    _managedid: Optional[int]
 
     @property
-    def timeslotItemId(self) -> int:
-        return self._timeslotItemId
+    def weight(self) -> int:
+        return self._weight
+
+    @weight.setter
+    def weight(self, value: int):
+        self._weight = value
 
     @property
-    def filename(self) -> str:
+    def timeslotitemid(self) -> int:
+        return self._timeslotitemid
+
+    @property
+    def filename(self) -> Optional[str]:
         return self._filename
 
     @filename.setter
-    def filename(self, value: str):
+    def filename(self, value: Optional[str]):
         self._filename = value
 
     @property
@@ -40,32 +49,53 @@ class PlanItem:
         return "{0} - {1}".format(self._title, self._artist) if self._artist else self._title
 
     @property
-    def trackId(self) -> Optional[int]:
-        return self._trackId
+    def trackid(self) -> Optional[int]:
+        return self._trackid
 
     @property
-    def managedId(self) -> Optional[int]:
-        return self._managedId
+    def managedid(self) -> Optional[int]:
+        return self._managedid
+
+    @property
+    def title(self) -> Optional[str]:
+        return self._title
+
+    @property
+    def artist(self) -> Optional[str]:
+        return self._artist
+
+    @property
+    def length(self) -> Optional[str]:
+        return self._length
+
+    @property
+    def type(self) -> Optional[str]:
+        return "aux" if self.managedid else "central"
 
     @property
     def __dict__(self):
         return {
-            "timeslotItemId": self.timeslotItemId,
-            "trackId": self._trackId,
-            "managedId": self._managedId,
+            "weight": self.weight,
+            "timeslotitemid": self.timeslotitemid,
+            "trackid": self._trackid,
+            "type": self.type,
+            "managedid": self._managedid,
             "title": self._title,
             "artist": self._artist,
             "name": self.name,
-            "filename": self.filename
+            "filename": self.filename,
+            "length": self.length
         }
 
     def __init__(self, new_item: Dict[str, Any]):
-        self._timeslotItemId = new_item["timeslotItemId"]
-        self._trackId = new_item["trackId"] if "trackId" in new_item else None
-        self._managedId = new_item["managedId"] if "managedId" in new_item else None
-        self._filename = new_item["filename"] # This could be a temp dir for API-downloaded items, or a mapped drive.
+        self._timeslotitemid = new_item["timeslotitemid"]
+        self._managedid = new_item["managedid"] if "managedid" in new_item else None
+        self._trackid = new_item["trackid"] if "trackid" in new_item and not self._managedid else None
+        self._filename = new_item["filename"] if "filename" in new_item else None # This could be a temp dir for API-downloaded items, or a mapped drive.
+        self._weight = new_item["weight"]
         self._title = new_item["title"]
-        self._artist = new_item["artist"]
+        self._artist = new_item["artist"] if "artist" in new_item else None
+        self._length = new_item["length"]
 
         # Fix any OS specific / or \'s
         if self.filename:

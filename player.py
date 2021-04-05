@@ -26,7 +26,6 @@ import setproctitle
 import copy
 import json
 import time
-import sys
 
 from typing import Any, Callable, Dict, List, Optional
 
@@ -35,7 +34,7 @@ from plan import PlanItem
 # Stop the Pygame Hello message.
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-from pygame import mixer
+from pygame import mixer, NOEVENT, USEREVENT, event, init
 from mutagen.mp3 import MP3
 
 from helpers.myradio_api import MyRadioAPI
@@ -43,14 +42,22 @@ from helpers.os_environment import isMacOS
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
 
-
-
+PLAYBACK_END = USEREVENT + 1
+# TODO ENUM
+VALID_MESSAGE_SOURCES = ["WEBSOCKET", "UI", "CONTROLLER", "ALL"]
 class Player():
-    state = None
-    running = False
-    out_q = None
-    last_msg = None
-    logger = None
+    out_q: multiprocessing.Queue
+    last_msg: str
+    last_msg_source: str
+    last_time_update = None
+
+    state: StateManager
+    logger: LoggingManager
+    api: MyRadioAPI
+
+    running: bool = False
+    already_stopped: bool = False
+    starting: bool = False
 
     __default_state = {
         "initialised": False,
@@ -65,7 +72,7 @@ class Player():
         "remaining": 0,
         "length": 0,
         "auto_advance": True,
-        "repeat": "NONE", #NONE, ONE or ALL
+        "repeat": "none",  # none, one or all
         "play_on_load": False,
         "output": None,
         "show_plan": []
@@ -136,16 +143,24 @@ class Player():
         res = json.dumps(state)
         return res
 
-    ### Audio Playout Related Methods
+    # Audio Playout Related Methods
 
     def play(self, pos: float = 0):
+        if not self.isLoaded:
+            return
+        global starting
+        global already_stopped
+        starting = True
         try:
             mixer.music.play(0, pos)
+            mixer.music.set_endevent(PLAYBACK_END)
             self.state.update("pos_offset", pos)
         except:
             self.logger.log.exception("Failed to play at pos: " + str(pos))
             return False
         self.state.update("paused", False)
+
+        already_stopped = False
         return True
 
     def pause(self):
@@ -180,6 +195,10 @@ class Player():
         self.state.update("pos_offset", 0)
         self.state.update("pos_true", 0)
         self.state.update("paused", False)
+
+        global already_stopped
+        already_stopped = True
+
         return True
         # return False
 
@@ -196,53 +215,76 @@ class Player():
             self._updateState(pos=pos)
         return True
 
-    def set_auto_advance(self, message: int) -> bool:
-        if message == 0:
-            self.state.update("auto_advance", False)
-            return True # It did it
-        elif message == 1:
-            self.state.update("auto_advance", True)
-            return True
-        else:
-            return False
+    def set_auto_advance(self, message: bool) -> bool:
+        self.state.update("auto_advance", message)
+        return True
+
 
     def set_repeat(self, message: str) -> bool:
-        if message in ["ALL", "ONE", "NONE"]:
+        if message in ["all", "one", "none"]:
             self.state.update("repeat", message)
             return True
         else:
             return False
 
-    def set_play_on_load(self, message: int) -> bool:
-        if message == 0:
-            self.state.update("play_on_load", False)
-            return True # It did it
-        elif message == 1:
-            self.state.update("play_on_load", True)
-            return True
-        else:
-            return False
-
-    ### Show Plan Related Methods
-
-    def add_to_plan(self, new_item: Dict[str, Any]) -> bool:
-        self.state.update("show_plan", self.state.state["show_plan"] + [PlanItem(new_item)])
+    def set_play_on_load(self, message: bool) -> bool:
+        self.state.update("play_on_load", message)
         return True
 
-    def remove_from_plan(self, timeslotItemId: int) -> bool:
+    # Show Plan Related Methods
+    def get_plan(self, message: int):
+        plan = self.api.get_showplan(message)
+        self.clear_channel_plan()
+        channel = self.state.state["channel"]
+        self.logger.log.info(plan)
+        if len(plan) > channel:
+            for plan_item in plan[str(channel)]:
+                try:
+                    self.add_to_plan(plan_item)
+                except Exception as e:
+                    self.logger.log.critical("Failed to add item to show plan: {}".format(e))
+                    continue
+
+        return True
+
+    def add_to_plan(self, new_item: Dict[str, Any]) -> bool:
+        new_item_obj = PlanItem(new_item)
         plan_copy: List[PlanItem] = copy.copy(self.state.state["show_plan"])
+        # Shift any plan items after the new position down one to make space.
+        for item in plan_copy:
+            if item.weight >= new_item_obj.weight:
+                item.weight += 1
+
+
+        plan_copy += [new_item_obj] # Add the new item.
+
+        def sort_weight(e: PlanItem):
+            return e.weight
+
+        plan_copy.sort(key=sort_weight) # Sort into weighted order.
+
+        self.state.update("show_plan", plan_copy)
+        return True
+
+    def remove_from_plan(self, weight: int) -> bool:
+        plan_copy: List[PlanItem] = copy.copy(self.state.state["show_plan"])
+        found = False
         for i in plan_copy:
-            if i.timeslotItemId == timeslotItemId:
+            if i.weight == weight:
                 plan_copy.remove(i)
-                self.state.update("show_plan", plan_copy)
-                return True
+                found = True
+            elif i.weight > weight: # Shuffle up the weights of the items following the deleted one.
+                i.weight -= 1
+        if found:
+            self.state.update("show_plan", plan_copy)
+            return True
         return False
 
     def clear_channel_plan(self) -> bool:
         self.state.update("show_plan", [])
         return True
 
-    def load(self, timeslotItemId: int):
+    def load(self, weight: int):
         if not self.isPlaying:
             self.unload()
 
@@ -251,16 +293,16 @@ class Player():
             loaded_item: Optional[PlanItem] = None
 
             for i in range(len(showplan)):
-                if showplan[i].timeslotItemId == timeslotItemId:
+                if showplan[i].weight == weight:
                     loaded_item = showplan[i]
                     break
 
             if loaded_item == None:
-                self.logger.log.error("Failed to find timeslotItemId: {}".format(timeslotItemId))
+                self.logger.log.error("Failed to find weight: {}".format(weight))
                 return False
 
             if (loaded_item.filename == "" or loaded_item.filename == None):
-                loaded_item.filename = MyRadioAPI.get_filename(item = loaded_item)
+                loaded_item.filename = self.api.get_filename(item = loaded_item)
 
             if not loaded_item.filename:
                 return False
@@ -268,7 +310,7 @@ class Player():
             self.state.update("loaded_item", loaded_item)
 
             for i in range(len(showplan)):
-                if showplan[i].timeslotItemId == timeslotItemId:
+                if showplan[i].weight == weight:
                     self.state.update("show_plan", index=i, value=loaded_item)
                 break
                 # TODO: Update the show plan filenames
@@ -290,6 +332,10 @@ class Player():
             except:
                 self.logger.log.exception("Failed to update the length of item.")
                 return False
+
+            if self.state.state["play_on_load"]:
+                self.play()
+
         return True
 
     def unload(self):
@@ -307,6 +353,7 @@ class Player():
         try:
             mixer.quit()
             self.state.update("paused", False)
+            self.logger.log.info("Quit mixer.")
         except:
             self.logger.log.exception("Failed to quit mixer.")
 
@@ -327,11 +374,69 @@ class Player():
 
         loadedItem = self.state.state["loaded_item"]
         if (loadedItem):
-            self.load(loadedItem.timeslotItemId)
+            self.load(loadedItem.weight)
         if wasPlaying:
             self.unpause()
 
         return True
+
+    def ended(self):
+        loaded_item = self.state.state["loaded_item"]
+        # check the existing state (not self.isPlaying)
+        # Since this is called multiple times when pygame isn't playing.
+
+        global starting
+
+        if starting:
+            print("Starting")
+            starting = False
+            return
+
+
+
+        global already_stopped
+
+        #print(already_stopped, self.state.state["remaining"], self.isPlaying)
+
+        if loaded_item == None or already_stopped or (self.state.state["remaining"] > 1):
+            return
+
+        mixer.music.set_endevent(NOEVENT)
+
+        already_stopped = True
+
+
+        stopping = True
+
+        # Track has ended
+        print("Finished", loaded_item.name)
+
+        # Repeat 1
+        if self.state.state["repeat"] == "ONE":
+            self.play()
+            stopping = False
+
+        # Auto Advance
+        elif self.state.state["auto_advance"]:
+            for i in range(len(self.state.state["show_plan"])):
+                if self.state.state["show_plan"][i].weight == loaded_item.weight:
+                    if len(self.state.state["show_plan"]) > i+1:
+                        self.load(self.state.state["show_plan"][i+1].weight)
+                        break
+
+                    # Repeat All
+                    elif self.state.state["repeat"] == "ALL":
+                        self.load(self.state.state["show_plan"][0].weight)
+
+        # Play on Load
+        if self.state.state["play_on_load"]:
+            self.play()
+            stopping = False
+
+        if stopping:
+            self.stop()
+            if self.out_q:
+                self._retAll("STOPPED") # Tell clients that we've stopped playing.
 
     def _updateState(self, pos: Optional[float] = None):
 
@@ -342,45 +447,33 @@ class Player():
             elif self.isPlaying:
                 # Get one last update in, incase we're about to pause/stop it.
                 self.state.update("pos", max(0, mixer.music.get_pos()/1000))
+            elif not self.isPaused:
+                self.state.update("pos", 0) # Reset back to 0 if stopped.
+                self.state.update("pos_offset", 0)
             self.state.update("playing", self.isPlaying)
             self.state.update("loaded", self.isLoaded)
-
-
 
             self.state.update("pos_true", self.state.state["pos"] + self.state.state["pos_offset"])
 
             self.state.update("remaining", self.state.state["length"] - self.state.state["pos_true"])
 
-            loaded_item = self.state.state["loaded_item"]
-            if loaded_item == None or self.state.state["remaining"] != 0:
-                return
+    def _ping_times(self):
 
-            # Track has ended
-            print("Finished", loaded_item.name)
-
-            # Repeat 1
-            if self.state.state["repeat"] == "ONE":
-                self.play()
-
-            # Auto Advance
-            elif self.state.state["auto_advance"]:
-                for i in range(len(self.state.state["show_plan"])):
-                    if self.state.state["show_plan"][i].timeslotItemId == loaded_item.timeslotItemId:
-                        if len(self.state.state["show_plan"]) > i+1:
-                            self.load(self.state.state["show_plan"][i+1].timeslotItemId)
-                            break
-
-                        # Repeat All
-                        elif self.state.state["repeat"] == "ALL":
-                            self.load(self.state.state["show_plan"][0].timeslotItemId)
-
-            # Play on Load
-            if self.state.state["play_on_load"]:
-                self.play()
+        UPDATES_FREQ_SECS = 0.2
+        if self.last_time_update == None or self.last_time_update + UPDATES_FREQ_SECS < time.time():
+            self.last_time_update = time.time()
+            self._retAll("POS:" + str(int(self.state.state["pos_true"])))
 
 
-    def _retMsg(self, msg: Any, okay_str: Any = False):
-        response = self.last_msg + ":"
+    def _retAll(self, msg):
+        self.out_q.put("ALL:" + msg)
+
+    def _retMsg(self, msg: Any, okay_str: bool = False, custom_prefix: Optional[str] = None):
+        # Make sure to add the message source back, so that it can be sent to the correct destination in the main server.
+        if custom_prefix:
+            response = custom_prefix
+        else:
+            response = "{}:{}:".format(self.last_msg_source, self.last_msg)
         if msg == True:
             response += "OKAY"
         elif isinstance(msg, str):
@@ -390,8 +483,14 @@ class Player():
                 response += "FAIL:" + msg
         else:
             response += "FAIL"
+        self.logger.log.debug(("Preparing to send: {}".format(response)))
         if self.out_q:
+            self.logger.log.info(("Sending: {}".format(response)))
             self.out_q.put(response)
+
+    def _send_status(self):
+        # TODO This is hacky
+        self._retMsg(str(self.status),okay_str=True,custom_prefix="ALL:STATUS:")
 
     def __init__(self, channel: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue):
 
@@ -399,12 +498,21 @@ class Player():
         setproctitle.setproctitle(process_title)
         multiprocessing.current_process().name = process_title
 
+        # Init pygame, only used really for the end of playback trigger.
+        #init()
+
         self.running = True
         self.out_q = out_q
 
-        self.logger = LoggingManager("channel" + str(channel))
+        self.logger = LoggingManager("Player" + str(channel))
 
-        self.state = StateManager("channel" + str(channel), self.logger, self.__default_state, self.__rate_limited_params)
+        self.api = MyRadioAPI(self.logger)
+
+        self.state = StateManager("Player" + str(channel), self.logger,
+                                  self.__default_state, self.__rate_limited_params)
+
+        self.state.add_callback(self._send_status)
+
         self.state.update("channel", channel)
 
         loaded_state = copy.copy(self.state.state)
@@ -419,7 +527,7 @@ class Player():
         loaded_item = loaded_state["loaded_item"]
         if loaded_item:
             self.logger.log.info("Loading filename: " + str(loaded_item.filename))
-            self.load(loaded_item.timeslotItemId)
+            self.load(loaded_item.weight)
 
             if loaded_state["pos_true"] != 0:
                 self.logger.log.info("Seeking to pos_true: " + str(loaded_state["pos_true"]))
@@ -431,12 +539,24 @@ class Player():
         else:
             self.logger.log.info("No file was previously loaded.")
 
-        while self.running:
-            time.sleep(0.1)
-            self._updateState()
-            try:
+        try:
+            while self.running:
+                time.sleep(0.02)
+                self._updateState()
+                self._ping_times()
                 try:
-                    self.last_msg = in_q.get_nowait()
+                    message = in_q.get_nowait()
+                    source = message.split(":")[0]
+                    if source not in VALID_MESSAGE_SOURCES:
+                        self.last_msg_source = ""
+                        self.last_msg = ""
+                        self.logger.log.warn("Message from unknown sender source: {}".format(source))
+                        continue
+
+                    self.last_msg_source = source
+                    self.last_msg = message.split(":", 1)[1]
+
+                    self.logger.log.info("Recieved message from source {}: {}".format(self.last_msg_source, self.last_msg))
                 except Empty:
                     # The incomming message queue was empty,
                     # skip message processing
@@ -451,33 +571,36 @@ class Player():
                         self._retMsg(self.output(split[1]))
 
                     elif self.isInit:
-
                         message_types: Dict[str, Callable[..., Any]] = { # TODO Check Types
-                            "STATUS":       lambda: self._retMsg(self.status, True),
+                            "STATUS": lambda: self._retMsg(self.status, True),
 
                             # Audio Playout
-                            "PLAY":         lambda: self._retMsg(self.play()),
-                            "PAUSE":        lambda: self._retMsg(self.pause()),
-                            "UNPAUSE":      lambda: self._retMsg(self.unpause()),
-                            "STOP":         lambda: self._retMsg(self.stop()),
-                            "SEEK":         lambda: self._retMsg(self.seek(float(self.last_msg.split(":")[1]))),
-                            "AUTOADVANCE":  lambda: self._retMsg(self.set_auto_advance(int(self.last_msg.split(":")[1]))),
-                            "REPEAT":       lambda: self._retMsg(self.set_repeat(self.last_msg.split(":")[1])),
-                            "PLAYONLOAD":   lambda: self._retMsg(self.set_play_on_load(int(self.last_msg.split(":")[1]))),
+                            "PLAY": lambda: self._retMsg(self.play()),
+                            "PAUSE": lambda: self._retMsg(self.pause()),
+                            "UNPAUSE": lambda: self._retMsg(self.unpause()),
+                            "STOP": lambda: self._retMsg(self.stop()),
+                            "SEEK": lambda: self._retMsg(self.seek(float(self.last_msg.split(":")[1]))),
+                            "AUTOADVANCE": lambda: self._retMsg(self.set_auto_advance((self.last_msg.split(":")[1] == "True"))),
+                            "REPEAT": lambda: self._retMsg(self.set_repeat(self.last_msg.split(":")[1])),
+                            "PLAYONLOAD": lambda: self._retMsg(self.set_play_on_load((self.last_msg.split(":")[1] == "True"))),
 
                             # Show Plan Items
-                            "LOAD":         lambda: self._retMsg(self.load(int(self.last_msg.split(":")[1]))),
-                            "LOADED?":      lambda: self._retMsg(self.isLoaded),
-                            "UNLOAD":       lambda: self._retMsg(self.unload()),
-                            "ADD":          lambda: self._retMsg(self.add_to_plan(json.loads(":".join(self.last_msg.split(":")[1:])))),
-                            "REMOVE":       lambda: self._retMsg(self.remove_from_plan(int(self.last_msg.split(":")[1]))),
-                            "CLEAR":        lambda: self._retMsg(self.clear_channel_plan())
+                            "GET_PLAN": lambda: self._retMsg(self.get_plan(int(self.last_msg.split(":")[1]))),
+
+                            "LOAD": lambda: self._retMsg(self.load(int(self.last_msg.split(":")[1]))),
+                            "LOADED?": lambda: self._retMsg(self.isLoaded),
+                            "UNLOAD": lambda: self._retMsg(self.unload()),
+                            "ADD": lambda: self._retMsg(self.add_to_plan(json.loads(":".join(self.last_msg.split(":")[1:])))),
+                            "REMOVE": lambda: self._retMsg(self.remove_from_plan(int(self.last_msg.split(":")[1]))),
+                            "CLEAR": lambda: self._retMsg(self.clear_channel_plan())
                         }
 
                         message_type: str = self.last_msg.split(":")[0]
 
                         if message_type in message_types.keys():
                             message_types[message_type]()
+
+
 
                         elif (self.last_msg == 'QUIT'):
                             self.running = False
@@ -486,59 +609,39 @@ class Player():
                         else:
                             self._retMsg("Unknown Command")
                     else:
+
                         if (self.last_msg == 'STATUS'):
                             self._retMsg(self.status)
                         else:
                             self._retMsg(False)
 
-            # Catch the player being killed externally.
-            except KeyboardInterrupt:
-                self.logger.log.info("Received KeyboardInterupt")
-                break
-            except SystemExit:
-                self.logger.log.info("Received SystemExit")
-                break
-            except:
-                self.logger.log.exception("Received unexpected exception.")
-                break
 
-        self.logger.log.info("Quiting player ", channel)
+
+                try:
+                    callback_event = event.poll()
+                    if callback_event.type == PLAYBACK_END:
+                        self.ended()
+                    else:
+                        pass
+                except Exception as e:
+                    pass
+
+
+
+        # Catch the player being killed externally.
+        except KeyboardInterrupt:
+            self.logger.log.info("Received KeyboardInterupt")
+        except SystemExit:
+            self.logger.log.info("Received SystemExit")
+        except Exception as e:
+            self.logger.log.exception("Received unexpected exception: {}".format(e))
+
+        self.logger.log.info("Quiting player " + str(channel))
         self.quit()
-        self._retMsg("EXIT")
-        sys.exit(0)
-
-
-def showOutput(in_q: multiprocessing.Queue, out_q: multiprocessing.Queue):
-    print("Starting showOutput().")
-    while True:
-        time.sleep(0.01)
-        last_msg = out_q.get()
-        print(last_msg)
+        self._retAll("EXIT")
+        del self.logger
+        os._exit(0)
 
 
 if __name__ == "__main__":
-    if isMacOS():
-        multiprocessing.set_start_method("spawn", True)
-
-    in_q: multiprocessing.Queue[Any] = multiprocessing.Queue()
-    out_q: multiprocessing.Queue[Any] = multiprocessing.Queue()
-
-    outputProcess = multiprocessing.Process(
-        target=showOutput,
-        args=(in_q, out_q),
-    ).start()
-
-    playerProcess = multiprocessing.Process(
-        target=Player,
-        args=(-1, in_q, out_q),
-    ).start()
-
-    # Do some testing
-    in_q.put("LOADED?")
-    in_q.put("PLAY")
-    in_q.put("LOAD:dev/test.mp3")
-    in_q.put("LOADED?")
-    in_q.put("PLAY")
-    print("Entering infinite loop.")
-    while True:
-        pass
+    raise Exception("This BAPSicle Player is a subcomponenet, it will not run individually.")

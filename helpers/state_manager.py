@@ -15,8 +15,9 @@ from helpers.types import ServerState
 from typing import Any, Dict, List, NewType, Optional, Union
 
 class StateManager:
-    filepath = None
-    logger = None
+    filepath: str
+    logger: LoggingManager
+    callbacks: List[Any] = []
     __state = {}
     __state_in_file = {}
     # Dict of times that params can be updated after, if the time is before current time, it can be written immediately.
@@ -136,7 +137,19 @@ class StateManager:
         self.state = state_to_update
 
         if (update_file == True):
+            # Either a routine write, or state has changed.
+            # Update the file
             self.write_to_file(state_to_update)
+            # Now tell any callback functions.
+            for callback in self.callbacks:
+                try:
+                    callback()
+                except Exception as e:
+                    self.logger.log.critical("Failed to execute status callback: {}".format(e))
+
+    def add_callback(self, function):
+        self._log("Adding callback: {}".format(str(function)))
+        self.callbacks.append(function)
 
     def _log(self, text:str, level: int = INFO):
         self.logger.log.log(level, "State Manager: " + text)
