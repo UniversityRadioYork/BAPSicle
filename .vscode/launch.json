@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Launch Player Standalone",
+            "type": "python",
+            "request": "launch",
+            "program": "./player.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Launch Server Standalone",
+            "type": "python",
+            "request": "launch",
+            "program": "./launch_standalone.py",
+            "console": "integratedTerminal"
+        }
+    ]
+}

@@ -1,0 +1,2 @@
+pywin32
+auto-py-to-exe

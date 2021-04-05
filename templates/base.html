@@ -8,7 +8,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
   {% block head %}
-    <meta http-equiv="refresh" content="5;" />
   {% endblock %}
 
   <title>BAPSicle {% if data.ui_title %} | {{data.ui_title}}{% endif %}</title>
@@ -40,7 +39,10 @@
                 Status
               </a>
               <a href="/config" class="btn btn-user btn-outline-light btn-primary ml-4 {% if data.ui_page == 'config' %}active{% endif %}">
-                Config
+                Channel Config
+              </a>
+              <a href="/server" class="btn btn-user btn-outline-light btn-primary ml-4 {% if data.ui_page == 'server' %}active{% endif %}">
+                Server Config
               </a>
               <a href="/logs" class="btn btn-user btn-outline-light btn-primary ml-4 {% if data.ui_page == 'logs' %}active{% endif %}">
                 Logs

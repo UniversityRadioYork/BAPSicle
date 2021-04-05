@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content_inner %}
+  {% if data %}
+      {% for log in data.logs %}
+        <code>
+          {{log}}
+        </code>
+        <br>
+      {% endfor %}
+  {% endif %}
+{% endblock %}

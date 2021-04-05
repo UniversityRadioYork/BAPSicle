@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content_inner %}
+  {% if data %}
+    <form action="/server/update" method="POST">
+      <label for="host">Server Host:</label>
+      <input type="text" id="host" name="host" class="form-control" value="{{data.state.host}}">
+      <br>
+      <label for="port">Server Port:</label>
+      <input type="number" id="port" name="port" class="form-control" value="{{data.state.port}}">
+      <br>
+      <label for="port">WebSockets Port:</label>
+      <input type="number" id="ws_port" name="ws_port" class="form-control" value="{{data.state.ws_port}}">
+      <br>
+      <label for="name">Server Name:</label>
+      <input type="text" id="name" name="name" class="form-control" value="{{data.state.server_name}}">
+      <br>
+      <label for="channels">Number of Channels:</label>
+      <input type="number" id="channels" name="channels" class="form-control" value="{{data.state.num_channels}}">
+      <br>
+      <label for="serial_port">BAPS Controller Serial Port:</label>
+      <select class="form-control" name="serial_port">
+        <label>Serial Ports</label>
+        {% for port in data.ser_ports %}
+          <option value="{{port}}" {% if port == data.state.serial_port %}selected{% endif %}>{{port}}</option>
+        {% endfor %}
+      </select>
+      <br>
+      <input type="submit" class="btn btn-primary" value="Save & Restart Server">
+    </form>
+  {% endif %}
+{% endblock %}

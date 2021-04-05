@@ -1,6 +1,37 @@
 
-.vscode/
+.vscode/settings.json
 
 __pycache__/
 
-state/
+
+*.egg-info/
+
+build/build-exe-config.json
+
+install/*.exe
+install/nssm
+
+*.pyo
+
+*.spec
+
+build/build-exe-pyinstaller-command.bat
+
+build/build/BAPSicle/
+
+build/output/
+
+
+venv/
+
+config.py
+
+dev/welcome.mp3
+
+build/build-exe-pyinstaller-command.sh
+
+*.mp3
+
+*.oga
+
+*.ogg
