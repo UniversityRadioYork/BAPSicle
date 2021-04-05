@@ -44,7 +44,7 @@ from helpers.logging_manager import LoggingManager
 
 PLAYBACK_END = USEREVENT + 1
 # TODO ENUM
-VALID_MESSAGE_SOURCES = ["WEBSOCKET", "UI", "CONTROLLER", "ALL"]
+VALID_MESSAGE_SOURCES = ["WEBSOCKET", "UI", "CONTROLLER", "TEST", "ALL"]
 class Player():
     out_q: multiprocessing.Queue
     last_msg: str
@@ -603,6 +603,7 @@ class Player():
 
 
                         elif (self.last_msg == 'QUIT'):
+                            self._retMsg(True)
                             self.running = False
                             continue
 
@@ -638,7 +639,7 @@ class Player():
 
         self.logger.log.info("Quiting player " + str(channel))
         self.quit()
-        self._retAll("EXIT")
+        self._retAll("QUIT")
         del self.logger
         os._exit(0)
 

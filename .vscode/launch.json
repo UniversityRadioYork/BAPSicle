@@ -14,6 +14,13 @@
             "request": "launch",
             "program": "./launch_standalone.py",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Launch Tests: Player",
+            "type": "python",
+            "request": "launch",
+            "module": "tests.test_player",
+            "console": "integratedTerminal"
         }
     ]
 }
