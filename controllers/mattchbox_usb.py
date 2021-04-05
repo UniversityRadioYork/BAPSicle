@@ -64,7 +64,7 @@ class MattchBox(Controller):
           if self.ser and self.ser.is_open and self.port: # If self.port is changing (via state_handler), we should stop.
             try:
               line = int.from_bytes(self.ser.read(1), "big") # Endianness doesn't matter for 1 byte.
-              self.logger.log.info("Received from controller:", line)
+              self.logger.log.info("Received from controller: " + str(line))
               if (line == 255):
                 self.ser.write(b'\xff') # Send 255 back.
               elif (line in [1,3,5]):
