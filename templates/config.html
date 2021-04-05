@@ -7,7 +7,7 @@
 
   Set for:
   {% for channel in data.channels %}
-    <a href="/player/{{channel.channel}}/output/none">Channel {{channel.channel}}</a>
+    <a href="/player/{{channel.channel}}/output/{{output.name}}">Channel {{channel.channel}}</a>
   {% endfor %}
     - {% if output.name %}{{output.name}}{% else %}System Default Output{% endif %}<br>
   {% endfor %}

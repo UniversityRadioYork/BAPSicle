@@ -16,7 +16,6 @@ from api_handler import APIHandler
 from controllers.mattchbox_usb import MattchBox
 import multiprocessing
 import queue
-#import threading
 import time
 import player
 from flask import Flask, render_template, send_from_directory, request, jsonify, abort
@@ -61,8 +60,6 @@ class BAPSicleServer():
         state.update("server_version", config.VERSION)
 
         startServer()
-        #asyncio.get_event_loop().run_until_complete(startServer())
-        #asyncio.get_event_loop().run_forever()
 
     def __del__(self):
         stopServer()
@@ -75,18 +72,15 @@ default_state = {
     "host": "localhost",
     "port": 13500,
     "ws_port": 13501,
-    "num_channels": 3
+    "num_channels": 3,
+    "ser_port": None,
+    "ser_connected": False,
 }
 
 
 
 app = Flask(__name__, static_url_path='')
-CORS(app, supports_credentials=True) # Allow ALL CORS!!!
 
-log = logging.getLogger('werkzeug')
-log.disabled = True
-
-app.logger.disabled = True
 
 api_from_q: queue.Queue
 api_to_q: queue.Queue
@@ -171,26 +165,27 @@ def server_config():
     data = {
         "ui_page": "server",
         "ui_title": "Server Config",
-        "state": state.state
+        "state": state.state,
+        "ser_ports": DeviceManager.getSerialPorts()
     }
     return render_template("server.html", data=data)
 
 
-@app.route("/restart", methods=["POST"])
-async def restart_server():
+@app.route("/server/update", methods=["POST"])
+def update_server():
     state.update("server_name", request.form["name"])
     state.update("host", request.form["host"])
     state.update("port", int(request.form["port"]))
     state.update("num_channels", int(request.form["channels"]))
     state.update("ws_port", int(request.form["ws_port"]))
-    stopServer(restart=True)
-    await startServer()
+    state.update("serial_port", request.form["serial_port"])
+    #stopServer()
+    return server_config()
 
 
 # Get audio for UI to generate waveforms.
 
 @app.route("/audiofile/<type>/<int:id>")
-#@cross_origin()
 def audio_file(type: str, id: int):
     if type not in ["managed", "track"]:
         abort(404)
@@ -334,10 +329,6 @@ def list_showplans():
             response = api_from_q.get_nowait()
             if response.startswith("LIST_PLANS:"):
                 response = response[response.index(":")+1:]
-                #try:
-                #    response = json.loads(response)
-                #except Exception as e:
-                #    raise e
                 return response
 
         except queue.Empty:
@@ -539,11 +530,12 @@ def startServer():
     player_handler = multiprocessing.Process(target=PlayerHandler, args=(channel_from_q, websocket_to_q, ui_to_q, controller_to_q))
     player_handler.start()
 
+    # Note, state here will become a copy in the process.
+    # It will not update, and callbacks will not work :/
     websockets_server = multiprocessing.Process(target=WebsocketServer, args=(channel_to_q, websocket_to_q, state))
     websockets_server.start()
 
-
-    controller_handler = multiprocessing.Process(target=MattchBox, args=(channel_to_q, controller_to_q))
+    controller_handler = multiprocessing.Process(target=MattchBox, args=(channel_to_q, controller_to_q, state))
     controller_handler.start()
 
     # TODO Move this to player or installer.
@@ -579,19 +571,33 @@ def startServer():
             channel_to_q[0].put("PLAY")
 
     # Don't use reloader, it causes Nested Processes!
+    def runWebServer():
+        CORS(app, supports_credentials=True) # Allow ALL CORS!!!
+
+        log = logging.getLogger('werkzeug')
+        log.disabled = True
+
+        app.logger.disabled = True
+        app.run(host=state.state["host"], port=state.state["port"], debug=True, use_reloader=False)
+
     global webserver
     webserver = multiprocessing.Process(
-        app.run(host=state.state["host"], port=state.state["port"], debug=True, use_reloader=False)
+        runWebServer()
     )
     webserver.start()
 
 
-def stopServer(restart=False):
-    global channel_p, channel_from_q, channel_to_q, websockets_server, webserver
+def stopServer():
+    global channel_p, channel_from_q, channel_to_q, websockets_server, webserver, controller_handler
+    print("Stopping Controllers")
+    controller_handler.terminate()
+    controller_handler.join()
+
     print("Stopping Websockets")
     websocket_to_q[0].put("WEBSOCKET:QUIT")
     websockets_server.join()
     del websockets_server
+
     print("Stopping server.py")
     for q in channel_to_q:
         q.put("QUIT")
@@ -607,21 +613,13 @@ def stopServer(restart=False):
     del channel_to_q
     print("Stopped all players.")
 
+    print("Stopping webserver")
     global webserver
     webserver.terminate()
     webserver.join()
-    return
 
-    ## Caused an outside context error, presuably because called outside of a page request.
-    #shutdown = request.environ.get('werkzeug.server.shutdown')
-    #if shutdown is None:
-    #    print("Shutting down Server.")
-
-    #else:
-    #    print("Shutting down Flask.")
-    #    if not restart:
-    #        shutdown()
+    print("Stopped webserver")
 
 
 if __name__ == "__main__":
-    print("BAPSicle is a service. Please run it like one.")
+    raise Exception("BAPSicle is a service. Please run it like one.")

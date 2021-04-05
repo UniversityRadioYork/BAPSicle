@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content_inner %}
   {% if data %}
-    <form action="/restart" method="POST">
+    <form action="/server/update" method="POST">
       <label for="host">Server Host:</label>
       <input type="text" id="host" name="host" class="form-control" value="{{data.state.host}}">
       <br>
@@ -17,15 +17,12 @@
       <label for="channels">Number of Channels:</label>
       <input type="number" id="channels" name="channels" class="form-control" value="{{data.state.num_channels}}">
       <br>
-      <label for="ser_port">BAPS Controller Serial Port:</label>
-      <select class="form-control" name="ser_port">
+      <label for="serial_port">BAPS Controller Serial Port:</label>
+      <select class="form-control" name="serial_port">
         <label>Serial Ports</label>
         {% for port in data.ser_ports %}
-          <option value="{{port.name}}">{{port.name}}</option>
+          <option value="{{port}}" {% if port == data.state.serial_port %}selected{% endif %}>{{port}}</option>
         {% endfor %}
-
-        <option value="none">{% if not data.ser_ports %}No ports found.{% else %}None{% endif %}</option>
-
       </select>
       <br>
       <input type="submit" class="btn btn-primary" value="Save & Restart Server">

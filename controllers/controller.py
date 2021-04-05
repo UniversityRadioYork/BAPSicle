@@ -11,6 +11,9 @@ class Controller():
     self.handler()
     return
 
+  def _state_handler(self):
+    return
+
   # Registers a function for the controller class to call to tell BAPSicle to do something.
   def register_callback(self, callback: Callable):
     self.callbacks.append(callback)

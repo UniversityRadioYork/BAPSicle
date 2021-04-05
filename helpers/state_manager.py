@@ -15,8 +15,8 @@ from helpers.types import ServerState
 from typing import Any, Dict, List, NewType, Optional, Union
 
 class StateManager:
-    filepath = None
-    logger = None
+    filepath: str
+    logger: LoggingManager
     callbacks: List[Any] = []
     __state = {}
     __state_in_file = {}
@@ -148,6 +148,7 @@ class StateManager:
                     self.logger.log.critical("Failed to execute status callback: {}".format(e))
 
     def add_callback(self, function):
+        self._log("Adding callback: {}".format(str(function)))
         self.callbacks.append(function)
 
     def _log(self, text:str, level: int = INFO):
