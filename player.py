@@ -504,11 +504,11 @@ class Player():
         self.running = True
         self.out_q = out_q
 
-        self.logger = LoggingManager("channel" + str(channel))
+        self.logger = LoggingManager("Player" + str(channel))
 
         self.api = MyRadioAPI(self.logger)
 
-        self.state = StateManager("channel" + str(channel), self.logger,
+        self.state = StateManager("Player" + str(channel), self.logger,
                                   self.__default_state, self.__rate_limited_params)
 
         self.state.add_callback(self._send_status)
