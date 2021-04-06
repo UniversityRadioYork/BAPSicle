@@ -5,6 +5,8 @@ import time
 import os
 import json
 
+from typing import List
+
 from player import Player
 from helpers.logging_manager import LoggingManager
 # How long to wait (by default) in secs for the player to respond.
@@ -13,6 +15,25 @@ TIMEOUT_QUIT_S = 10
 
 test_dir = dir_path = os.path.dirname(os.path.realpath(__file__)) + "/"
 resource_dir = test_dir + "resources/"
+
+# All because constant dicts are still mutable in python :/
+def getPlanItem(length: int, weight: int):
+    if length not in [1,2,5]:
+        raise ValueError("Invalid length dummy planitem.")
+    # TODO: This assumes we're handling one channel where timeslotitemid is unique
+    item = {
+        "timeslotitemid": weight,
+        "managedid": str(length),
+        "filename": resource_dir + str(length)+"sec.mp3",
+        "weight": weight,
+        "title": str(length)+"sec",
+        "length": "00:00:0{}".format(length)
+    }
+    return item
+
+def getPlanItemJSON(length: int, weight: int):
+    return str(json.dumps(getPlanItem(length, weight)))
+
 class TestPlayer(unittest.TestCase):
 
     player: multiprocessing.Process
@@ -41,6 +62,11 @@ class TestPlayer(unittest.TestCase):
         self.player = multiprocessing.Process(target=Player, args=(-1, self.player_to_q, self.player_from_q))
         self.player.start()
         self._send_msg_wait_OKAY("CLEAR") # Empty any previous track items.
+        self._send_msg_wait_OKAY("STOP")
+        self._send_msg_wait_OKAY("UNLOAD")
+        self._send_msg_wait_OKAY("PLAYONLOAD:False")
+        self._send_msg_wait_OKAY("REPEAT:none")
+        self._send_msg_wait_OKAY("AUTOADVANCE:True")
 
     # clean up logic
     # code that is executed after each test
@@ -106,16 +132,9 @@ class TestPlayer(unittest.TestCase):
         self.assertTrue(json_obj["initialised"])
 
     def test_player_play(self):
-        item = {
-            "timeslotitemid": "0",
-            "managedid": "1",
-            "filename": resource_dir + "2sec.mp3",
-            "weight": "0",
-            "title": "5sec",
-            "length": "00:00:02"
-        }
 
-        response = self._send_msg_wait_OKAY("ADD:"+ json.dumps(item))
+        response = self._send_msg_wait_OKAY("ADD:" + getPlanItemJSON(2,0))
+
         # Should return nothing, just OKAY.
         self.assertFalse(response)
 
