@@ -195,7 +195,7 @@ class TestPlayer(unittest.TestCase):
         self.assertTrue(json_obj["playing"])
         self.assertEqual(json_obj["loaded_item"]["weight"], 1)
 
-# This test checks if the player progresses to the next item and plays on load.
+    # This test checks that the player repeats the first item without moving onto the second.
     def test_repeat_one(self):
         self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(2,0))
         # Add a second item to make sure we don't load this one when repeat one.
@@ -219,6 +219,42 @@ class TestPlayer(unittest.TestCase):
             self.assertEqual(json_obj["loaded_item"]["weight"], 0)
 
             time.sleep(2.1)
+
+    # This test checks that the player repeats all plan items before playing the first again.
+    def test_repeat_all(self):
+        # Add two items to repeat all between
+        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(2,0))
+        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(2,1))
+
+        # TODO Test without play on load? What's the behaviour here?
+        self._send_msg_wait_OKAY("PLAYONLOAD:True")
+        self._send_msg_wait_OKAY("REPEAT:all")
+
+        self._send_msg_wait_OKAY("LOAD:0")
+
+        time.sleep(1)
+
+        # Try 3 repeats to make sure.
+        for repeat in range(3):
+            print("Trying repeat " + str(repeat))
+            # We should be playing the first item.
+            response = self._send_msg_wait_OKAY("STATUS")
+            self.assertTrue(response)
+            json_obj = json.loads(response)
+            self.assertTrue(json_obj["playing"])
+            self.assertEqual(json_obj["loaded_item"]["weight"], 0)
+
+            time.sleep(2.0)
+
+            # We should be playing the second item.
+            response = self._send_msg_wait_OKAY("STATUS")
+            self.assertTrue(response)
+            json_obj = json.loads(response)
+            self.assertTrue(json_obj["playing"])
+            self.assertEqual(json_obj["loaded_item"]["weight"], 1)
+
+            time.sleep(2.0)
+
 
 
 
