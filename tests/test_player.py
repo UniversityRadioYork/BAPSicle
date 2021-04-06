@@ -186,9 +186,6 @@ class TestPlayer(unittest.TestCase):
         self.assertTrue(json_obj["playing"])
         self.assertEqual(json_obj["loaded_item"]["weight"], 0)
 
-
-        self._send_msg_wait_OKAY("PLAY")
-
         time.sleep(2)
 
         # Now we should be onto playing the second item.
@@ -198,6 +195,30 @@ class TestPlayer(unittest.TestCase):
         self.assertTrue(json_obj["playing"])
         self.assertEqual(json_obj["loaded_item"]["weight"], 1)
 
+# This test checks if the player progresses to the next item and plays on load.
+    def test_repeat_one(self):
+        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(2,0))
+        # Add a second item to make sure we don't load this one when repeat one.
+        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(2,1))
+
+        # TODO Test without play on load? What's the behaviour here?
+        self._send_msg_wait_OKAY("PLAYONLOAD:True")
+        self._send_msg_wait_OKAY("REPEAT:one")
+
+        self._send_msg_wait_OKAY("LOAD:0")
+
+        # Try 3 repeats to make sure.
+        for repeat in range(3):
+            print("Trying repeat " + str(repeat))
+            # We should be playing the first item.
+            response = self._send_msg_wait_OKAY("STATUS")
+            self.assertTrue(response)
+            json_obj = json.loads(response)
+            self.assertTrue(json_obj["playing"])
+            # Check we're not playing the second item.
+            self.assertEqual(json_obj["loaded_item"]["weight"], 0)
+
+            time.sleep(2.1)
 
 
 
