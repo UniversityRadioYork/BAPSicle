@@ -168,6 +168,41 @@ class TestPlayer(unittest.TestCase):
 
         self.assertFalse(json_obj["playing"])
 
+    # This test checks if the player progresses to the next item and plays on load.
+    def test_play_on_load(self):
+        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(2,0))
+
+        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(2,1))
+
+        self._send_msg_wait_OKAY("PLAYONLOAD:True")
+        self._send_msg_wait_OKAY("REPEAT:none")
+
+        self._send_msg_wait_OKAY("LOAD:0")
+
+        # We should be playing the first item.
+        response = self._send_msg_wait_OKAY("STATUS")
+        self.assertTrue(response)
+        json_obj = json.loads(response)
+        self.assertTrue(json_obj["playing"])
+        self.assertEqual(json_obj["loaded_item"]["weight"], 0)
+
+
+        self._send_msg_wait_OKAY("PLAY")
+
+        time.sleep(2)
+
+        # Now we should be onto playing the second item.
+        response = self._send_msg_wait_OKAY("STATUS")
+        self.assertTrue(response)
+        json_obj = json.loads(response)
+        self.assertTrue(json_obj["playing"])
+        self.assertEqual(json_obj["loaded_item"]["weight"], 1)
+
+
+
+
+
+
 
 
 
@@ -177,7 +212,7 @@ class TestPlayer(unittest.TestCase):
 if __name__ == '__main__':
     try:
         unittest.main()
-    except Exception as e:
+    except SystemExit as e:
         print("Tests failed :/", e)
     else:
         print("Tests passed!")
