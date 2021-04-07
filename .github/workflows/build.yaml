@@ -22,10 +22,8 @@ jobs:
         sudo apt update
         chmod +x install-ubuntu.sh
         ./install-ubuntu.sh
-        sudo apt-get install alsa-base
-        sudo apt-get install --reinstall linux-modules-extra-`uname -r`
-        sudo modinfo soundcore
-        sudo modprobe snd-dummy # Make a dummy sound output
+        # Use pulseaudio for dummy output
+        sudo apt-get install pulseaudio jackd2 alsa-utils dbus-x11
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
