@@ -36,3 +36,9 @@ jobs:
         python -m sounddevice
         cp config.py.example config.py # We don't need an API config file for these tests.
         python -m unittest
+      with:
+        name: Logs
+        path: |
+          logs/*
+
+
