@@ -40,5 +40,6 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with unittest
       run: |
+        python -m sounddevice
         cp config.py.example config.py # We don't need an API config file for these tests.
         python -m unittest
