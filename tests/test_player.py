@@ -98,8 +98,8 @@ class TestPlayer(unittest.TestCase):
             except Empty:
                 pass
             finally:
-                time.sleep(0.1)
-                elapsed += 0.1
+                time.sleep(0.01)
+                elapsed += 0.01
         return False if got_anything else None
 
     def _send_msg_and_wait(self, msg:str, sources_filter=["TEST"], timeout: int = TIMEOUT_MSG_MAX_S):
@@ -175,7 +175,6 @@ class TestPlayer(unittest.TestCase):
         self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(2,1))
 
         self._send_msg_wait_OKAY("PLAYONLOAD:True")
-        self._send_msg_wait_OKAY("REPEAT:none")
 
         self._send_msg_wait_OKAY("LOAD:0")
 
@@ -195,6 +194,22 @@ class TestPlayer(unittest.TestCase):
         self.assertTrue(json_obj["playing"])
         self.assertEqual(json_obj["loaded_item"]["weight"], 1)
 
+        # Okay, now stop. Test if play on load causes havok with auto advance.
+        self._send_msg_wait_OKAY("STOP")
+        self._send_msg_wait_OKAY("AUTOADVANCE:False")
+        self._send_msg_wait_OKAY("LOAD:0")
+
+        time.sleep(3)
+
+        # Now, we've not auto-advanced, but we've not loaded a new item.
+        # Therefore, we shouldn't have played a second time. Leave repeat-one for that.
+        response = self._send_msg_wait_OKAY("STATUS")
+        self.assertTrue(response)
+        json_obj = json.loads(response)
+        self.assertFalse(json_obj["playing"])
+        self.assertEqual(json_obj["loaded_item"]["weight"], 0)
+
+
     # This test checks that the player repeats the first item without moving onto the second.
     def test_repeat_one(self):
         self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(2,0))
@@ -209,7 +224,6 @@ class TestPlayer(unittest.TestCase):
 
         # Try 3 repeats to make sure.
         for repeat in range(3):
-            print("Trying repeat " + str(repeat))
             # We should be playing the first item.
             response = self._send_msg_wait_OKAY("STATUS")
             self.assertTrue(response)
@@ -218,7 +232,7 @@ class TestPlayer(unittest.TestCase):
             # Check we're not playing the second item.
             self.assertEqual(json_obj["loaded_item"]["weight"], 0)
 
-            time.sleep(2.1)
+            time.sleep(2)
 
     # This test checks that the player repeats all plan items before playing the first again.
     def test_repeat_all(self):
@@ -232,11 +246,9 @@ class TestPlayer(unittest.TestCase):
 
         self._send_msg_wait_OKAY("LOAD:0")
 
-        time.sleep(1)
-
+        time.sleep(0.2)
         # Try 3 repeats to make sure.
         for repeat in range(3):
-            print("Trying repeat " + str(repeat))
             # We should be playing the first item.
             response = self._send_msg_wait_OKAY("STATUS")
             self.assertTrue(response)
@@ -270,6 +282,7 @@ if __name__ == '__main__':
     try:
         unittest.main()
     except SystemExit as e:
-        print("Tests failed :/", e)
-    else:
-        print("Tests passed!")
+        if e == True:
+            print("Tests failed :/")
+        else:
+            print("Tests passed!")
