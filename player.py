@@ -34,7 +34,7 @@ from plan import PlanItem
 # Stop the Pygame Hello message.
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-from pygame import mixer, NOEVENT, USEREVENT, event, init
+from pygame import mixer
 from mutagen.mp3 import MP3
 
 from helpers.myradio_api import MyRadioAPI
@@ -42,7 +42,6 @@ from helpers.os_environment import isMacOS
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
 
-PLAYBACK_END = USEREVENT + 1
 # TODO ENUM
 VALID_MESSAGE_SOURCES = ["WEBSOCKET", "UI", "CONTROLLER", "TEST", "ALL"]
 class Player():
@@ -56,8 +55,8 @@ class Player():
     api: MyRadioAPI
 
     running: bool = False
-    already_stopped: bool = False
-    starting: bool = False
+
+    stopped_manually: bool = False
 
     __default_state = {
         "initialised": False,
@@ -148,19 +147,17 @@ class Player():
     def play(self, pos: float = 0):
         if not self.isLoaded:
             return
-        global starting
-        global already_stopped
-        starting = True
+
+
         try:
             mixer.music.play(0, pos)
-            mixer.music.set_endevent(PLAYBACK_END)
             self.state.update("pos_offset", pos)
         except:
             self.logger.log.exception("Failed to play at pos: " + str(pos))
             return False
         self.state.update("paused", False)
 
-        already_stopped = False
+        self.stopped_manually = False
         return True
 
     def pause(self):
@@ -169,6 +166,8 @@ class Player():
         except:
             self.logger.log.exception("Failed to pause.")
             return False
+
+        self.stopped_manually = True
         self.state.update("paused", True)
         return True
 
@@ -180,6 +179,7 @@ class Player():
             except:
                 self.logger.log.exception("Failed to unpause from pos: " + str(position))
                 return False
+
             self.state.update("paused", False)
             return True
         return False
@@ -196,8 +196,7 @@ class Player():
         self.state.update("pos_true", 0)
         self.state.update("paused", False)
 
-        global already_stopped
-        already_stopped = True
+        self.stopped_manually = True
 
         return True
         # return False
@@ -382,61 +381,46 @@ class Player():
 
     def ended(self):
         loaded_item = self.state.state["loaded_item"]
-        # check the existing state (not self.isPlaying)
-        # Since this is called multiple times when pygame isn't playing.
 
-        global starting
-
-        if starting:
-            print("Starting")
-            starting = False
-            return
-
-
-
-        global already_stopped
-
-        #print(already_stopped, self.state.state["remaining"], self.isPlaying)
-
-        if loaded_item == None or already_stopped or (self.state.state["remaining"] > 1):
-            return
-
-        mixer.music.set_endevent(NOEVENT)
-
-        already_stopped = True
 
 
         stopping = True
 
         # Track has ended
-        print("Finished", loaded_item.name)
+        print("Finished", loaded_item.name, loaded_item.weight)
 
         # Repeat 1
-        if self.state.state["repeat"] == "ONE":
+        # TODO ENUM
+        if self.state.state["repeat"] == "one":
             self.play()
-            stopping = False
+            return
 
+        loaded_new_item = False
         # Auto Advance
-        elif self.state.state["auto_advance"]:
+        if self.state.state["auto_advance"]:
             for i in range(len(self.state.state["show_plan"])):
                 if self.state.state["show_plan"][i].weight == loaded_item.weight:
                     if len(self.state.state["show_plan"]) > i+1:
                         self.load(self.state.state["show_plan"][i+1].weight)
+                        loaded_new_item = True
                         break
 
                     # Repeat All
-                    elif self.state.state["repeat"] == "ALL":
+                    # TODO ENUM
+                    elif self.state.state["repeat"] == "all":
                         self.load(self.state.state["show_plan"][0].weight)
+                        loaded_new_item = True
+                        break
 
         # Play on Load
-        if self.state.state["play_on_load"]:
+        if self.state.state["play_on_load"] and loaded_new_item:
             self.play()
-            stopping = False
+            return
 
-        if stopping:
-            self.stop()
-            if self.out_q:
-                self._retAll("STOPPED") # Tell clients that we've stopped playing.
+        # No automations, just stop playing.
+        self.stop()
+        if self.out_q:
+            self._retAll("STOPPED") # Tell clients that we've stopped playing.
 
     def _updateState(self, pos: Optional[float] = None):
 
@@ -450,12 +434,16 @@ class Player():
             elif not self.isPaused:
                 self.state.update("pos", 0) # Reset back to 0 if stopped.
                 self.state.update("pos_offset", 0)
+
+            if self.state.state["playing"] and not self.isPlaying and not self.stopped_manually:
+                self.ended()
+
             self.state.update("playing", self.isPlaying)
             self.state.update("loaded", self.isLoaded)
 
-            self.state.update("pos_true", self.state.state["pos"] + self.state.state["pos_offset"])
+            self.state.update("pos_true", min(self.state.state["length"], self.state.state["pos"] + self.state.state["pos_offset"]))
 
-            self.state.update("remaining", self.state.state["length"] - self.state.state["pos_true"])
+            self.state.update("remaining", max(0,(self.state.state["length"] - self.state.state["pos_true"])))
 
     def _ping_times(self):
 
@@ -497,9 +485,6 @@ class Player():
         process_title = "Player: Channel " + str(channel)
         setproctitle.setproctitle(process_title)
         multiprocessing.current_process().name = process_title
-
-        # Init pygame, only used really for the end of playback trigger.
-        #init()
 
         self.running = True
         self.out_q = out_q
@@ -615,18 +600,6 @@ class Player():
                             self._retMsg(self.status)
                         else:
                             self._retMsg(False)
-
-
-
-                try:
-                    callback_event = event.poll()
-                    if callback_event.type == PLAYBACK_END:
-                        self.ended()
-                    else:
-                        pass
-                except Exception as e:
-                    pass
-
 
 
         # Catch the player being killed externally.
