@@ -36,6 +36,8 @@ jobs:
         python -m sounddevice
         cp config.py.example config.py # We don't need an API config file for these tests.
         python -m unittest
+    - name: Archive test logs
+      uses: actions/upload-artifact@v2
       with:
         name: Logs
         path: |
