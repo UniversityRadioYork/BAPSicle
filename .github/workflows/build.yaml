@@ -21,6 +21,7 @@ jobs:
         cd build
         chmod +x install-ubuntu.sh
         ./install-ubuntu.sh
+        sudo modprobe snd-dummy # Make a dummy sound output
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
