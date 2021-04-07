@@ -300,7 +300,15 @@ class Player():
                 self.logger.log.error("Failed to find weight: {}".format(weight))
                 return False
 
-            if loaded_item.filename == "" or loaded_item.filename == None or not os.path.isfile(loaded_item.filename):
+            reload = False
+            if loaded_item.filename == "" or loaded_item.filename == None:
+                self.logger.log.info("Filename is not specified, loading from API.")
+                reload = True
+            elif not os.path.exists(loaded_item.filename):
+                self.logger.log.warn("Filename given doesn't exist. Re-loading from API.")
+                reload = True
+
+            if reload:
                 loaded_item.filename = self.api.get_filename(item = loaded_item)
 
             if not loaded_item.filename:
