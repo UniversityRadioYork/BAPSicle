@@ -6,7 +6,9 @@ jobs:
   test-macos:
 
     runs-on: macos-latest
+    timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
         python-version: [3.7, 3.8, 3.9]
 
@@ -32,6 +34,7 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with unittest
+      timeout-minutes: 10
       run: |
         python -m sounddevice
         cp config.py.example config.py # We don't need an API config file for these tests.
@@ -40,7 +43,7 @@ jobs:
       if: ${{ always() }}
       uses: actions/upload-artifact@v2
       with:
-        name: Logs
+        name: Logs - Python ${{ matrix.python-version }}
         path: |
           logs/*
 
