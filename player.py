@@ -300,7 +300,7 @@ class Player():
                 self.logger.log.error("Failed to find weight: {}".format(weight))
                 return False
 
-            if (loaded_item.filename == "" or loaded_item.filename == None):
+            if loaded_item.filename == "" or loaded_item.filename == None or not os.path.isfile(loaded_item.filename):
                 loaded_item.filename = self.api.get_filename(item = loaded_item)
 
             if not loaded_item.filename:
@@ -358,7 +358,8 @@ class Player():
 
     def output(self, name: Optional[str] = None):
         wasPlaying = self.state.state["playing"]
-        name = None if name == "none" else name
+
+        name = None if (not name or name.lower() == "none") else name
 
         self.quit()
         self.state.update("output", name)
