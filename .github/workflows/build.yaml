@@ -24,6 +24,7 @@ jobs:
         ./install-ubuntu.sh
         sudo apt-get install alsa-base
         sudo apt-get install --reinstall linux-modules-extra-`uname -r`
+        sudo modinfo soundcore
         sudo modprobe snd-dummy # Make a dummy sound output
     - name: Install Python dependencies
       run: |
