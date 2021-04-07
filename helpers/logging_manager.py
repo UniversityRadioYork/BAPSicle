@@ -28,7 +28,8 @@ class LoggingManager():
         if not os.path.isfile(filename):
             try:
                 # Try creating the file.
-                open(filename, "x")
+                file = open(filename, "x")
+                file.close()
             except:
                 print("Failed to create log file.")
                 return
