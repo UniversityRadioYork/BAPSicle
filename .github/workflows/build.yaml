@@ -21,6 +21,7 @@ jobs:
         cd build
         chmod +x install-ubuntu.sh
         ./install-ubuntu.sh
+        sudo apt update
         sudo apt-get install alsa-base
         sudo apt-get install --reinstall linux-image-extra-`uname -r`
         sudo modprobe snd-dummy # Make a dummy sound output
