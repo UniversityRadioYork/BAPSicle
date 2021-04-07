@@ -19,11 +19,11 @@ jobs:
     - name: Install Ubuntu dependencies
       run: |
         cd build
+        sudo apt update
         chmod +x install-ubuntu.sh
         ./install-ubuntu.sh
-        sudo apt update
         sudo apt-get install alsa-base
-        sudo apt-get install --reinstall linux-image-extra-`uname -r`
+        sudo apt-get install --reinstall linux-modules-extra-`uname -r`
         sudo modprobe snd-dummy # Make a dummy sound output
     - name: Install Python dependencies
       run: |
