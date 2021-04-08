@@ -1,5 +1,5 @@
 import json
-from multiprocessing import Queue  # , current_process
+from multiprocessing import Queue, current_process
 from helpers.logging_manager import LoggingManager
 from helpers.myradio_api import MyRadioAPI
 from setproctitle import setproctitle
@@ -7,7 +7,8 @@ from os import _exit
 
 # The API handler is needed from the main flask thread to process API requests.
 # Flask is not able to handle these during page loads, requests.get() hangs.
-# TODO: This is single threadded, but it probably doesn't need to be multi.
+
+
 class APIHandler:
     logger: LoggingManager
     api: MyRadioAPI
@@ -18,7 +19,7 @@ class APIHandler:
 
         process_title = "APIHandler"
         setproctitle(process_title)
-        # current_process().name = process_title
+        current_process().name = process_title
 
         self.server_from_q = server_from_q
         self.server_to_q = server_to_q
@@ -39,7 +40,8 @@ class APIHandler:
                     )
                 elif request == "LIST_PLAYLIST_MUSIC":
                     self.server_to_q.put(
-                        request + ":" + json.dumps(self.api.get_playlist_music())
+                        request + ":" +
+                        json.dumps(self.api.get_playlist_music())
                     )
                 elif request == "LIST_PLAYLIST_AUX":
                     self.server_to_q.put(
@@ -49,7 +51,7 @@ class APIHandler:
                 else:
                     # Commands with params
                     command = request[: request.index(":")]
-                    params = request[request.index(":") + 1 :]
+                    params = request[request.index(":") + 1:]
 
                     if command == "GET_PLAYLIST_AUX":
                         self.server_to_q.put(
@@ -72,7 +74,8 @@ class APIHandler:
                                 + ":"
                                 + json.dumps(
                                     self.api.get_track_search(
-                                        str(params["title"]), str(params["artist"])
+                                        str(params["title"]), str(
+                                            params["artist"])
                                     )
                                 )
                             )
@@ -89,6 +92,7 @@ class APIHandler:
         except SystemExit:
             self.logger.log.info("Received SystemExit")
         except Exception as e:
-            self.logger.log.exception("Received unexpected exception: {}".format(e))
+            self.logger.log.exception(
+                "Received unexpected exception: {}".format(e))
         del self.logger
         _exit(0)

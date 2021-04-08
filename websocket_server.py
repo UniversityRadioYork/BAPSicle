@@ -85,7 +85,8 @@ class WebsocketServer:
                     )
 
             except websockets.exceptions.ConnectionClosedError as e:
-                self.logger.log.error("Client Disconncted {}, {}".format(websocket, e))
+                self.logger.log.error(
+                    "Client Disconncted {}, {}".format(websocket, e))
 
             # TODO: Proper Logging
             except Exception as e:
@@ -109,7 +110,7 @@ class WebsocketServer:
 
                 # Handle the general case
                 # Message format:
-                ## SOURCE:COMMAND:EXTRADATA
+                # SOURCE:COMMAND:EXTRADATA
 
                 message = "WEBSOCKET:" + command
 
@@ -147,7 +148,8 @@ class WebsocketServer:
                         item = data["item"]
                         item["weight"] = int(data["new_weight"])
                         # Now send the special case.
-                        self.channel_to_q[new_channel].put("ADD:" + json.dumps(item))
+                        self.channel_to_q[new_channel].put(
+                            "ADD:" + json.dumps(item))
 
                 except ValueError as e:
                     self.logger.log.exception(

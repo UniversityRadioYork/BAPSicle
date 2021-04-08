@@ -130,7 +130,8 @@ def ui_status():
     for i in range(state.state["num_channels"]):
         channel_states.append(status(i))
 
-    data = {"channels": channel_states, "ui_page": "status", "ui_title": "Status"}
+    data = {"channels": channel_states,
+            "ui_page": "status", "ui_title": "Status"}
     return render_template("status.html", data=data)
 
 
@@ -294,10 +295,7 @@ def clear_channel_plan(channel: int):
 
 @app.route("/player/<int:channel>/status")
 def channel_json(channel: int):
-    try:
-        return jsonify(status(channel))
-    except:
-        return status(channel)
+    return jsonify(status(channel))
 
 
 @app.route("/plan/list")
@@ -311,7 +309,7 @@ def list_showplans():
         try:
             response = api_from_q.get_nowait()
             if response.startswith("LIST_PLANS:"):
-                response = response[response.index(":") + 1 :]
+                response = response[response.index(":") + 1:]
                 return response
 
         except queue.Empty:
@@ -330,7 +328,8 @@ def search_library(type: str):
         api_from_q.get()  # Just waste any previous status responses.
 
     params = json.dumps(
-        {"title": request.args.get("title"), "artist": request.args.get("artist")}
+        {"title": request.args.get(
+            "title"), "artist": request.args.get("artist")}
     )
     api_to_q.put("SEARCH_TRACK:{}".format(params))
 
@@ -388,7 +387,7 @@ def get_playlist(type: str, library_id: str):
         try:
             response = api_from_q.get_nowait()
             if response.startswith(command):
-                response = response[len(command) + 1 :]
+                response = response[len(command) + 1:]
                 if response == "null":
                     abort(401)
                 return response
@@ -420,7 +419,7 @@ def status(channel: int):
             if response.startswith("UI:STATUS:"):
                 response = response.split(":", 2)[2]
                 # TODO: Handle OKAY / FAIL
-                response = response[response.index(":") + 1 :]
+                response = response[response.index(":") + 1:]
                 try:
                     response = json.loads(response)
                 except Exception as e:

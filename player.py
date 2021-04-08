@@ -19,22 +19,17 @@
 # It is key that whenever the parent server tells us to do something
 # that we respond with something, FAIL or OKAY. The server doesn't like to be kept waiting.
 
-from helpers.types import PlayerState, RepeatMode
+# Stop the Pygame Hello message.
+import os
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
+
 from queue import Empty
 import multiprocessing
 import setproctitle
 import copy
 import json
 import time
-
 from typing import Any, Callable, Dict, List, Optional
-
-from plan import PlanItem
-
-# Stop the Pygame Hello message.
-import os
-
-os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 from pygame import mixer
 from mutagen.mp3 import MP3
 
@@ -42,6 +37,9 @@ from helpers.myradio_api import MyRadioAPI
 from helpers.os_environment import isMacOS
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
+from helpers.types import PlayerState, RepeatMode
+from plan import PlanItem
+
 
 # TODO ENUM
 VALID_MESSAGE_SOURCES = ["WEBSOCKET", "UI", "CONTROLLER", "TEST", "ALL"]
@@ -302,12 +300,14 @@ class Player:
                     break
 
             if loaded_item == None:
-                self.logger.log.error("Failed to find weight: {}".format(weight))
+                self.logger.log.error(
+                    "Failed to find weight: {}".format(weight))
                 return False
 
             reload = False
             if loaded_item.filename == "" or loaded_item.filename == None:
-                self.logger.log.info("Filename is not specified, loading from API.")
+                self.logger.log.info(
+                    "Filename is not specified, loading from API.")
                 reload = True
             elif not os.path.exists(loaded_item.filename):
                 self.logger.log.warn(
@@ -330,7 +330,8 @@ class Player:
                 # TODO: Update the show plan filenames
 
             try:
-                self.logger.log.info("Loading file: " + str(loaded_item.filename))
+                self.logger.log.info("Loading file: " +
+                                     str(loaded_item.filename))
                 mixer.music.load(loaded_item.filename)
             except:
                 # We couldn't load that file.
@@ -345,10 +346,12 @@ class Player:
                     self.state.update("length", song.info.length)
                 else:
                     self.state.update(
-                        "length", mixer.Sound(loaded_item.filename).get_length() / 1000
+                        "length", mixer.Sound(
+                            loaded_item.filename).get_length() / 1000
                     )
             except:
-                self.logger.log.exception("Failed to update the length of item.")
+                self.logger.log.exception(
+                    "Failed to update the length of item.")
                 return False
 
             if self.state.state["play_on_load"]:
@@ -475,7 +478,8 @@ class Player:
 
             self.state.update(
                 "remaining",
-                max(0, (self.state.state["length"] - self.state.state["pos_true"])),
+                max(0, (self.state.state["length"] -
+                    self.state.state["pos_true"])),
             )
 
     def _ping_times(self):
@@ -515,7 +519,8 @@ class Player:
 
     def _send_status(self):
         # TODO This is hacky
-        self._retMsg(str(self.status), okay_str=True, custom_prefix="ALL:STATUS:")
+        self._retMsg(str(self.status), okay_str=True,
+                     custom_prefix="ALL:STATUS:")
 
     def __init__(
         self, channel: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue
@@ -546,7 +551,8 @@ class Player:
         loaded_state = copy.copy(self.state.state)
 
         if loaded_state["output"]:
-            self.logger.log.info("Setting output to: " + str(loaded_state["output"]))
+            self.logger.log.info("Setting output to: " +
+                                 str(loaded_state["output"]))
             self.output(loaded_state["output"])
         else:
             self.logger.log.info("Using default output device.")
@@ -554,7 +560,8 @@ class Player:
 
         loaded_item = loaded_state["loaded_item"]
         if loaded_item:
-            self.logger.log.info("Loading filename: " + str(loaded_item.filename))
+            self.logger.log.info("Loading filename: " +
+                                 str(loaded_item.filename))
             self.load(loaded_item.weight)
 
             if loaded_state["pos_true"] != 0:
@@ -581,7 +588,8 @@ class Player:
                         self.last_msg_source = ""
                         self.last_msg = ""
                         self.logger.log.warn(
-                            "Message from unknown sender source: {}".format(source)
+                            "Message from unknown sender source: {}".format(
+                                source)
                         )
                         continue
 
@@ -643,11 +651,13 @@ class Player:
                             "UNLOAD": lambda: self._retMsg(self.unload()),
                             "ADD": lambda: self._retMsg(
                                 self.add_to_plan(
-                                    json.loads(":".join(self.last_msg.split(":")[1:]))
+                                    json.loads(
+                                        ":".join(self.last_msg.split(":")[1:]))
                                 )
                             ),
                             "REMOVE": lambda: self._retMsg(
-                                self.remove_from_plan(int(self.last_msg.split(":")[1]))
+                                self.remove_from_plan(
+                                    int(self.last_msg.split(":")[1]))
                             ),
                             "CLEAR": lambda: self._retMsg(self.clear_channel_plan()),
                         }
@@ -677,7 +687,8 @@ class Player:
         except SystemExit:
             self.logger.log.info("Received SystemExit")
         except Exception as e:
-            self.logger.log.exception("Received unexpected exception: {}".format(e))
+            self.logger.log.exception(
+                "Received unexpected exception: {}".format(e))
 
         self.logger.log.info("Quiting player " + str(channel))
         self.quit()

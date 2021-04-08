@@ -42,6 +42,7 @@ class PlayerHandler:
         except SystemExit:
             self.logger.log.info("Received SystemExit")
         except Exception as e:
-            self.logger.log.exception("Received unexpected exception: {}".format(e))
+            self.logger.log.exception(
+                "Received unexpected exception: {}".format(e))
         del self.logger
         _exit(0)
