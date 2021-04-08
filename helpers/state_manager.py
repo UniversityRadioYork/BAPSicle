@@ -39,7 +39,7 @@ class StateManager:
             try:
                 # Try creating the file.
                 open(self.filepath, "x")
-            except Exception :
+            except Exception:
                 self._log("Failed to create state file.", CRITICAL)
                 return
 
@@ -67,7 +67,7 @@ class StateManager:
 
                 # Now feed the loaded state into the initialised state manager.
                 self.state = file_state
-            except Exception :
+            except Exception:
                 self._logException(
                     "Failed to parse state JSON. Resetting to default state."
                 )
@@ -116,7 +116,7 @@ class StateManager:
             ]
         try:
             state_json = json.dumps(state_to_json, indent=2, sort_keys=True)
-        except Exception :
+        except Exception:
             self._logException("Failed to dump JSON state.")
         else:
             with open(self.filepath, "w") as file:

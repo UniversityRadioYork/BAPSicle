@@ -11,6 +11,7 @@ from os import _exit
 from helpers.logging_manager import LoggingManager
 from websockets.server import Serve
 
+
 class WebsocketServer:
 
     threads = Future
@@ -39,7 +40,7 @@ class WebsocketServer:
 
         try:
             asyncio.get_event_loop().run_forever()
-        except Exception :
+        except Exception:
             # Sever died somehow, just quit out.
             self.quit()
 
@@ -52,7 +53,7 @@ class WebsocketServer:
         print("Deleting websocket server")
         self.quit()
 
-    async def websocket_handler(self, websocket, _):
+    async def websocket_handler(self, websocket, path):
         self.baps_clients.add(websocket)
         await websocket.send(
             json.dumps({"message": "Hello", "serverName": self.server_name})
@@ -84,7 +85,6 @@ class WebsocketServer:
                 self.logger.log.error(
                     "Client Disconncted {}, {}".format(websocket, e))
 
-            # TODO: Proper Logging
             except Exception as e:
                 self.logger.log.exception(
                     "Exception handling messages from Websocket.\n{}".format(e)
@@ -195,12 +195,12 @@ class WebsocketServer:
                             try:
                                 message = message.split("OKAY:")[1]
                                 message = json.loads(message)
-                            except Exception :
+                            except Exception:
                                 continue  # TODO more logging
                         elif command == "POS":
                             try:
                                 message = message.split(":", 2)[2]
-                            except Exception :
+                            except Exception:
                                 continue
                         elif command == "QUIT":
                             self.quit()

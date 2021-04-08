@@ -9,6 +9,7 @@ from helpers.logging_manager import LoggingManager
 from helpers.state_manager import StateManager
 from controllers.controller import Controller
 
+
 class MattchBox(Controller):
     ser: Optional[serial.Serial]
     port: Optional[str]
@@ -86,7 +87,7 @@ class MattchBox(Controller):
                         self.sendToPlayer(int(line / 2), "PLAY")
                     elif line in [2, 4, 6]:
                         self.sendToPlayer(int(line / 2) - 1, "STOP")
-                except Exception :
+                except Exception:
                     continue
                 finally:
                     time.sleep(0.01)

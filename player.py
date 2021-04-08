@@ -42,6 +42,7 @@ from plan import PlanItem
 # TODO ENUM
 VALID_MESSAGE_SOURCES = ["WEBSOCKET", "UI", "CONTROLLER", "TEST", "ALL"]
 
+
 class Player:
     out_q: multiprocessing.Queue
     last_msg: str
@@ -81,7 +82,7 @@ class Player:
     def isInit(self):
         try:
             mixer.music.get_busy()
-        except Exception :
+        except Exception:
             return False
 
         return True
@@ -110,10 +111,10 @@ class Player:
             position: float = self.state.state["pos"]
             mixer.music.set_volume(0)
             mixer.music.play(0)
-        except Exception :
+        except Exception:
             try:
                 mixer.music.set_volume(1)
-            except Exception :
+            except Exception:
                 self.logger.log.exception(
                     "Failed to reset volume after attempting loaded test."
                 )
@@ -148,7 +149,7 @@ class Player:
         try:
             mixer.music.play(0, pos)
             self.state.update("pos_offset", pos)
-        except Exception :
+        except Exception:
             self.logger.log.exception("Failed to play at pos: " + str(pos))
             return False
         self.state.update("paused", False)
@@ -159,7 +160,7 @@ class Player:
     def pause(self):
         try:
             mixer.music.pause()
-        except Exception :
+        except Exception:
             self.logger.log.exception("Failed to pause.")
             return False
 
@@ -172,7 +173,7 @@ class Player:
             position: float = self.state.state["pos_true"]
             try:
                 self.play(position)
-            except Exception :
+            except Exception:
                 self.logger.log.exception(
                     "Failed to unpause from pos: " + str(position)
                 )
@@ -186,7 +187,7 @@ class Player:
         # if self.isPlaying or self.isPaused:
         try:
             mixer.music.stop()
-        except Exception :
+        except Exception:
             self.logger.log.exception("Failed to stop playing.")
             return False
         self.state.update("pos", 0)
@@ -203,7 +204,7 @@ class Player:
         if self.isPlaying:
             try:
                 self.play(pos)
-            except Exception :
+            except Exception:
                 self.logger.log.exception("Failed to seek to pos: " + str(pos))
                 return False
             return True
@@ -330,7 +331,7 @@ class Player:
                 self.logger.log.info("Loading file: " +
                                      str(loaded_item.filename))
                 mixer.music.load(loaded_item.filename)
-            except Exception :
+            except Exception:
                 # We couldn't load that file.
                 self.logger.log.exception(
                     "Couldn't load file: " + str(loaded_item.filename)
@@ -346,7 +347,7 @@ class Player:
                         "length", mixer.Sound(
                             loaded_item.filename).get_length() / 1000
                     )
-            except Exception :
+            except Exception:
                 self.logger.log.exception(
                     "Failed to update the length of item.")
                 return False
@@ -362,7 +363,7 @@ class Player:
                 mixer.music.unload()
                 self.state.update("paused", False)
                 self.state.update("loaded_item", None)
-            except Exception :
+            except Exception:
                 self.logger.log.exception("Failed to unload channel.")
                 return False
         return not self.isLoaded
@@ -372,7 +373,7 @@ class Player:
             mixer.quit()
             self.state.update("paused", False)
             self.logger.log.info("Quit mixer.")
-        except Exception :
+        except Exception:
             self.logger.log.exception("Failed to quit mixer.")
 
     def output(self, name: Optional[str] = None):
@@ -387,7 +388,7 @@ class Player:
                 mixer.init(44100, -16, 2, 1024, devicename=name)
             else:
                 mixer.init(44100, -16, 2, 1024)
-        except Exception :
+        except Exception:
             self.logger.log.exception(
                 "Failed to init mixer with device name: " + str(name)
             )

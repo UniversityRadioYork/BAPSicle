@@ -5,6 +5,7 @@ from os import _exit
 
 from helpers.logging_manager import LoggingManager
 
+
 class PlayerHandler:
     logger: LoggingManager
 
@@ -31,7 +32,7 @@ class PlayerHandler:
                                 ui_to_q[channel].put(message)
                         if source in ["ALL", "CONTROLLER"]:
                             controller_to_q[channel].put(message)
-                    except Exception :
+                    except Exception:
                         pass
 
                 sleep(0.02)
