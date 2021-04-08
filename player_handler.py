@@ -1,10 +1,9 @@
-from helpers.logging_manager import LoggingManager
 from setproctitle import setproctitle
-
-# from multiprocessing import current_process
+from multiprocessing import current_process
 from time import sleep
 from os import _exit
 
+from helpers.logging_manager import LoggingManager
 
 class PlayerHandler:
     logger: LoggingManager
@@ -14,7 +13,7 @@ class PlayerHandler:
         self.logger = LoggingManager("PlayerHandler")
         process_title = "PlayerHandler"
         setproctitle(process_title)
-        # current_process().name = process_title
+        current_process().name = process_title
 
         try:
             while True:
@@ -32,7 +31,7 @@ class PlayerHandler:
                                 ui_to_q[channel].put(message)
                         if source in ["ALL", "CONTROLLER"]:
                             controller_to_q[channel].put(message)
-                    except:
+                    except Exception:
                         pass
 
                 sleep(0.02)

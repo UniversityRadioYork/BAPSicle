@@ -5,8 +5,6 @@ import time
 import os
 import json
 
-from typing import List
-
 from player import Player
 from helpers.logging_manager import LoggingManager
 
@@ -16,6 +14,7 @@ TIMEOUT_QUIT_S = 10
 
 test_dir = dir_path = os.path.dirname(os.path.realpath(__file__)) + "/"
 resource_dir = test_dir + "resources/"
+
 
 # All because constant dicts are still mutable in python :/
 def getPlanItem(length: int, weight: int):
@@ -107,7 +106,7 @@ class TestPlayer(unittest.TestCase):
                         return response[
                             len(source + ":" + msg) + 1 :
                         ]  # +1 to remove trailing : on source.
-            except Empty:
+            except Empty :
                 pass
             finally:
                 time.sleep(0.01)
@@ -286,10 +285,4 @@ class TestPlayer(unittest.TestCase):
 
 # runs the unit tests in the module
 if __name__ == "__main__":
-    try:
-        unittest.main()
-    except SystemExit as e:
-        if e == True:
-            print("Tests failed :/")
-        else:
-            print("Tests passed!")
+    unittest.main()

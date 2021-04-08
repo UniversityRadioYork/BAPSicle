@@ -467,9 +467,9 @@ def list_logs():
 
 @app.route("/logs/<path:path>")
 def send_logs(path):
-    l = open("logs/{}.log".format(path))
+    log_file = open("logs/{}.log".format(path))
     data = {
-        "logs": l.read().splitlines(),
+        "logs": log_file.read().splitlines(),
         "ui_page": "log",
         "ui_title": "Logs - {}".format(path),
     }
@@ -610,14 +610,14 @@ def stopServer():
     print("Stopping server.py")
     for q in channel_to_q:
         q.put("QUIT")
-    for player in channel_p:
+    for channel in channel_p:
         try:
-            player.join()
+            channel.join()
         except Exception as e:
             print("*** Ignoring exception:", e)
             pass
         finally:
-            del player
+            del channel
     del channel_from_q
     del channel_to_q
     print("Stopped all players.")

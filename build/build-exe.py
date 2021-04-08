@@ -1,4 +1,3 @@
-import sys
 import json
 
 file = open('build-exe-config.json', 'r')
@@ -8,6 +7,8 @@ file.close()
 cmd_str = "pyinstaller "
 json_dests = ["icon_file", "clean_build"]
 pyi_dests = ["icon", "clean"]
+
+filename = ""
 
 for option in config["pyinstallerOptions"]:
 
@@ -24,9 +25,9 @@ for option in config["pyinstallerOptions"]:
         cmd_str += '--add-data "' + option["value"] + '" '
     elif option_dest == "filenames":
         filename = option["value"]
-    elif option["value"] == True:
+    elif option["value"] is True:
         cmd_str += "--" + str(option_dest) + " "
-    elif option["value"] == False:
+    elif option["value"] is False:
         pass
     else:
         cmd_str += "--" + str(option_dest) + ' "' + str(option["value"]) + '" '

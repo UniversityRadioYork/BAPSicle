@@ -1,16 +1,15 @@
 import asyncio
 from asyncio.futures import Future
 from asyncio.tasks import Task, shield
-
-from websockets.server import Serve
-from helpers.logging_manager import LoggingManager
 import multiprocessing
 import queue
-from typing import Any, Dict, List, Optional
+from typing import List
 import websockets
 import json
 from os import _exit
 
+from helpers.logging_manager import LoggingManager
+from websockets.server import Serve
 
 class WebsocketServer:
 
@@ -40,7 +39,8 @@ class WebsocketServer:
 
         try:
             asyncio.get_event_loop().run_forever()
-        except:
+        except Exception:
+            # Sever died somehow, just quit out.
             self.quit()
 
     def quit(self):
@@ -52,7 +52,7 @@ class WebsocketServer:
         print("Deleting websocket server")
         self.quit()
 
-    async def websocket_handler(self, websocket, path):
+    async def websocket_handler(self, websocket, _):
         self.baps_clients.add(websocket)
         await websocket.send(
             json.dumps({"message": "Hello", "serverName": self.server_name})
@@ -65,7 +65,7 @@ class WebsocketServer:
             try:
                 async for message in websocket:
                     data = json.loads(message)
-                    if not "channel" in data:
+                    if "channel" not in data:
                         # Didn't specify a channel, send to all.
                         for channel in range(len(self.channel_to_q)):
                             sendCommand(channel, data)
@@ -74,11 +74,7 @@ class WebsocketServer:
                         sendCommand(channel, data)
 
                     async def send(conn, message):
-                        # TODO this doesn't actually catch.
-                        try:
-                            await conn.send(message)
-                        except:
-                            pass
+                        conn.send(message)
 
                     await asyncio.wait(
                         [send(conn, message) for conn in self.baps_clients]
@@ -199,12 +195,12 @@ class WebsocketServer:
                             try:
                                 message = message.split("OKAY:")[1]
                                 message = json.loads(message)
-                            except:
+                            except Exception :
                                 continue  # TODO more logging
                         elif command == "POS":
                             try:
                                 message = message.split(":", 2)[2]
-                            except:
+                            except Exception :
                                 continue
                         elif command == "QUIT":
                             self.quit()

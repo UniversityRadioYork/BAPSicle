@@ -34,16 +34,13 @@ from pygame import mixer
 from mutagen.mp3 import MP3
 
 from helpers.myradio_api import MyRadioAPI
-from helpers.os_environment import isMacOS
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
-from helpers.types import PlayerState, RepeatMode
 from plan import PlanItem
 
 
 # TODO ENUM
 VALID_MESSAGE_SOURCES = ["WEBSOCKET", "UI", "CONTROLLER", "TEST", "ALL"]
-
 
 class Player:
     out_q: multiprocessing.Queue
@@ -84,7 +81,7 @@ class Player:
     def isInit(self):
         try:
             mixer.music.get_busy()
-        except:
+        except Exception:
             return False
 
         return True
@@ -113,10 +110,10 @@ class Player:
             position: float = self.state.state["pos"]
             mixer.music.set_volume(0)
             mixer.music.play(0)
-        except:
+        except Exception:
             try:
                 mixer.music.set_volume(1)
-            except:
+            except Exception:
                 self.logger.log.exception(
                     "Failed to reset volume after attempting loaded test."
                 )
@@ -151,7 +148,7 @@ class Player:
         try:
             mixer.music.play(0, pos)
             self.state.update("pos_offset", pos)
-        except:
+        except Exception:
             self.logger.log.exception("Failed to play at pos: " + str(pos))
             return False
         self.state.update("paused", False)
@@ -162,7 +159,7 @@ class Player:
     def pause(self):
         try:
             mixer.music.pause()
-        except:
+        except Exception:
             self.logger.log.exception("Failed to pause.")
             return False
 
@@ -175,7 +172,7 @@ class Player:
             position: float = self.state.state["pos_true"]
             try:
                 self.play(position)
-            except:
+            except Exception:
                 self.logger.log.exception(
                     "Failed to unpause from pos: " + str(position)
                 )
@@ -189,7 +186,7 @@ class Player:
         # if self.isPlaying or self.isPaused:
         try:
             mixer.music.stop()
-        except:
+        except Exception:
             self.logger.log.exception("Failed to stop playing.")
             return False
         self.state.update("pos", 0)
@@ -206,7 +203,7 @@ class Player:
         if self.isPlaying:
             try:
                 self.play(pos)
-            except:
+            except Exception:
                 self.logger.log.exception("Failed to seek to pos: " + str(pos))
                 return False
             return True
@@ -299,13 +296,13 @@ class Player:
                     loaded_item = showplan[i]
                     break
 
-            if loaded_item == None:
+            if loaded_item is None:
                 self.logger.log.error(
                     "Failed to find weight: {}".format(weight))
                 return False
 
             reload = False
-            if loaded_item.filename == "" or loaded_item.filename == None:
+            if loaded_item.filename == "" or loaded_item.filename is None:
                 self.logger.log.info(
                     "Filename is not specified, loading from API.")
                 reload = True
@@ -333,7 +330,7 @@ class Player:
                 self.logger.log.info("Loading file: " +
                                      str(loaded_item.filename))
                 mixer.music.load(loaded_item.filename)
-            except:
+            except Exception:
                 # We couldn't load that file.
                 self.logger.log.exception(
                     "Couldn't load file: " + str(loaded_item.filename)
@@ -349,7 +346,7 @@ class Player:
                         "length", mixer.Sound(
                             loaded_item.filename).get_length() / 1000
                     )
-            except:
+            except Exception:
                 self.logger.log.exception(
                     "Failed to update the length of item.")
                 return False
@@ -365,7 +362,7 @@ class Player:
                 mixer.music.unload()
                 self.state.update("paused", False)
                 self.state.update("loaded_item", None)
-            except:
+            except Exception:
                 self.logger.log.exception("Failed to unload channel.")
                 return False
         return not self.isLoaded
@@ -375,7 +372,7 @@ class Player:
             mixer.quit()
             self.state.update("paused", False)
             self.logger.log.info("Quit mixer.")
-        except:
+        except Exception:
             self.logger.log.exception("Failed to quit mixer.")
 
     def output(self, name: Optional[str] = None):
@@ -390,7 +387,7 @@ class Player:
                 mixer.init(44100, -16, 2, 1024, devicename=name)
             else:
                 mixer.init(44100, -16, 2, 1024)
-        except:
+        except Exception:
             self.logger.log.exception(
                 "Failed to init mixer with device name: " + str(name)
             )
@@ -406,8 +403,6 @@ class Player:
 
     def ended(self):
         loaded_item = self.state.state["loaded_item"]
-
-        stopping = True
 
         # Track has ended
         print("Finished", loaded_item.name, loaded_item.weight)
@@ -486,7 +481,7 @@ class Player:
 
         UPDATES_FREQ_SECS = 0.2
         if (
-            self.last_time_update == None
+            self.last_time_update is None
             or self.last_time_update + UPDATES_FREQ_SECS < time.time()
         ):
             self.last_time_update = time.time()
@@ -503,7 +498,7 @@ class Player:
             response = custom_prefix
         else:
             response = "{}:{}:".format(self.last_msg_source, self.last_msg)
-        if msg == True:
+        if msg is True:
             response += "OKAY"
         elif isinstance(msg, str):
             if okay_str:
@@ -570,7 +565,7 @@ class Player:
                 )
                 self.seek(loaded_state["pos_true"])
 
-            if loaded_state["playing"] == True:
+            if loaded_state["playing"] is True:
                 self.logger.log.info("Resuming.")
                 self.unpause()
         else:
