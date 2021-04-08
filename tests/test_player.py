@@ -104,9 +104,9 @@ class TestPlayer(unittest.TestCase):
                     source = response[: response.index(":")]
                     if source in sources_filter:
                         return response[
-                            len(source + ":" + msg) + 1 :
+                            len(source + ":" + msg) + 1:
                         ]  # +1 to remove trailing : on source.
-            except Empty :
+            except Empty:
                 pass
             finally:
                 time.sleep(0.01)

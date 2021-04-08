@@ -162,7 +162,7 @@ class StateManager:
             for callback in self.callbacks:
                 try:
                     callback()
-                except Exception as e :
+                except Exception as e:
                     self.logger.log.critical(
                         "Failed to execute status callback: {}".format(e)
                     )

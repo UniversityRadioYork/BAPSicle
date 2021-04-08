@@ -192,7 +192,7 @@ class MyRadioAPI:
     def get_playlist_aux_items(self, library_id: str):
         # Sometimes they have "aux-<ID>", we only need the index.
         if library_id.index("-") > -1:
-            library_id = library_id[library_id.index("-") + 1 :]
+            library_id = library_id[library_id.index("-") + 1:]
 
         url = "/nipswebPlaylist/{}/items".format(library_id)
         request = self.get_apiv2_call(url)
