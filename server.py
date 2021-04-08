@@ -473,7 +473,7 @@ def send_logs(path):
         "ui_page": "log",
         "ui_title": "Logs - {}".format(path),
     }
-    l.close()
+    log_file.close()
     return render_template("log.html", data=data)
 
 
