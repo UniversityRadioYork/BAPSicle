@@ -23,7 +23,8 @@ import config
 from plan import PlanItem
 from helpers.os_environment import resolve_external_file_path
 from helpers.logging_manager import LoggingManager
-from logging import CRITICAL, INFO, DEBUG
+from logging import CRITICAL, WARNING, INFO, DEBUG
+import os
 class MyRadioAPI():
   logger = None
 
@@ -131,16 +132,37 @@ class MyRadioAPI():
     else:
       return None
 
+    # Now check if the file already exists
+    path: str = resolve_external_file_path("/music-tmp/")
 
+    if not os.path.isdir(path):
+      self._log("Music-tmp folder is missing, attempting to create.")
+      try:
+        os.mkdir(path)
+      except Exception as e:
+        self._logException("Failed to create music-tmp folder: {}".format(e))
+        return None
+
+
+    filename: str = resolve_external_file_path("/music-tmp/{}-{}.{}".format(itemType, id, format))
+
+    if os.path.isfile(filename):
+      return filename
+
+
+    # File doesn't exist, download it.
     request = self.get_non_api_call(url)
 
     if not request:
       return None
 
-    filename: str = resolve_external_file_path("/music-tmp/{}-{}.{}".format(itemType, id, format))
+    try:
+      with open(filename, 'wb') as file:
+        file.write(request.content)
+    except Exception as e:
+      self._logException("Failed to write music file: {}".format(e))
+      return None
 
-    with open(filename, 'wb') as file:
-      file.write(request.content)
 
     return filename
 

@@ -41,29 +41,17 @@ from helpers.logging_manager import LoggingManager
 from websocket_server import WebsocketServer
 
 setproctitle("BAPSicleServer.py")
-
-logger: LoggingManager
-state: StateManager
 class BAPSicleServer():
 
     def __init__(self):
-
-        process_title = "BAPSicleServer"
-        setproctitle(process_title)
-        #multiprocessing.current_process().name = process_title
-
-        global logger
-        global state
-        logger = LoggingManager("BAPSicleServer")
-
-        state = StateManager("BAPSicleServer", logger, default_state)
-        state.update("server_version", config.VERSION)
 
         startServer()
 
     def __del__(self):
         stopServer()
 
+    def get_flask(self):
+        return app
 
 
 default_state = {
@@ -81,6 +69,9 @@ default_state = {
 
 app = Flask(__name__, static_url_path='')
 
+
+logger: LoggingManager
+state: StateManager
 
 api_from_q: queue.Queue
 api_to_q: queue.Queue
@@ -499,9 +490,16 @@ def serve_static(path: str):
     return send_from_directory('ui-static', path)
 
 def startServer():
-    process_title="startServer"
-    #threading.current_thread().name = process_title
+    process_title = "startServer"
     setproctitle(process_title)
+    #multiprocessing.current_process().name = process_title
+
+    global logger
+    global state
+    logger = LoggingManager("BAPSicleServer")
+
+    state = StateManager("BAPSicleServer", logger, default_state)
+    state.update("server_version", config.VERSION)
 
     if isMacOS():
         multiprocessing.set_start_method("spawn", True)
@@ -572,6 +570,8 @@ def startServer():
 
     # Don't use reloader, it causes Nested Processes!
     def runWebServer():
+        process_title = "WebServer"
+        setproctitle(process_title)
         CORS(app, supports_credentials=True) # Allow ALL CORS!!!
 
         log = logging.getLogger('werkzeug')

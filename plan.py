@@ -90,9 +90,9 @@ class PlanItem:
     def __init__(self, new_item: Dict[str, Any]):
         self._timeslotitemid = new_item["timeslotitemid"]
         self._managedid = new_item["managedid"] if "managedid" in new_item else None
-        self._trackid = new_item["trackid"] if "trackid" in new_item and not self._managedid else None
+        self._trackid = int(new_item["trackid"]) if "trackid" in new_item and not self._managedid else None
         self._filename = new_item["filename"] if "filename" in new_item else None # This could be a temp dir for API-downloaded items, or a mapped drive.
-        self._weight = new_item["weight"]
+        self._weight = int(new_item["weight"])
         self._title = new_item["title"]
         self._artist = new_item["artist"] if "artist" in new_item else None
         self._length = new_item["length"]

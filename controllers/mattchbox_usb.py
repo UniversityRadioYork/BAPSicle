@@ -90,7 +90,7 @@ class MattchBox(Controller):
 
             if self.next_port != None:
               self.connect(self.next_port)
-              if self.ser.is_open:
+              if self.ser and self.ser.is_open:
                 self.port = self.next_port # We connected successfully, make it stick.
                 self.server_state.update("ser_connected", True)
                 continue # skip the sleep.

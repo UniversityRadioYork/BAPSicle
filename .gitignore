@@ -30,8 +30,4 @@ dev/welcome.mp3
 
 build/build-exe-pyinstaller-command.sh
 
-*.mp3
-
-*.oga
-
-*.ogg
+music-tmp/
