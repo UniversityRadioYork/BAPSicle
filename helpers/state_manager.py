@@ -1,18 +1,14 @@
-from helpers.types import PlayerState
 import json
 import os
 from logging import CRITICAL, INFO
-
 import time
 from datetime import datetime
 from copy import copy
+from typing import Any, List
 
 from plan import PlanItem
 from helpers.logging_manager import LoggingManager
 from helpers.os_environment import resolve_external_file_path
-from helpers.types import ServerState
-
-from typing import Any, Dict, List, NewType, Optional, Union
 
 
 class StateManager:
@@ -43,7 +39,7 @@ class StateManager:
             try:
                 # Try creating the file.
                 open(self.filepath, "x")
-            except:
+            except Exception :
                 self._log("Failed to create state file.", CRITICAL)
                 return
 
@@ -71,7 +67,7 @@ class StateManager:
 
                 # Now feed the loaded state into the initialised state manager.
                 self.state = file_state
-            except:
+            except Exception :
                 self._logException(
                     "Failed to parse state JSON. Resetting to default state."
                 )
@@ -120,7 +116,7 @@ class StateManager:
             ]
         try:
             state_json = json.dumps(state_to_json, indent=2, sort_keys=True)
-        except:
+        except Exception :
             self._logException("Failed to dump JSON state.")
         else:
             with open(self.filepath, "w") as file:
@@ -158,7 +154,7 @@ class StateManager:
 
         self.state = state_to_update
 
-        if update_file == True:
+        if update_file:
             # Either a routine write, or state has changed.
             # Update the file
             self.write_to_file(state_to_update)
@@ -166,7 +162,7 @@ class StateManager:
             for callback in self.callbacks:
                 try:
                     callback()
-                except Exception as e:
+                except Exception as e :
                     self.logger.log.critical(
                         "Failed to execute status callback: {}".format(e)
                     )

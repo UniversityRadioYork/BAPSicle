@@ -1,8 +1,9 @@
 from multiprocessing import Queue
-from typing import Any, Callable, List
+from typing import Callable, List
 
-# Main controller class. All implementations of controller support should inherit this.
+
 class Controller:
+    # Main controller class. All implementations of controller support should inherit this.
     callbacks: List[Callable] = []
     player_to_q: List[Queue]
     player_from_q: List[Queue]

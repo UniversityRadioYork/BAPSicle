@@ -19,7 +19,7 @@ class LoggingManager:
             try:
                 # Try creating the directory.
                 os.mkdir(logpath)
-            except:
+            except Exception :
                 print("Failed to create log directory.")
                 return
 
@@ -30,7 +30,7 @@ class LoggingManager:
                 # Try creating the file.
                 file = open(filename, "x")
                 file.close()
-            except:
+            except Exception :
                 print("Failed to create log file.")
                 return
 

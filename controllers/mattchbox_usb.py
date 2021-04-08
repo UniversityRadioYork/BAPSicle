@@ -1,12 +1,13 @@
-from helpers.logging_manager import LoggingManager
-from helpers.state_manager import StateManager
+
 from typing import List, Optional
-from controllers.controller import Controller
-from multiprocessing import Queue
+from multiprocessing import Queue, current_process
 import serial
 import time
 from setproctitle import setproctitle
 
+from helpers.logging_manager import LoggingManager
+from helpers.state_manager import StateManager
+from controllers.controller import Controller
 
 class MattchBox(Controller):
     ser: Optional[serial.Serial]
@@ -24,11 +25,15 @@ class MattchBox(Controller):
 
         self.ser = None
         self.logger = LoggingManager("ControllerMattchBox")
-        # current_process().name = process_title
+        current_process().name = process_title
 
         self.server_state = state  # This is a copy, will not update :/
-        # This doesn't run, the callback function gets lost due to state being a copy in the multiprocessing process.
-        # self.server_state.add_callback(self._state_handler) # Allow server config changes to trigger controller reload if required.
+
+        # This doesn't run, the callback function gets lost
+        # due to state being a copy in the multiprocessing process.
+        # self.server_state.add_callback(self._state_handler)
+
+        # Allow server config changes to trigger controller reload if required.
         self.port = None
         self.next_port = self.server_state.state["serial_port"]
 
@@ -81,7 +86,7 @@ class MattchBox(Controller):
                         self.sendToPlayer(int(line / 2), "PLAY")
                     elif line in [2, 4, 6]:
                         self.sendToPlayer(int(line / 2) - 1, "STOP")
-                except:
+                except Exception :
                     continue
                 finally:
                     time.sleep(0.01)
@@ -98,7 +103,7 @@ class MattchBox(Controller):
                     self.ser.close()
                     self.server_state.update("ser_connected", False)
 
-                if self.next_port != None:
+                if self.next_port is not None:
                     self.connect(self.next_port)
                     if self.ser and self.ser.is_open:
                         self.port = (
