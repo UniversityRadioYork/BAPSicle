@@ -7,6 +7,7 @@ from setproctitle import setproctitle
 
 from server import BAPSicleServer
 
+
 def startServer():
     server = multiprocessing.Process(target=BAPSicleServer)
     server.start()
@@ -28,7 +29,7 @@ def startServer():
         print("Received unexpected exception: {}".format(e))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # On Windows, calling this function is necessary.
     # Causes all kinds of loops if not present.
     # IT HAS TO BE RIGHT HERE, AT THE TOP OF __MAIN__
@@ -44,11 +45,11 @@ if __name__ == '__main__':
                 print("NOTIFICATION:Welcome to BAPSicle!")
                 webbrowser.open("http://localhost:13500/")
                 startServer()
-            if (sys.argv[1] == "Status"):
+            if sys.argv[1] == "Status":
                 webbrowser.open("http://localhost:13500/status")
-            if (sys.argv[1] == "Config"):
+            if sys.argv[1] == "Config":
                 webbrowser.open("http://localhost:13500/config")
-            if (sys.argv[1] == "Logs"):
+            if sys.argv[1] == "Logs":
                 webbrowser.open("http://localhost:13500/logs")
         except Exception as e:
             print("ALERT:BAPSicle failed with exception:\n", e)

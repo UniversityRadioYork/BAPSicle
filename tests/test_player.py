@@ -9,6 +9,7 @@ from typing import List
 
 from player import Player
 from helpers.logging_manager import LoggingManager
+
 # How long to wait (by default) in secs for the player to respond.
 TIMEOUT_MSG_MAX_S = 10
 TIMEOUT_QUIT_S = 10
@@ -18,21 +19,23 @@ resource_dir = test_dir + "resources/"
 
 # All because constant dicts are still mutable in python :/
 def getPlanItem(length: int, weight: int):
-    if length not in [1,2,5]:
+    if length not in [1, 2, 5]:
         raise ValueError("Invalid length dummy planitem.")
     # TODO: This assumes we're handling one channel where timeslotitemid is unique
     item = {
         "timeslotitemid": weight,
         "managedid": str(length),
-        "filename": resource_dir + str(length)+"sec.mp3",
+        "filename": resource_dir + str(length) + "sec.mp3",
         "weight": weight,
-        "title": str(length)+"sec",
-        "length": "00:00:0{}".format(length)
+        "title": str(length) + "sec",
+        "length": "00:00:0{}".format(length),
     }
     return item
 
+
 def getPlanItemJSON(length: int, weight: int):
     return str(json.dumps(getPlanItem(length, weight)))
+
 
 class TestPlayer(unittest.TestCase):
 
@@ -40,7 +43,6 @@ class TestPlayer(unittest.TestCase):
     player_from_q: multiprocessing.Queue
     player_to_q: multiprocessing.Queue
     logger: LoggingManager
-
 
     # initialization logic for the test suite declared in the test module
     # code that is executed before all tests in one test run
@@ -59,9 +61,11 @@ class TestPlayer(unittest.TestCase):
     def setUp(self):
         self.player_from_q = multiprocessing.Queue()
         self.player_to_q = multiprocessing.Queue()
-        self.player = multiprocessing.Process(target=Player, args=(-1, self.player_to_q, self.player_from_q))
+        self.player = multiprocessing.Process(
+            target=Player, args=(-1, self.player_to_q, self.player_from_q)
+        )
         self.player.start()
-        self._send_msg_wait_OKAY("CLEAR") # Empty any previous track items.
+        self._send_msg_wait_OKAY("CLEAR")  # Empty any previous track items.
         self._send_msg_wait_OKAY("STOP")
         self._send_msg_wait_OKAY("UNLOAD")
         self._send_msg_wait_OKAY("PLAYONLOAD:False")
@@ -83,18 +87,26 @@ class TestPlayer(unittest.TestCase):
     def _send_msg(self, msg: str):
         self.player_to_q.put("TEST:{}".format(msg))
 
-    def _wait_for_msg(self, msg: str, sources_filter=["TEST"], timeout:int = TIMEOUT_MSG_MAX_S):
+    def _wait_for_msg(
+        self, msg: str, sources_filter=["TEST"], timeout: int = TIMEOUT_MSG_MAX_S
+    ):
         elapsed = 0
         got_anything = False
         while elapsed < timeout:
             try:
                 response: str = self.player_from_q.get_nowait()
                 if response:
-                    self.logger.log.info("Received response: {}\nWas looking for {}:{}".format(response, sources_filter, msg))
+                    self.logger.log.info(
+                        "Received response: {}\nWas looking for {}:{}".format(
+                            response, sources_filter, msg
+                        )
+                    )
                     got_anything = True
-                    source = response[:response.index(":")]
+                    source = response[: response.index(":")]
                     if source in sources_filter:
-                        return response[len(source+":"+msg)+1:] # +1 to remove trailing : on source.
+                        return response[
+                            len(source + ":" + msg) + 1 :
+                        ]  # +1 to remove trailing : on source.
             except Empty:
                 pass
             finally:
@@ -102,11 +114,15 @@ class TestPlayer(unittest.TestCase):
                 elapsed += 0.01
         return False if got_anything else None
 
-    def _send_msg_and_wait(self, msg:str, sources_filter=["TEST"], timeout: int = TIMEOUT_MSG_MAX_S):
+    def _send_msg_and_wait(
+        self, msg: str, sources_filter=["TEST"], timeout: int = TIMEOUT_MSG_MAX_S
+    ):
         self._send_msg(msg)
         return self._wait_for_msg(msg, sources_filter, timeout)
 
-    def _send_msg_wait_OKAY(self, msg:str, sources_filter=["TEST"], timeout: int = TIMEOUT_MSG_MAX_S):
+    def _send_msg_wait_OKAY(
+        self, msg: str, sources_filter=["TEST"], timeout: int = TIMEOUT_MSG_MAX_S
+    ):
         response = self._send_msg_and_wait(msg, sources_filter, timeout)
 
         self.assertTrue(response)
@@ -121,7 +137,6 @@ class TestPlayer(unittest.TestCase):
             return response[1]
         return None
 
-
     def test_player_running(self):
         response = self._send_msg_wait_OKAY("STATUS")
 
@@ -133,7 +148,7 @@ class TestPlayer(unittest.TestCase):
 
     def test_player_play(self):
 
-        response = self._send_msg_wait_OKAY("ADD:" + getPlanItemJSON(2,0))
+        response = self._send_msg_wait_OKAY("ADD:" + getPlanItemJSON(2, 0))
 
         # Should return nothing, just OKAY.
         self.assertFalse(response)
@@ -170,9 +185,9 @@ class TestPlayer(unittest.TestCase):
 
     # This test checks if the player progresses to the next item and plays on load.
     def test_play_on_load(self):
-        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(5,0))
+        self._send_msg_wait_OKAY("ADD:" + getPlanItemJSON(5, 0))
 
-        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(5,1))
+        self._send_msg_wait_OKAY("ADD:" + getPlanItemJSON(5, 1))
 
         self._send_msg_wait_OKAY("PLAYONLOAD:True")
 
@@ -209,12 +224,11 @@ class TestPlayer(unittest.TestCase):
         self.assertFalse(json_obj["playing"])
         self.assertEqual(json_obj["loaded_item"]["weight"], 0)
 
-
     # This test checks that the player repeats the first item without moving onto the second.
     def test_repeat_one(self):
-        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(5,0))
+        self._send_msg_wait_OKAY("ADD:" + getPlanItemJSON(5, 0))
         # Add a second item to make sure we don't load this one when repeat one.
-        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(5,1))
+        self._send_msg_wait_OKAY("ADD:" + getPlanItemJSON(5, 1))
 
         # TODO Test without play on load? What's the behaviour here?
         self._send_msg_wait_OKAY("PLAYONLOAD:True")
@@ -239,8 +253,8 @@ class TestPlayer(unittest.TestCase):
     # This test checks that the player repeats all plan items before playing the first again.
     def test_repeat_all(self):
         # Add two items to repeat all between
-        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(5,0))
-        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(5,1))
+        self._send_msg_wait_OKAY("ADD:" + getPlanItemJSON(5, 0))
+        self._send_msg_wait_OKAY("ADD:" + getPlanItemJSON(5, 1))
 
         # TODO Test without play on load? What's the behaviour here?
         self._send_msg_wait_OKAY("PLAYONLOAD:True")
@@ -270,17 +284,8 @@ class TestPlayer(unittest.TestCase):
             time.sleep(5)
 
 
-
-
-
-
-
-
-
-
-
 # runs the unit tests in the module
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         unittest.main()
     except SystemExit as e:

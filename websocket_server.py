@@ -11,6 +11,7 @@ import websockets
 import json
 from os import _exit
 
+
 class WebsocketServer:
 
     threads = Future
@@ -31,7 +32,9 @@ class WebsocketServer:
         self.logger = LoggingManager("Websockets")
         self.server_name = state.state["server_name"]
 
-        self.websocket_server = websockets.serve(self.websocket_handler, state.state["host"], state.state["ws_port"])
+        self.websocket_server = websockets.serve(
+            self.websocket_handler, state.state["host"], state.state["ws_port"]
+        )
 
         asyncio.get_event_loop().run_until_complete(self.websocket_server)
 
@@ -51,7 +54,9 @@ class WebsocketServer:
 
     async def websocket_handler(self, websocket, path):
         self.baps_clients.add(websocket)
-        await websocket.send(json.dumps({"message": "Hello", "serverName": self.server_name}))
+        await websocket.send(
+            json.dumps({"message": "Hello", "serverName": self.server_name})
+        )
         self.logger.log.info("New Client: {}".format(websocket))
         for channel in self.channel_to_q:
             channel.put("WEBSOCKET:STATUS")
@@ -75,14 +80,18 @@ class WebsocketServer:
                         except:
                             pass
 
-                    await asyncio.wait([send(conn, message) for conn in self.baps_clients])
+                    await asyncio.wait(
+                        [send(conn, message) for conn in self.baps_clients]
+                    )
 
             except websockets.exceptions.ConnectionClosedError as e:
                 self.logger.log.error("Client Disconncted {}, {}".format(websocket, e))
 
             # TODO: Proper Logging
             except Exception as e:
-                self.logger.log.exception("Exception handling messages from Websocket.\n{}".format(e))
+                self.logger.log.exception(
+                    "Exception handling messages from Websocket.\n{}".format(e)
+                )
 
             finally:
                 self.logger.log.info("Removing client: {}".format(websocket))
@@ -90,7 +99,9 @@ class WebsocketServer:
 
         def sendCommand(channel, data):
             if channel not in range(len(self.channel_to_q)):
-                self.logger.log.exception("Received channel number larger than server supported channels.")
+                self.logger.log.exception(
+                    "Received channel number larger than server supported channels."
+                )
                 return
 
             if "command" in data.keys():
@@ -138,9 +149,12 @@ class WebsocketServer:
                         # Now send the special case.
                         self.channel_to_q[new_channel].put("ADD:" + json.dumps(item))
 
-
                 except ValueError as e:
-                    self.logger.log.exception("Error decoding extra data {} for command {} ".format(e, command))
+                    self.logger.log.exception(
+                        "Error decoding extra data {} for command {} ".format(
+                            e, command
+                        )
+                    )
                     pass
 
                 # Stick the message together and send!
@@ -150,10 +164,16 @@ class WebsocketServer:
                 try:
                     self.channel_to_q[channel].put(message)
                 except Exception as e:
-                    self.logger.log.exception("Failed to send message {} to channel {}: {}".format(message, channel, e))
+                    self.logger.log.exception(
+                        "Failed to send message {} to channel {}: {}".format(
+                            message, channel, e
+                        )
+                    )
 
             else:
-                self.logger.log.error("Command missing from message. Data: {}".format(data))
+                self.logger.log.error(
+                    "Command missing from message. Data: {}".format(data)
+                )
 
         async def handle_to_webstudio():
             while True:
@@ -163,18 +183,22 @@ class WebsocketServer:
                         source = message.split(":")[0]
 
                         # TODO ENUM
-                        if source not in ["WEBSOCKET","ALL"]:
-                            print("ERROR: Message received from invalid source to websocket_handler. Ignored.", source, message)
+                        if source not in ["WEBSOCKET", "ALL"]:
+                            print(
+                                "ERROR: Message received from invalid source to websocket_handler. Ignored.",
+                                source,
+                                message,
+                            )
                             continue
 
                         command = message.split(":")[1]
-                        #print("Websocket Out:", command)
+                        # print("Websocket Out:", command)
                         if command == "STATUS":
                             try:
                                 message = message.split("OKAY:")[1]
                                 message = json.loads(message)
                             except:
-                                continue # TODO more logging
+                                continue  # TODO more logging
                         elif command == "POS":
                             try:
                                 message = message.split(":", 2)[2]
@@ -185,31 +209,33 @@ class WebsocketServer:
                         else:
                             continue
 
-                        data = json.dumps({
-                            "command": command,
-                            "data": message,
-                            "channel": channel
-                        })
-                        await asyncio.wait([conn.send(data) for conn in self.baps_clients])
+                        data = json.dumps(
+                            {"command": command, "data": message, "channel": channel}
+                        )
+                        await asyncio.wait(
+                            [conn.send(data) for conn in self.baps_clients]
+                        )
                     except queue.Empty:
                         continue
                     except ValueError:
                         # Typically a "Set of coroutines/Futures is empty." when sending to a dead client.
                         continue
                     except Exception as e:
-                        self.logger.log.exception("Exception trying to send to websocket:", e)
+                        self.logger.log.exception(
+                            "Exception trying to send to websocket:", e
+                        )
                 await asyncio.sleep(0.02)
 
         self.from_webstudio = asyncio.create_task(handle_from_webstudio())
         self.to_webstudio = asyncio.create_task(handle_to_webstudio())
 
         try:
-            self.threads = await shield(asyncio.gather(self.from_webstudio, self.to_webstudio))
+            self.threads = await shield(
+                asyncio.gather(self.from_webstudio, self.to_webstudio)
+            )
         finally:
             self.from_webstudio.cancel()
             self.to_webstudio.cancel()
-
-
 
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@ from helpers.types import ServerState
 
 from typing import Any, Dict, List, NewType, Optional, Union
 
+
 class StateManager:
     filepath: str
     logger: LoggingManager
@@ -24,7 +25,14 @@ class StateManager:
     __rate_limit_params_until = {}
     __rate_limit_period_s = 0
 
-    def __init__(self, name, logger: LoggingManager, default_state=None, rate_limit_params=[], rate_limit_period_s=5):
+    def __init__(
+        self,
+        name,
+        logger: LoggingManager,
+        default_state=None,
+        rate_limit_params=[],
+        rate_limit_period_s=5,
+    ):
         self.logger = logger
 
         self.filepath = resolve_external_file_path("/state/" + name + ".json")
@@ -39,7 +47,7 @@ class StateManager:
                 self._log("Failed to create state file.", CRITICAL)
                 return
 
-        with open(self.filepath, 'r') as file:
+        with open(self.filepath, "r") as file:
             file_state = file.read()
 
         if file_state == "":
@@ -52,14 +60,21 @@ class StateManager:
 
                 # Turn from JSON -> PlanItem
                 if "channel" in file_state:
-                    file_state["loaded_item"] = PlanItem(
-                        file_state["loaded_item"]) if file_state["loaded_item"] else None
-                    file_state["show_plan"] = [PlanItem(obj) for obj in file_state["show_plan"]]
+                    file_state["loaded_item"] = (
+                        PlanItem(file_state["loaded_item"])
+                        if file_state["loaded_item"]
+                        else None
+                    )
+                    file_state["show_plan"] = [
+                        PlanItem(obj) for obj in file_state["show_plan"]
+                    ]
 
                 # Now feed the loaded state into the initialised state manager.
                 self.state = file_state
             except:
-                self._logException("Failed to parse state JSON. Resetting to default state.")
+                self._logException(
+                    "Failed to parse state JSON. Resetting to default state."
+                )
                 self.state = default_state
                 self.__state_in_file = copy(self.state)
 
@@ -95,8 +110,14 @@ class StateManager:
 
         # Not the biggest fan of this, but maybe I'll get a better solution for this later
         if "channel" in state_to_json:  # If its a channel object
-            state_to_json["loaded_item"] = state_to_json["loaded_item"].__dict__ if state_to_json["loaded_item"] else None
-            state_to_json["show_plan"] = [repr.__dict__ for repr in state_to_json["show_plan"]]
+            state_to_json["loaded_item"] = (
+                state_to_json["loaded_item"].__dict__
+                if state_to_json["loaded_item"]
+                else None
+            )
+            state_to_json["show_plan"] = [
+                repr.__dict__ for repr in state_to_json["show_plan"]
+            ]
         try:
             state_json = json.dumps(state_to_json, indent=2, sort_keys=True)
         except:
@@ -107,16 +128,17 @@ class StateManager:
 
     def update(self, key: str, value: Any, index: int = -1):
         update_file = True
-        if (key in self.__rate_limit_params_until.keys()):
+        if key in self.__rate_limit_params_until.keys():
             # The key we're trying to update is expected to be updating very often,
             # We're therefore going to check before saving it.
             if self.__rate_limit_params_until[key] > self._currentTimeS:
                 update_file = False
             else:
-                self.__rate_limit_params_until[key] = self._currentTimeS + self.__rate_limit_period_s
+                self.__rate_limit_params_until[key] = (
+                    self._currentTimeS + self.__rate_limit_period_s
+                )
 
         state_to_update = self.state
-
 
         if key in state_to_update and index == -1 and state_to_update[key] == value:
             # We're trying to update the state with the same value.
@@ -136,7 +158,7 @@ class StateManager:
 
         self.state = state_to_update
 
-        if (update_file == True):
+        if update_file == True:
             # Either a routine write, or state has changed.
             # Update the file
             self.write_to_file(state_to_update)
@@ -145,16 +167,18 @@ class StateManager:
                 try:
                     callback()
                 except Exception as e:
-                    self.logger.log.critical("Failed to execute status callback: {}".format(e))
+                    self.logger.log.critical(
+                        "Failed to execute status callback: {}".format(e)
+                    )
 
     def add_callback(self, function):
         self._log("Adding callback: {}".format(str(function)))
         self.callbacks.append(function)
 
-    def _log(self, text:str, level: int = INFO):
+    def _log(self, text: str, level: int = INFO):
         self.logger.log.log(level, "State Manager: " + text)
 
-    def _logException(self, text:str):
+    def _logException(self, text: str):
         self.logger.log.exception("State Manager: " + text)
 
     @property
