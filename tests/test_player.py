@@ -239,8 +239,8 @@ class TestPlayer(unittest.TestCase):
     # This test checks that the player repeats all plan items before playing the first again.
     def test_repeat_all(self):
         # Add two items to repeat all between
-        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(2,0))
-        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(2,1))
+        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(5,0))
+        self._send_msg_wait_OKAY("ADD:"+ getPlanItemJSON(5,1))
 
         # TODO Test without play on load? What's the behaviour here?
         self._send_msg_wait_OKAY("PLAYONLOAD:True")
