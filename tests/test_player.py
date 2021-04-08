@@ -1,3 +1,4 @@
+from helpers.os_environment import isMacOS
 from queue import Empty
 import unittest
 import multiprocessing
@@ -285,4 +286,7 @@ class TestPlayer(unittest.TestCase):
 
 # runs the unit tests in the module
 if __name__ == "__main__":
+    # Fixes fork error.
+    if isMacOS():
+        multiprocessing.set_start_method("spawn", True)
     unittest.main()

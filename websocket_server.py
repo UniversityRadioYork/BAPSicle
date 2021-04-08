@@ -233,6 +233,5 @@ class WebsocketServer:
             await asyncio.sleep(0.02)
 
 
-
 if __name__ == "__main__":
     print("Don't do this")
