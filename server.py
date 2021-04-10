@@ -62,7 +62,7 @@ default_state = {
     "port": 13500,
     "ws_port": 13501,
     "num_channels": 3,
-    "ser_port": None,
+    "serial_port": None,
     "ser_connected": False,
     "api_key": None,
     "myradio_base_url": "https://ury.org.uk/myradio",
