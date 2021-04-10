@@ -20,215 +20,221 @@ from typing import Optional
 import requests
 import json
 import config
+from logging import INFO
+import os
+
 from plan import PlanItem
 from helpers.os_environment import resolve_external_file_path
 from helpers.logging_manager import LoggingManager
-from logging import CRITICAL, WARNING, INFO, DEBUG
-import os
-class MyRadioAPI():
-  logger = None
 
-  def __init__(self, logger: LoggingManager):
-    self.logger = logger
 
-  def get_non_api_call(self, url):
+class MyRadioAPI:
+    logger = None
 
-    url = "{}{}".format(config.MYRADIO_BASE_URL, url)
+    def __init__(self, logger: LoggingManager):
+        self.logger = logger
 
-    if "?" in url:
-      url += "&api_key={}".format(config.API_KEY)
-    else:
-      url += "?api_key={}".format(config.API_KEY)
+    def get_non_api_call(self, url):
 
-    self._log("Requesting non-API URL: " + url)
-    request = requests.get(url, timeout=10)
-    self._log("Finished request.")
+        url = "{}{}".format(config.MYRADIO_BASE_URL, url)
 
-    if request.status_code != 200:
-      self._logException("Failed to get API request. Status code: " + str(request.status_code))
-      self._logException(str(request.content))
-      return None
+        if "?" in url:
+            url += "&api_key={}".format(config.API_KEY)
+        else:
+            url += "?api_key={}".format(config.API_KEY)
 
-    return request
+        self._log("Requesting non-API URL: " + url)
+        request = requests.get(url, timeout=10)
+        self._log("Finished request.")
 
-  def get_apiv2_call(self, url):
+        if request.status_code != 200:
+            self._logException(
+                "Failed to get API request. Status code: " + str(request.status_code)
+            )
+            self._logException(str(request.content))
+            return None
 
-    url = "{}/v2{}".format(config.MYRADIO_API_URL, url)
+        return request
 
-    if "?" in url:
-      url += "&api_key={}".format(config.API_KEY)
-    else:
-      url += "?api_key={}".format(config.API_KEY)
+    def get_apiv2_call(self, url):
 
-    self._log("Requesting API V2 URL: " + url)
-    request = requests.get(url, timeout=10)
-    self._log("Finished request.")
+        url = "{}/v2{}".format(config.MYRADIO_API_URL, url)
 
-    if request.status_code != 200:
-      self._logException("Failed to get API request. Status code: " + str(request.status_code))
-      self._logException(str(request.content))
-      return None
+        if "?" in url:
+            url += "&api_key={}".format(config.API_KEY)
+        else:
+            url += "?api_key={}".format(config.API_KEY)
 
-    return request
+        self._log("Requesting API V2 URL: " + url)
+        request = requests.get(url, timeout=10)
+        self._log("Finished request.")
 
+        if request.status_code != 200:
+            self._logException(
+                "Failed to get API request. Status code: " + str(request.status_code)
+            )
+            self._logException(str(request.content))
+            return None
 
+        return request
 
+    # Show plans
 
-  # Show plans
+    def get_showplans(self):
+        url = "/timeslot/currentandnextobjects?n=10"
+        request = self.get_apiv2_call(url)
 
+        if not request:
+            self._logException("Failed to get list of show plans.")
+            return None
 
-  def get_showplans(self):
-    url = "/timeslot/currentandnextobjects?n=10"
-    request = self.get_apiv2_call(url)
+        payload = json.loads(request.content)["payload"]
 
-    if not request:
-      self._logException("Failed to get list of show plans.")
-      return None
+        if not payload["current"]:
+            self._logException("API did not return a current show.")
+            return []
 
-    payload = json.loads(request.content)["payload"]
+        if not payload["next"]:
+            self._logException("API did not return a list of next shows.")
+            return []
 
-    if not payload["current"]:
-      self._logException("API did not return a current show.")
-      return []
+        shows = []
+        shows.append(payload["current"])
+        shows.extend(payload["next"])
 
-    if not payload["next"]:
-      self._logException("API did not return a list of next shows.")
-      return []
+        # TODO filter out jukebox
+        return shows
 
-    shows = []
-    shows.append(payload["current"])
-    shows.extend(payload["next"])
+    def get_showplan(self, timeslotid: int):
 
-    # TODO filter out jukebox
-    return shows
+        url = "/timeslot/{}/showplan".format(timeslotid)
+        request = self.get_apiv2_call(url)
 
-  def get_showplan(self, timeslotid: int):
+        if not request:
+            self._logException("Failed to get show plan.")
+            return None
 
-    url = "/timeslot/{}/showplan".format(timeslotid)
-    request = self.get_apiv2_call(url)
+        return json.loads(request.content)["payload"]
 
-    if not request:
-      self._logException("Failed to get show plan.")
-      return None
+    # Audio Library
 
-    return json.loads(request.content)["payload"]
+    def get_filename(self, item: PlanItem):
+        format = "mp3"  # TODO: Maybe we want this customisable?
+        if item.trackid:
+            itemType = "track"
+            id = item.trackid
+            url = "/NIPSWeb/secure_play?trackid={}&{}".format(id, format)
 
+        elif item.managedid:
+            itemType = "managed"
+            id = item.managedid
+            url = "/NIPSWeb/managed_play?managedid={}".format(id)
+
+        else:
+            return None
+
+        # Now check if the file already exists
+        path: str = resolve_external_file_path("/music-tmp/")
+
+        if not os.path.isdir(path):
+            self._log("Music-tmp folder is missing, attempting to create.")
+            try:
+                os.mkdir(path)
+            except Exception as e:
+                self._logException("Failed to create music-tmp folder: {}".format(e))
+                return None
 
+        filename: str = resolve_external_file_path(
+            "/music-tmp/{}-{}.{}".format(itemType, id, format)
+        )
 
-  # Audio Library
+        if os.path.isfile(filename):
+            return filename
 
-  def get_filename(self, item: PlanItem):
-    format = "mp3" # TODO: Maybe we want this customisable?
-    if item.trackid:
-      itemType = "track"
-      id = item.trackid
-      url = "/NIPSWeb/secure_play?trackid={}&{}".format(id, format)
+        # File doesn't exist, download it.
+        request = self.get_non_api_call(url)
 
-    elif item.managedid:
-      itemType = "managed"
-      id = item.managedid
-      url = "/NIPSWeb/managed_play?managedid={}".format(id)
+        if not request:
+            return None
 
-    else:
-      return None
+        try:
+            with open(filename, "wb") as file:
+                file.write(request.content)
+        except Exception as e:
+            self._logException("Failed to write music file: {}".format(e))
+            return None
 
-    # Now check if the file already exists
-    path: str = resolve_external_file_path("/music-tmp/")
+        return filename
 
-    if not os.path.isdir(path):
-      self._log("Music-tmp folder is missing, attempting to create.")
-      try:
-        os.mkdir(path)
-      except Exception as e:
-        self._logException("Failed to create music-tmp folder: {}".format(e))
-        return None
+    # Gets the list of managed music playlists.
+    def get_playlist_music(self):
+        url = "/playlist/allitonesplaylists"
+        request = self.get_apiv2_call(url)
 
+        if not request:
+            self._logException("Failed to retrieve music playlists.")
+            return None
 
-    filename: str = resolve_external_file_path("/music-tmp/{}-{}.{}".format(itemType, id, format))
+        return json.loads(request.content)["payload"]
 
-    if os.path.isfile(filename):
-      return filename
+    # Gets the list of managed aux playlists (sfx, beds etc.)
+    def get_playlist_aux(self):
+        url = "/nipswebPlaylist/allmanagedplaylists"
+        request = self.get_apiv2_call(url)
 
+        if not request:
+            self._logException("Failed to retrieve music playlists.")
+            return None
 
-    # File doesn't exist, download it.
-    request = self.get_non_api_call(url)
+        return json.loads(request.content)["payload"]
 
-    if not request:
-      return None
+    # Loads the playlist items for a certain managed aux playlist
+    def get_playlist_aux_items(self, library_id: str):
+        # Sometimes they have "aux-<ID>", we only need the index.
+        if library_id.index("-") > -1:
+            library_id = library_id[library_id.index("-") + 1:]
 
-    try:
-      with open(filename, 'wb') as file:
-        file.write(request.content)
-    except Exception as e:
-      self._logException("Failed to write music file: {}".format(e))
-      return None
+        url = "/nipswebPlaylist/{}/items".format(library_id)
+        request = self.get_apiv2_call(url)
 
+        if not request:
+            self._logException(
+                "Failed to retrieve items for aux playlist {}.".format(library_id)
+            )
+            return None
 
-    return filename
+        return json.loads(request.content)["payload"]
 
-  # Gets the list of managed music playlists.
-  def get_playlist_music(self):
-    url = "/playlist/allitonesplaylists"
-    request = self.get_apiv2_call(url)
+        # Loads the playlist items for a certain managed playlist
 
-    if not request:
-      self._logException("Failed to retrieve music playlists.")
-      return None
+    def get_playlist_music_items(self, library_id: str):
+        url = "/playlist/{}/tracks".format(library_id)
+        request = self.get_apiv2_call(url)
 
-    return json.loads(request.content)["payload"]
+        if not request:
+            self._logException(
+                "Failed to retrieve items for music playlist {}.".format(library_id)
+            )
+            return None
 
-  # Gets the list of managed aux playlists (sfx, beds etc.)
-  def get_playlist_aux(self):
-    url = "/nipswebPlaylist/allmanagedplaylists"
-    request = self.get_apiv2_call(url)
+        return json.loads(request.content)["payload"]
 
-    if not request:
-      self._logException("Failed to retrieve music playlists.")
-      return None
+    def get_track_search(
+        self, title: Optional[str], artist: Optional[str], limit: int = 100
+    ):
+        url = "/track/search?title={}&artist={}&digitised=1&limit={}".format(
+            title if title else "", artist if artist else "", limit
+        )
+        request = self.get_apiv2_call(url)
 
-    return json.loads(request.content)["payload"]
+        if not request:
+            self._logException("Failed to search for track.")
+            return None
 
-  # Loads the playlist items for a certain managed aux playlist
-  def get_playlist_aux_items(self, library_id: str):
-    # Sometimes they have "aux-<ID>", we only need the index.
-    if library_id.index("-") > -1:
-      library_id = library_id[library_id.index("-")+1:]
+        return json.loads(request.content)["payload"]
 
-    url = "/nipswebPlaylist/{}/items".format(library_id)
-    request = self.get_apiv2_call(url)
+    def _log(self, text: str, level: int = INFO):
+        self.logger.log.log(level, "MyRadio API: " + text)
 
-    if not request:
-      self._logException("Failed to retrieve items for aux playlist {}.".format(library_id))
-      return None
-
-    return json.loads(request.content)["payload"]
-
-    # Loads the playlist items for a certain managed playlist
-  def get_playlist_music_items(self, library_id: str):
-    url = "/playlist/{}/tracks".format(library_id)
-    request = self.get_apiv2_call(url)
-
-    if not request:
-      self._logException("Failed to retrieve items for music playlist {}.".format(library_id))
-      return None
-
-    return json.loads(request.content)["payload"]
-
-  def get_track_search(self, title: Optional[str], artist: Optional[str], limit: int = 100):
-    url = "/track/search?title={}&artist={}&digitised=1&limit={}".format(title if title else "", artist if artist else "", limit)
-    request = self.get_apiv2_call(url)
-
-    if not request:
-      self._logException("Failed to search for track.")
-      return None
-
-    return json.loads(request.content)["payload"]
-
-
-
-  def _log(self, text:str, level: int = INFO):
-      self.logger.log.log(level, "MyRadio API: " + text)
-
-  def _logException(self, text:str):
-      self.logger.log.exception("MyRadio API: " + text)
-
+    def _logException(self, text: str):
+        self.logger.log.exception("MyRadio API: " + text)

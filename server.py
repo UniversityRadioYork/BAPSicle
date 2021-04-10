@@ -41,8 +41,9 @@ from helpers.logging_manager import LoggingManager
 from websocket_server import WebsocketServer
 
 setproctitle("BAPSicleServer.py")
-class BAPSicleServer():
 
+
+class BAPSicleServer:
     def __init__(self):
 
         startServer()
@@ -66,8 +67,7 @@ default_state = {
 }
 
 
-
-app = Flask(__name__, static_url_path='')
+app = Flask(__name__, static_url_path="")
 
 
 logger: LoggingManager
@@ -89,24 +89,22 @@ webserver: multiprocessing.Process
 
 # General Endpoints
 
+
 @app.errorhandler(404)
 def page_not_found(e: Any):
-    data = {
-        'ui_page': "404",
-        "ui_title": "404"
-    }
-    return render_template('404.html', data=data), 404
+    data = {"ui_page": "404", "ui_title": "404"}
+    return render_template("404.html", data=data), 404
 
 
 @app.route("/")
 def ui_index():
     data = {
-        'ui_page': "index",
+        "ui_page": "index",
         "ui_title": "",
         "server_version": config.VERSION,
-        "server_name": state.state["server_name"]
+        "server_name": state.state["server_name"],
     }
-    return render_template('index.html', data=data)
+    return render_template("index.html", data=data)
 
 
 @app.route("/config")
@@ -118,12 +116,12 @@ def ui_config():
     outputs = DeviceManager.getAudioOutputs()
 
     data = {
-        'channels': channel_states,
-        'outputs': outputs,
-        'ui_page': "config",
-        "ui_title": "Config"
+        "channels": channel_states,
+        "outputs": outputs,
+        "ui_page": "config",
+        "ui_title": "Config",
     }
-    return render_template('config.html', data=data)
+    return render_template("config.html", data=data)
 
 
 @app.route("/status")
@@ -132,12 +130,9 @@ def ui_status():
     for i in range(state.state["num_channels"]):
         channel_states.append(status(i))
 
-    data = {
-        'channels': channel_states,
-        'ui_page': "status",
-        "ui_title": "Status"
-    }
-    return render_template('status.html', data=data)
+    data = {"channels": channel_states,
+            "ui_page": "status", "ui_title": "Status"}
+    return render_template("status.html", data=data)
 
 
 @app.route("/status-json")
@@ -145,10 +140,7 @@ def json_status():
     channel_states = []
     for i in range(state.state["num_channels"]):
         channel_states.append(status(i))
-    return {
-        "server": state.state,
-        "channels": channel_states
-    }
+    return {"server": state.state, "channels": channel_states}
 
 
 @app.route("/server")
@@ -157,7 +149,7 @@ def server_config():
         "ui_page": "server",
         "ui_title": "Server Config",
         "state": state.state,
-        "ser_ports": DeviceManager.getSerialPorts()
+        "ser_ports": DeviceManager.getSerialPorts(),
     }
     return render_template("server.html", data=data)
 
@@ -170,18 +162,18 @@ def update_server():
     state.update("num_channels", int(request.form["channels"]))
     state.update("ws_port", int(request.form["ws_port"]))
     state.update("serial_port", request.form["serial_port"])
-    #stopServer()
+    # stopServer()
     return server_config()
 
 
 # Get audio for UI to generate waveforms.
 
+
 @app.route("/audiofile/<type>/<int:id>")
 def audio_file(type: str, id: int):
     if type not in ["managed", "track"]:
         abort(404)
-    return send_from_directory('music-tmp', type + "-" + str(id) + ".mp3")
-
+    return send_from_directory("music-tmp", type + "-" + str(id) + ".mp3")
 
 
 # Channel Audio Options
@@ -250,6 +242,7 @@ def playonload(channel: int, state: int):
     channel_to_q[channel].put("UI:PLAYONLOAD:" + str(state))
     return ui_status()
 
+
 # Channel Items
 
 
@@ -272,8 +265,8 @@ def add_to_plan(channel: int):
     new_item: Dict[str, Any] = {
         "channel_weight": int(request.form["channel_weight"]),
         "filename": request.form["filename"],
-        "title":  request.form["title"],
-        "artist":  request.form["artist"],
+        "title": request.form["title"],
+        "artist": request.form["artist"],
     }
 
     channel_to_q[channel].put("UI:ADD:" + json.dumps(new_item))
@@ -281,7 +274,7 @@ def add_to_plan(channel: int):
     return new_item
 
 
-#@app.route("/player/<int:channel>/remove/<int:channel_weight>")
+# @app.route("/player/<int:channel>/remove/<int:channel_weight>")
 def remove_plan(channel: int, channel_weight: int):
     channel_to_q[channel].put("UI:REMOVE:" + str(channel_weight))
 
@@ -289,29 +282,26 @@ def remove_plan(channel: int, channel_weight: int):
     return True
 
 
-#@app.route("/player/<int:channel>/clear")
+# @app.route("/player/<int:channel>/clear")
 def clear_channel_plan(channel: int):
     channel_to_q[channel].put("UI:CLEAR")
 
     # TODO Return
     return True
 
+
 # General Channel Endpoints
 
 
 @app.route("/player/<int:channel>/status")
 def channel_json(channel: int):
-    try:
-        return jsonify(status(channel))
-    except:
-        return status(channel)
-
+    return jsonify(status(channel))
 
 
 @app.route("/plan/list")
 def list_showplans():
-    while (not api_from_q.empty()):
-        api_from_q.get() # Just waste any previous status responses.
+    while not api_from_q.empty():
+        api_from_q.get()  # Just waste any previous status responses.
 
     api_to_q.put("LIST_PLANS")
 
@@ -319,7 +309,7 @@ def list_showplans():
         try:
             response = api_from_q.get_nowait()
             if response.startswith("LIST_PLANS:"):
-                response = response[response.index(":")+1:]
+                response = response[response.index(":") + 1:]
                 return response
 
         except queue.Empty:
@@ -327,19 +317,20 @@ def list_showplans():
 
         time.sleep(0.02)
 
+
 @app.route("/library/search/<type>")
 def search_library(type: str):
 
     if type not in ["managed", "track"]:
         abort(404)
 
-    while (not api_from_q.empty()):
-        api_from_q.get() # Just waste any previous status responses.
+    while not api_from_q.empty():
+        api_from_q.get()  # Just waste any previous status responses.
 
-    params = json.dumps({
-        "title": request.args.get('title'),
-        "artist": request.args.get('artist')
-    })
+    params = json.dumps(
+        {"title": request.args.get(
+            "title"), "artist": request.args.get("artist")}
+    )
     api_to_q.put("SEARCH_TRACK:{}".format(params))
 
     while True:
@@ -354,14 +345,15 @@ def search_library(type: str):
 
         time.sleep(0.02)
 
+
 @app.route("/library/playlists/<type>")
 def get_playlists(type: str):
 
     if type not in ["music", "aux"]:
         abort(401)
 
-    while (not api_from_q.empty()):
-        api_from_q.get() # Just waste any previous status responses.
+    while not api_from_q.empty():
+        api_from_q.get()  # Just waste any previous status responses.
 
     command = "LIST_PLAYLIST_{}".format(type.upper())
     api_to_q.put(command)
@@ -378,15 +370,15 @@ def get_playlists(type: str):
 
         time.sleep(0.02)
 
+
 @app.route("/library/playlist/<type>/<library_id>")
 def get_playlist(type: str, library_id: str):
 
     if type not in ["music", "aux"]:
         abort(401)
 
-
-    while (not api_from_q.empty()):
-        api_from_q.get() # Just waste any previous status responses.
+    while not api_from_q.empty():
+        api_from_q.get()  # Just waste any previous status responses.
 
     command = "GET_PLAYLIST_{}:{}".format(type.upper(), library_id)
     api_to_q.put(command)
@@ -395,7 +387,7 @@ def get_playlist(type: str, library_id: str):
         try:
             response = api_from_q.get_nowait()
             if response.startswith(command):
-                response = response[len(command)+1:]
+                response = response[len(command) + 1:]
                 if response == "null":
                     abort(401)
                 return response
@@ -405,6 +397,7 @@ def get_playlist(type: str, library_id: str):
 
         time.sleep(0.02)
 
+
 @app.route("/plan/load/<int:timeslotid>")
 def load_showplan(timeslotid: int):
 
@@ -413,9 +406,10 @@ def load_showplan(timeslotid: int):
 
     return ui_status()
 
+
 def status(channel: int):
-    while (not ui_to_q[channel].empty()):
-        ui_to_q[channel].get() # Just waste any previous status responses.
+    while not ui_to_q[channel].empty():
+        ui_to_q[channel].get()  # Just waste any previous status responses.
 
     channel_to_q[channel].put("UI:STATUS")
     retries = 0
@@ -423,9 +417,9 @@ def status(channel: int):
         try:
             response = ui_to_q[channel].get_nowait()
             if response.startswith("UI:STATUS:"):
-                response = response.split(":",2)[2]
+                response = response.split(":", 2)[2]
                 # TODO: Handle OKAY / FAIL
-                response = response[response.index(":")+1:]
+                response = response[response.index(":") + 1:]
                 try:
                     response = json.loads(response)
                 except Exception as e:
@@ -465,34 +459,38 @@ def list_logs():
     data = {
         "ui_page": "loglist",
         "ui_title": "Logs",
-        "logs": ["BAPSicleServer"] + ["channel{}".format(x) for x in range(state.state["num_channels"])]
+        "logs": ["BAPSicleServer"]
+        + ["channel{}".format(x) for x in range(state.state["num_channels"])],
     }
     return render_template("loglist.html", data=data)
 
 
 @app.route("/logs/<path:path>")
 def send_logs(path):
-    l = open("logs/{}.log".format(path))
+    log_file = open("logs/{}.log".format(path))
     data = {
-        "logs": l.read().splitlines(),
-        'ui_page': "log",
-        "ui_title": "Logs - {}".format(path)
+        "logs": log_file.read().splitlines(),
+        "ui_page": "log",
+        "ui_title": "Logs - {}".format(path),
     }
-    l.close()
-    return render_template('log.html', data=data)
+    log_file.close()
+    return render_template("log.html", data=data)
 
-@app.route('/favicon.ico')
+
+@app.route("/favicon.ico")
 def serve_favicon():
-    return send_from_directory('ui-static', 'favicon.ico')
+    return send_from_directory("ui-static", "favicon.ico")
 
-@app.route('/static/<path:path>')
+
+@app.route("/static/<path:path>")
 def serve_static(path: str):
-    return send_from_directory('ui-static', path)
+    return send_from_directory("ui-static", path)
+
 
 def startServer():
     process_title = "startServer"
     setproctitle(process_title)
-    #multiprocessing.current_process().name = process_title
+    # multiprocessing.current_process().name = process_title
 
     global logger
     global state
@@ -514,7 +512,7 @@ def startServer():
             multiprocessing.Process(
                 target=player.Player,
                 args=(channel, channel_to_q[-1], channel_from_q[-1])
-                #daemon=True
+                # daemon=True
             )
         )
         channel_p[channel].start()
@@ -522,18 +520,27 @@ def startServer():
     global api_from_q, api_to_q, api_handler, player_handler, websockets_server, controller_handler
     api_to_q = multiprocessing.Queue()
     api_from_q = multiprocessing.Queue()
-    api_handler = multiprocessing.Process(target=APIHandler, args=(api_to_q, api_from_q))
+    api_handler = multiprocessing.Process(
+        target=APIHandler, args=(api_to_q, api_from_q)
+    )
     api_handler.start()
 
-    player_handler = multiprocessing.Process(target=PlayerHandler, args=(channel_from_q, websocket_to_q, ui_to_q, controller_to_q))
+    player_handler = multiprocessing.Process(
+        target=PlayerHandler,
+        args=(channel_from_q, websocket_to_q, ui_to_q, controller_to_q),
+    )
     player_handler.start()
 
     # Note, state here will become a copy in the process.
     # It will not update, and callbacks will not work :/
-    websockets_server = multiprocessing.Process(target=WebsocketServer, args=(channel_to_q, websocket_to_q, state))
+    websockets_server = multiprocessing.Process(
+        target=WebsocketServer, args=(channel_to_q, websocket_to_q, state)
+    )
     websockets_server.start()
 
-    controller_handler = multiprocessing.Process(target=MattchBox, args=(channel_to_q, controller_to_q, state))
+    controller_handler = multiprocessing.Process(
+        target=MattchBox, args=(channel_to_q, controller_to_q, state)
+    )
     controller_handler.start()
 
     # TODO Move this to player or installer.
@@ -552,16 +559,15 @@ def startServer():
             Please refer to the documentation included with this application for further assistance.""".format(
                     config.VERSION
                 ),
-                "dev/welcome.mp3"
+                "dev/welcome.mp3",
             )
             text_to_speach.runAndWait()
 
-
-            new_item: Dict[str,Any] = {
+            new_item: Dict[str, Any] = {
                 "channel_weight": 0,
                 "filename": "dev/welcome.mp3",
-                "title":  "Welcome to BAPSicle",
-                "artist":  "University Radio York",
+                "title": "Welcome to BAPSicle",
+                "artist": "University Radio York",
             }
 
             channel_to_q[0].put("ADD:" + json.dumps(new_item))
@@ -572,18 +578,21 @@ def startServer():
     def runWebServer():
         process_title = "WebServer"
         setproctitle(process_title)
-        CORS(app, supports_credentials=True) # Allow ALL CORS!!!
+        CORS(app, supports_credentials=True)  # Allow ALL CORS!!!
 
-        log = logging.getLogger('werkzeug')
+        log = logging.getLogger("werkzeug")
         log.disabled = True
 
         app.logger.disabled = True
-        app.run(host=state.state["host"], port=state.state["port"], debug=True, use_reloader=False)
+        app.run(
+            host=state.state["host"],
+            port=state.state["port"],
+            debug=True,
+            use_reloader=False,
+        )
 
     global webserver
-    webserver = multiprocessing.Process(
-        runWebServer()
-    )
+    webserver = multiprocessing.Process(runWebServer())
     webserver.start()
 
 
@@ -601,14 +610,14 @@ def stopServer():
     print("Stopping server.py")
     for q in channel_to_q:
         q.put("QUIT")
-    for player in channel_p:
+    for channel in channel_p:
         try:
-            player.join()
+            channel.join()
         except Exception as e:
-            print("*** Ignoring exception:",e)
+            print("*** Ignoring exception:", e)
             pass
         finally:
-            del player
+            del channel
     del channel_from_q
     del channel_to_q
     print("Stopped all players.")

@@ -35,7 +35,7 @@ Starting and stopping the server, as well as UI links, are available in the Syst
 ### Requirements
 
 On all platforms:
-* Python 3.7 (3.8 may also work, 3.9 is unlikely to.)
+* Python 3.7 - 3.9 Tested (macOS 3.7 may be iffy)
 * Git (Obviously)
 
 On MacOS:

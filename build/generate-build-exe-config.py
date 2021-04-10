@@ -13,7 +13,7 @@ for option in config["pyinstallerOptions"]:
     if option["optionDest"] in ["datas", "filenames", "icon_file"]:
         option["value"] = os.path.abspath(parent_path + option["value"])
         if not isWindows():
-            option["value"] = option["value"].replace(";",":")
+            option["value"] = option["value"].replace(";", ":")
 
 out_file = open('build-exe-config.json', 'w')
 out_file.write(json.dumps(config, indent=2))
