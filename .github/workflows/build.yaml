@@ -73,7 +73,7 @@ jobs:
     - name: Archive Build
       uses: actions/upload-artifact@v2
       with:
-        name: Package - Ubuntu
+        name: Package - Windows
         path: |
           build/output/BAPSicle.exe
 
