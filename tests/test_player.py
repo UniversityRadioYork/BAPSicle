@@ -262,7 +262,7 @@ class TestPlayer(unittest.TestCase):
 
         self._send_msg_wait_OKAY("LOAD:0")
 
-        time.sleep(0.5)
+        time.sleep(1)
         # Try 3 repeats to make sure.
         for repeat in range(3):
             # We should be playing the first item.
