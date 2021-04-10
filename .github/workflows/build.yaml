@@ -1,0 +1,80 @@
+name: Package
+on: [push]
+
+jobs:
+  build-macos:
+
+    runs-on: macos-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.9]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Build .app
+      run: |
+        build/build-macos.sh
+    - name: Archive Build
+      uses: actions/upload-artifact@v2
+      with:
+        name: Package - MacOS
+        path: |
+          build/output/BAPSicle.app
+
+  build-ubuntu:
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.9]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Build executable
+      run: |
+        build/build-linux.sh
+    - name: Archive Build
+      uses: actions/upload-artifact@v2
+      with:
+        name: Package - Ubuntu
+        path: |
+          build/output/BAPSicle
+
+  build-windows:
+
+    runs-on: windows-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.9]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Build .exe
+      run: |
+        build/build-exe.bat
+    - name: Archive Build
+      uses: actions/upload-artifact@v2
+      with:
+        name: Package - Ubuntu
+        path: |
+          build/output/BAPSicle.exe
+
+
