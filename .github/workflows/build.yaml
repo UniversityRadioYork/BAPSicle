@@ -20,12 +20,13 @@ jobs:
     - name: Build .app
       run: |
         build/build-macos.sh
+        zip build/output/BAPSicle.app build/output/BAPSicle.zip
     - name: Archive Build
       uses: actions/upload-artifact@v2
       with:
         name: Package - MacOS
         path: |
-          build/output/BAPSicle.app
+          build/output/BAPSicle.zip
 
   build-ubuntu:
 
