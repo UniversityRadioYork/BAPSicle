@@ -31,6 +31,15 @@ class StateManager:
     ):
         self.logger = logger
 
+        path_dir: str = resolve_external_file_path("/state")
+        if not os.path.isdir(path_dir):
+            try:
+                # Try creating the directory.
+                os.mkdir(path_dir)
+            except Exception:
+                print("Failed to create state directory.")
+                return
+
         self.filepath = resolve_external_file_path("/state/" + name + ".json")
         self._log("State file path set to: " + self.filepath)
 
