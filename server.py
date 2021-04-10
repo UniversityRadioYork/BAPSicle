@@ -64,6 +64,9 @@ default_state = {
     "num_channels": 3,
     "ser_port": None,
     "ser_connected": False,
+    "api_key": None,
+    "myradio_base_url": "https://ury.org.uk/myradio",
+    "myradio_api_url": "https://ury.org.uk/api"
 }
 
 
@@ -162,6 +165,13 @@ def update_server():
     state.update("num_channels", int(request.form["channels"]))
     state.update("ws_port", int(request.form["ws_port"]))
     state.update("serial_port", request.form["serial_port"])
+
+    # Because we're not showing the api key once it's set.
+    if "myradio_api_key" in request.form and request.form["myradio_api_key"] != "":
+        state.update("myradio_api_key", request.form["myradio_api_key"])
+
+    state.update("myradio_base_url", request.form["myradio_base_url"])
+    state.update("myradio_api_url", request.form["myradio_api_url"])
     # stopServer()
     return server_config()
 
@@ -508,10 +518,13 @@ def startServer():
         ui_to_q.append(multiprocessing.Queue())
         websocket_to_q.append(multiprocessing.Queue())
         controller_to_q.append(multiprocessing.Queue())
+
+        # TODO Replace state with individual read-only StateManagers or something nicer?
+
         channel_p.append(
             multiprocessing.Process(
                 target=player.Player,
-                args=(channel, channel_to_q[-1], channel_from_q[-1])
+                args=(channel, channel_to_q[-1], channel_from_q[-1], state)
                 # daemon=True
             )
         )
@@ -521,7 +534,7 @@ def startServer():
     api_to_q = multiprocessing.Queue()
     api_from_q = multiprocessing.Queue()
     api_handler = multiprocessing.Process(
-        target=APIHandler, args=(api_to_q, api_from_q)
+        target=APIHandler, args=(api_to_q, api_from_q, state)
     )
     api_handler.start()
 

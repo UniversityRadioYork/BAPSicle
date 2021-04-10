@@ -24,8 +24,6 @@ build/output/
 
 venv/
 
-config.py
-
 dev/welcome.mp3
 
 build/build-exe-pyinstaller-command.sh
