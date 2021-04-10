@@ -1,4 +1,4 @@
-from helpers.os_environment import isMacOS
+from typing import Optional
 from queue import Empty
 import unittest
 import multiprocessing
@@ -8,6 +8,7 @@ import json
 
 from player import Player
 from helpers.logging_manager import LoggingManager
+from helpers.os_environment import isMacOS
 
 # How long to wait (by default) in secs for the player to respond.
 TIMEOUT_MSG_MAX_S = 10
@@ -34,7 +35,23 @@ def getPlanItem(length: int, weight: int):
 
 
 def getPlanItemJSON(length: int, weight: int):
-    return str(json.dumps(getPlanItem(length, weight)))
+    return str(json.dumps(getPlanItem(**locals())))
+
+
+# All because constant dicts are still mutable in python :/
+def getMarker(name: str, time: float, position: str, section: Optional[str] = None):
+    # Time is not validated here, to allow tests to check server response.
+    marker = {
+        "name": name,  # User friendly name, eg. "Hit the vocals"
+        "time": time,  # Position (secs) through item
+        "section": section,  # for linking in loops, if none, assume intro, cue, outro based on "position"
+        "position": position,  # start, mid, end
+    }
+    return marker
+
+
+def getMarkerJSON(name: str, time: float, position: str, section: Optional[str] = None):
+    return str(json.dumps(getMarker(**locals())))
 
 
 class TestPlayer(unittest.TestCase):
@@ -282,6 +299,55 @@ class TestPlayer(unittest.TestCase):
             self.assertEqual(json_obj["loaded_item"]["weight"], 1)
 
             time.sleep(5)
+
+    # TODO: Test validation of trying to break this.
+    # TODO: Test cue behaviour.
+    def test_markers(self):
+        self._send_msg_wait_OKAY("ADD:" + getPlanItemJSON(5, 0))
+        self._send_msg_wait_OKAY("ADD:" + getPlanItemJSON(5, 1))
+        self._send_msg_wait_OKAY("ADD:" + getPlanItemJSON(5, 2))
+
+        self._send_msg_wait_OKAY("LOAD:2")  # To test currently loaded marker sets.
+
+        markers = [
+            getMarkerJSON("Intro Name", 2, "start", None),
+            getMarkerJSON("Cue Name", 3.14, "mid", None),
+            getMarkerJSON("Outro Name", 4, "end", None),
+            getMarkerJSON("Start Loop", 2, "start", "The Best Loop 1"),
+            getMarkerJSON("Mid Loop", 3, "mid", "The Best Loop 1"),
+            getMarkerJSON("End Loop", 3.5, "end", "The Best Loop 1"),
+        ]
+        # Command, Weight?/itemid? (-1 is loaded), marker json (Intro at 2 seconds.)
+        self._send_msg_wait_OKAY("SETMARKER:0," + markers[0])
+        self._send_msg_wait_OKAY("SETMARKER:0," + markers[1])
+        self._send_msg_wait_OKAY("SETMARKER:1," + markers[2])
+        self._send_msg_wait_OKAY("SETMARKER:-1," + markers[3])
+        self._send_msg_wait_OKAY("SETMARKER:-1," + markers[4])
+        self._send_msg_wait_OKAY("SETMARKER:-1," + markers[5])
+
+        # Test we didn't completely break the player
+        response = self._send_msg_wait_OKAY("STATUS")
+        self.assertTrue(response)
+        json_obj = json.loads(response)
+
+        # Now test that all the markers we setup are present.
+        item0 = json_obj["show_plan"][0]
+        self.assertEquals(item0["weight"], 0)
+        self.assertEquals(item0["intro"], 2)  # Backwards compat with basic Webstudio intro/cue/outro
+        self.assertEquals(item0["cue"], 3.14)
+        self.assertEquals(item0["markers"], markers[0:2])  # Check the full marker configs match
+
+        item = json_obj["show_plan"][1]
+        self.assertEquals(item["weight"], 0)
+        self.assertEquals(item["outro"], 4)
+        self.assertEquals(item["markers"], [markers[2]])
+
+        # In this case, we want to make sure both the current and loaded items are updated
+        for item in [json_obj["show_plan"][2], json_obj["loaded_item"]]:
+            self.assertEquals(item["intro"], None)  # This is a loop. It should not appear as a standard intro, outro or cue.
+            self.assertEquals(item["outro"], None)
+            self.assertEquals(item["cue"], None)
+            self.assertEquals(item["markers"], markers[3:])
 
 
 # runs the unit tests in the module
