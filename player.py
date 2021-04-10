@@ -20,7 +20,9 @@
 # that we respond with something, FAIL or OKAY. The server doesn't like to be kept waiting.
 
 # Stop the Pygame Hello message.
+from logging import exception
 import os
+from types.marker import Marker
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 
 from queue import Empty
@@ -36,7 +38,7 @@ from mutagen.mp3 import MP3
 from helpers.myradio_api import MyRadioAPI
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
-from plan import PlanItem
+from types.plan import PlanItem
 
 
 # TODO ENUM
@@ -74,6 +76,7 @@ class Player:
         "play_on_load": False,
         "output": None,
         "show_plan": [],
+        "markers": [],
     }
 
     __rate_limited_params = ["pos", "pos_offset", "pos_true", "remaining"]
@@ -402,7 +405,48 @@ class Player:
 
         return True
 
-    def ended(self):
+    def set_marker(self, timeslotitemid: int, marker_str: str):
+        set_loaded = False
+        success = True
+        try:
+            marker = Marker(marker_str)
+        except Exception as e:
+            self.logger.log.error("Failed to create Marker instance with {} {}: {}".format(timeslotitemid, marker_str, e))
+            return False
+
+        if timeslotitemid == -1:
+            set_loaded = True
+            if not self.isLoaded:
+                return False
+            timeslotitemid = self.state.state["loaded_item"]["timeslotitemid"]
+
+        for i in range(len(self.state.state["show_plan"])):
+            plan = self.state.state["show_plan"]
+            item = plan[i]
+
+            if item.timeslotitemid == timeslotitemid:
+                try:
+                    item = item.set_marker(marker)
+
+                    self.state.update("show_plan", plan)
+                except Exception as e:
+                    self.logger.log.error(
+                        "Failed to set marker on item {}: {} with marker \n{}".format(timeslotitemid, e, marker))
+                    success = False
+
+        if set_loaded:
+            try:
+                self.state.update("loaded_item", self.state.state["show_plan"]["loaded_item"].set_marker(marker))
+            except Exception as e:
+                self.logger.log.error(
+                    "Failed to set marker on loaded_item {}: {} with marker \n{}".format(timeslotitemid, e, marker))
+                success = False
+
+        return success
+
+    # Helper functions
+
+    def _ended(self):
         loaded_item = self.state.state["loaded_item"]
 
         # Track has ended
@@ -459,7 +503,7 @@ class Player:
                 and not self.isPlaying
                 and not self.stopped_manually
             ):
-                self.ended()
+                self._ended()
 
             self.state.update("playing", self.isPlaying)
             self.state.update("loaded", self.isLoaded)
@@ -656,6 +700,7 @@ class Player:
                                     int(self.last_msg.split(":")[1]))
                             ),
                             "CLEAR": lambda: self._retMsg(self.clear_channel_plan()),
+                            "SETMARKER": lambda: self._retMsg(self.set_marker(self.last_msg.split(":")[1])),
                         }
 
                         message_type: str = self.last_msg.split(":")[0]

@@ -12,6 +12,7 @@
         November 2020
 """
 
+from types.marker import Marker
 from typing import Any, Dict, Optional
 import os
 
@@ -90,6 +91,9 @@ class PlanItem:
             "name": self.name,
             "filename": self.filename,
             "length": self.length,
+            "intro": self.intro,
+            "cue": self.cue,
+            "outro": self.outro,
         }
 
     def __init__(self, new_item: Dict[str, Any]):
@@ -108,9 +112,19 @@ class PlanItem:
         self._artist = new_item["artist"] if "artist" in new_item else None
         self._length = new_item["length"]
 
+        # Edit this to handle markers when MyRadio supports them
+        self._
+
         # Fix any OS specific / or \'s
         if self.filename:
             if os.path.sep == "/":
                 self._filename = self.filename.replace("\\", "/")
             else:
                 self._filename = self.filename.replace("/", "\\")
+
+    def set_marker(self, marker: Marker):
+        if not isinstance(marker, Marker):
+            raise ValueError("Marker provided is not of type Marker.")
+
+        # Return updated item for easy chaining.
+        return self

@@ -349,6 +349,8 @@ class TestPlayer(unittest.TestCase):
             self.assertEquals(item["cue"], None)
             self.assertEquals(item["markers"], markers[3:])
 
+        # TODO: Now test editing/deleting them
+
 
 # runs the unit tests in the module
 if __name__ == "__main__":
