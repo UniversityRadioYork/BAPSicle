@@ -1,7 +1,0 @@
-# BAPSicle Details
-VERSION: float = 1.0
-
-# API Settings
-API_KEY: str = ""
-MYRADIO_BASE_URL: str = "https://ury.org.uk/myradio"
-MYRADIO_API_URL: str = "https://ury.org.uk/api"

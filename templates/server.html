@@ -24,7 +24,16 @@
           <option value="{{port}}" {% if port == data.state.serial_port %}selected{% endif %}>{{port}}</option>
         {% endfor %}
       </select>
+      <hr>
+      <label for="myradio_base_url">MyRadio Base URL:</label>
+      <input type="text" id="myradio_base_url" name="myradio_base_url" class="form-control" value="{{data.state.myradio_base_url}}">
       <br>
+      <label for="myradio_api_url">MyRadio API URL:</label>
+      <input type="text" id="myradio_api_url" name="myradio_api_url" class="form-control" value="{{data.state.myradio_api_url}}">
+      <br>
+      <label for="myradio_api_key">MyRadio API Key:</label>
+      <input type="text" id="myradio_api_key" name="myradio_api_key" class="form-control" placeholder="Hidden ({% if data.state.myradio_api_key %}value set, type to replace{% else %}value not set yet{% endif %})" value="">
+      <hr>
       <input type="submit" class="btn btn-primary" value="Save & Restart Server">
     </form>
   {% endif %}

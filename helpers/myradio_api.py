@@ -19,29 +19,31 @@
 from typing import Optional
 import requests
 import json
-import config
 from logging import INFO
 import os
 
 from plan import PlanItem
 from helpers.os_environment import resolve_external_file_path
 from helpers.logging_manager import LoggingManager
+from helpers.state_manager import StateManager
 
 
 class MyRadioAPI:
+    # TODO Config type
     logger = None
 
-    def __init__(self, logger: LoggingManager):
+    def __init__(self, logger: LoggingManager, config: StateManager):
         self.logger = logger
+        self.config = config
 
     def get_non_api_call(self, url):
 
-        url = "{}{}".format(config.MYRADIO_BASE_URL, url)
+        url = "{}{}".format(self.config.state["myradio_base_url"], url)
 
         if "?" in url:
-            url += "&api_key={}".format(config.API_KEY)
+            url += "&api_key={}".format(self.config.state["myradio_api_key"])
         else:
-            url += "?api_key={}".format(config.API_KEY)
+            url += "?api_key={}".format(self.config.state["myradio_api_key"])
 
         self._log("Requesting non-API URL: " + url)
         request = requests.get(url, timeout=10)
@@ -58,12 +60,12 @@ class MyRadioAPI:
 
     def get_apiv2_call(self, url):
 
-        url = "{}/v2{}".format(config.MYRADIO_API_URL, url)
+        url = "{}/v2{}".format(self.config.state["myradio_api_url"], url)
 
         if "?" in url:
-            url += "&api_key={}".format(config.API_KEY)
+            url += "&api_key={}".format(self.config.state["myradio_api_key"])
         else:
-            url += "?api_key={}".format(config.API_KEY)
+            url += "?api_key={}".format(self.config.state["myradio_api_key"])
 
         self._log("Requesting API V2 URL: " + url)
         request = requests.get(url, timeout=10)
