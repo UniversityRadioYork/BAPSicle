@@ -1,3 +1,4 @@
+from helpers.state_manager import StateManager
 import json
 from multiprocessing import Queue, current_process
 from helpers.logging_manager import LoggingManager
@@ -15,7 +16,7 @@ class APIHandler:
     server_to_q: Queue
     server_from_q: Queue
 
-    def __init__(self, server_from_q: Queue, server_to_q: Queue):
+    def __init__(self, server_from_q: Queue, server_to_q: Queue, server_config: StateManager):
 
         process_title = "APIHandler"
         setproctitle(process_title)
@@ -24,7 +25,7 @@ class APIHandler:
         self.server_from_q = server_from_q
         self.server_to_q = server_to_q
         self.logger = LoggingManager("APIHandler")
-        self.api = MyRadioAPI(self.logger)
+        self.api = MyRadioAPI(self.logger, server_config)
 
         self.handle()
 

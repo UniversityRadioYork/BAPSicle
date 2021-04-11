@@ -563,7 +563,7 @@ class Player:
                      custom_prefix="ALL:STATUS:")
 
     def __init__(
-        self, channel: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue
+        self, channel: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue, server_config: StateManager
     ):
 
         process_title = "Player: Channel " + str(channel)
@@ -575,7 +575,7 @@ class Player:
 
         self.logger = LoggingManager("Player" + str(channel))
 
-        self.api = MyRadioAPI(self.logger)
+        self.api = MyRadioAPI(self.logger, server_config)
 
         self.state = StateManager(
             "Player" + str(channel),

@@ -37,6 +37,7 @@ class WebsocketServer:
         )
 
         asyncio.get_event_loop().run_until_complete(self.websocket_server)
+        asyncio.get_event_loop().run_until_complete(self.handle_to_webstudio())
 
         try:
             asyncio.get_event_loop().run_forever()
@@ -45,6 +46,7 @@ class WebsocketServer:
             self.quit()
 
     def quit(self):
+        self.logger.log.info("Quitting.")
         del self.websocket_server
         del self.logger
         _exit(0)
@@ -63,15 +65,13 @@ class WebsocketServer:
             channel.put("WEBSOCKET:STATUS")
 
         self.from_webstudio = asyncio.create_task(self.handle_from_webstudio(websocket))
-        self.to_webstudio = asyncio.create_task(self.handle_to_webstudio())
 
         try:
             self.threads = await shield(
-                asyncio.gather(self.from_webstudio, self.to_webstudio)
+                asyncio.gather(self.from_webstudio)
             )
         finally:
             self.from_webstudio.cancel()
-            self.to_webstudio.cancel()
 
     async def handle_from_webstudio(self, websocket):
         try:
@@ -187,10 +187,9 @@ class WebsocketServer:
                 try:
                     message = self.webstudio_to_q[channel].get_nowait()
                     source = message.split(":")[0]
-
                     # TODO ENUM
                     if source not in ["WEBSOCKET", "ALL"]:
-                        print(
+                        self.logger.log.error(
                             "ERROR: Message received from invalid source to websocket_handler. Ignored.",
                             source,
                             message,

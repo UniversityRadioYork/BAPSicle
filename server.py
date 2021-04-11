@@ -27,12 +27,15 @@ import logging
 
 from player_handler import PlayerHandler
 
-from helpers.os_environment import isMacOS
+from helpers.os_environment import isBundelled, isMacOS
 from helpers.device_manager import DeviceManager
 
 if not isMacOS():
     # Rip, this doesn't like threading on MacOS.
     import pyttsx3
+
+if isBundelled():
+    import build
 
 import config
 from typing import Dict, List
@@ -48,22 +51,26 @@ class BAPSicleServer:
 
         startServer()
 
-    def __del__(self):
-        stopServer()
+    # def __del__(self):
+    #    stopServer()
 
     def get_flask(self):
         return app
 
 
 default_state = {
-    "server_version": 0,
+    "server_version": "",
+    "server_build": "",
     "server_name": "URY BAPSicle",
     "host": "localhost",
     "port": 13500,
     "ws_port": 13501,
     "num_channels": 3,
-    "ser_port": None,
+    "serial_port": None,
     "ser_connected": False,
+    "myradio_api_key": None,
+    "myradio_base_url": "https://ury.org.uk/myradio",
+    "myradio_api_url": "https://ury.org.uk/api"
 }
 
 
@@ -101,7 +108,8 @@ def ui_index():
     data = {
         "ui_page": "index",
         "ui_title": "",
-        "server_version": config.VERSION,
+        "server_version": state.state["server_version"],
+        "server_build": state.state["server_build"],
         "server_name": state.state["server_name"],
     }
     return render_template("index.html", data=data)
@@ -162,6 +170,13 @@ def update_server():
     state.update("num_channels", int(request.form["channels"]))
     state.update("ws_port", int(request.form["ws_port"]))
     state.update("serial_port", request.form["serial_port"])
+
+    # Because we're not showing the api key once it's set.
+    if "myradio_api_key" in request.form and request.form["myradio_api_key"] != "":
+        state.update("myradio_api_key", request.form["myradio_api_key"])
+
+    state.update("myradio_base_url", request.form["myradio_base_url"])
+    state.update("myradio_api_url", request.form["myradio_api_url"])
     # stopServer()
     return server_config()
 
@@ -457,10 +472,10 @@ def clear_all_channels():
 @app.route("/logs")
 def list_logs():
     data = {
-        "ui_page": "loglist",
+        "ui_page": "logs",
         "ui_title": "Logs",
         "logs": ["BAPSicleServer"]
-        + ["channel{}".format(x) for x in range(state.state["num_channels"])],
+        + ["Player{}".format(x) for x in range(state.state["num_channels"])],
     }
     return render_template("loglist.html", data=data)
 
@@ -470,7 +485,7 @@ def send_logs(path):
     log_file = open("logs/{}.log".format(path))
     data = {
         "logs": log_file.read().splitlines(),
-        "ui_page": "log",
+        "ui_page": "logs",
         "ui_title": "Logs - {}".format(path),
     }
     log_file.close()
@@ -497,7 +512,12 @@ def startServer():
     logger = LoggingManager("BAPSicleServer")
 
     state = StateManager("BAPSicleServer", logger, default_state)
+    # TODO: Check these match, if not, trigger any upgrade noticies / welcome
     state.update("server_version", config.VERSION)
+    build_commit = "Dev"
+    if isBundelled():
+        build_commit = build.BUILD
+    state.update("server_build", build_commit)
 
     if isMacOS():
         multiprocessing.set_start_method("spawn", True)
@@ -508,10 +528,13 @@ def startServer():
         ui_to_q.append(multiprocessing.Queue())
         websocket_to_q.append(multiprocessing.Queue())
         controller_to_q.append(multiprocessing.Queue())
+
+        # TODO Replace state with individual read-only StateManagers or something nicer?
+
         channel_p.append(
             multiprocessing.Process(
                 target=player.Player,
-                args=(channel, channel_to_q[-1], channel_from_q[-1])
+                args=(channel, channel_to_q[-1], channel_from_q[-1], state)
                 # daemon=True
             )
         )
@@ -521,7 +544,7 @@ def startServer():
     api_to_q = multiprocessing.Queue()
     api_from_q = multiprocessing.Queue()
     api_handler = multiprocessing.Process(
-        target=APIHandler, args=(api_to_q, api_from_q)
+        target=APIHandler, args=(api_to_q, api_from_q, state)
     )
     api_handler.start()
 
@@ -597,19 +620,21 @@ def startServer():
 
 
 def stopServer():
-    global channel_p, channel_from_q, channel_to_q, websockets_server, webserver, controller_handler
+    global channel_p, channel_from_q, channel_to_q, websockets_server, controller_handler, webserver
     print("Stopping Controllers")
-    controller_handler.terminate()
-    controller_handler.join()
+    if controller_handler:
+        controller_handler.terminate()
+        controller_handler.join()
 
     print("Stopping Websockets")
     websocket_to_q[0].put("WEBSOCKET:QUIT")
-    websockets_server.join()
-    del websockets_server
+    if websockets_server:
+        websockets_server.join()
+        del websockets_server
 
     print("Stopping server.py")
     for q in channel_to_q:
-        q.put("QUIT")
+        q.put("ALL:QUIT")
     for channel in channel_p:
         try:
             channel.join()
@@ -623,9 +648,10 @@ def stopServer():
     print("Stopped all players.")
 
     print("Stopping webserver")
-    global webserver
-    webserver.terminate()
-    webserver.join()
+
+    if webserver:
+        webserver.terminate()
+        webserver.join()
 
     print("Stopped webserver")
 

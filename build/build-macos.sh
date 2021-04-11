@@ -1,6 +1,13 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 
+build_commit="$(git rev-parse --short HEAD)"
+echo "BUILD: str = \"$build_commit\"" > ../build.py
+sed -i '' -e "s/BUILD_COMMIT/$build_commit/" "../config.py"
+
+python3 -m venv ../venv
+source ../venv/bin/activate
+
 pip3 install -r requirements.txt
 pip3 install -r requirements-macos.txt
 pip3 install -e ..\
@@ -16,6 +23,3 @@ rm ./*.spec
 brew install platypus
 
 platypus --load-profile ./BAPSicle.platypus --overwrite ./output/BAPSicle.app
-mkdir ./output/state
-mkdir ./output/logs
-mkdir ./output/music-tmp

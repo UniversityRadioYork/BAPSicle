@@ -21,10 +21,9 @@ build/build/BAPSicle/
 
 build/output/
 
+build.py
 
 venv/
-
-config.py
 
 dev/welcome.mp3
 
