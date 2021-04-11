@@ -514,11 +514,10 @@ def startServer():
     state = StateManager("BAPSicleServer", logger, default_state)
     # TODO: Check these match, if not, trigger any upgrade noticies / welcome
     state.update("server_version", config.VERSION)
+    build_commit = "Dev"
     if isBundelled():
-        build = build.BUILD
-    else:
-        build = "Dev"
-    state.update("server_build", build)
+        build_commit = build.BUILD
+    state.update("server_build", build_commit)
 
     if isMacOS():
         multiprocessing.set_start_method("spawn", True)
