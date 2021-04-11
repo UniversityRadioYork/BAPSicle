@@ -70,12 +70,13 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Build .exe
       run: |
-        build/build-exe.bat
+        build/build-windows.bat
     - name: Archive Build
       uses: actions/upload-artifact@v2
       with:
         name: Package - Windows
         path: |
           build/output/BAPSicle.exe
+          install/
 
 
