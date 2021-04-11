@@ -1,2 +1,3 @@
 # BAPSicle Details
-VERSION: float = 0.1
+VERSION: str = "0.1.0"
+BUILD: str = "2bc61be"
