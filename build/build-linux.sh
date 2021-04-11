@@ -2,8 +2,7 @@
 cd "$(dirname "$0")"
 
 build_commit="$(git rev-parse --short HEAD)"
-echo "$build_commit"
-sed -i "s/BUILD_COMMIT/$build_commit/" ../config.py
+echo "BUILD: str = \"$build_commit\"" > ../build.py
 
 apt install libportaudio2
 

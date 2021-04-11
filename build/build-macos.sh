@@ -2,7 +2,7 @@
 cd "$(dirname "$0")"
 
 build_commit="$(git rev-parse --short HEAD)"
-echo "$build_commit"
+echo "BUILD: str = \"$build_commit\"" > ../build.py
 sed -i '' -e "s/BUILD_COMMIT/$build_commit/" "../config.py"
 
 python3 -m venv ../venv

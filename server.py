@@ -34,6 +34,9 @@ if not isMacOS():
     # Rip, this doesn't like threading on MacOS.
     import pyttsx3
 
+if isBundelled():
+    import build
+
 import config
 from typing import Dict, List
 from helpers.state_manager import StateManager
@@ -56,8 +59,8 @@ class BAPSicleServer:
 
 
 default_state = {
-    "server_version": config.VERSION,
-    "server_build": config.BUILD,
+    "server_version": "",
+    "server_build": "",
     "server_name": "URY BAPSicle",
     "host": "localhost",
     "port": 13500,
@@ -512,7 +515,7 @@ def startServer():
     # TODO: Check these match, if not, trigger any upgrade noticies / welcome
     state.update("server_version", config.VERSION)
     if isBundelled():
-        build = config.BUILD
+        build = build.BUILD
     else:
         build = "Dev"
     state.update("server_build", build)

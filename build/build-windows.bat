@@ -1,11 +1,10 @@
 cd /D "%~dp0"
 
-: Get the git commit and write it into config.py.
+: Get the git commit and write it into build.py.
 FOR /F "tokens=* USEBACKQ" %%F IN (`git rev-parse --short HEAD`) DO (
 SET build_commit=%%F
 )
-
-(Get-Content "..\config.py") -replace 'BUILD_COMMIT', '%build_commit%' | Out-File -encoding ASCII "..\config.py"
+echo "BUILD: str = \"%build_commit%\""> ..\build.py
 
 py -m venv ..\venv
 ..\venv\Scripts\activate
