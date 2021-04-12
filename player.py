@@ -36,8 +36,8 @@ from mutagen.mp3 import MP3
 from helpers.myradio_api import MyRadioAPI
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
-from plan import PlanItem
-
+from baps_types.plan import PlanItem
+from baps_types.marker import Marker
 
 # TODO ENUM
 VALID_MESSAGE_SOURCES = ["WEBSOCKET", "UI", "CONTROLLER", "TEST", "ALL"]
@@ -88,7 +88,7 @@ class Player:
         return True
 
     @property
-    def isPlaying(self):
+    def isPlaying(self) -> bool:
         if self.isInit:
             return (not self.isPaused) and bool(mixer.music.get_busy())
         return False
@@ -99,9 +99,16 @@ class Player:
 
     @property
     def isLoaded(self):
+        return self._isLoaded()
+
+    def _isLoaded(self, short_test: bool = False):
         if not self.state.state["loaded_item"]:
             return False
         if self.isPlaying:
+            return True
+
+        # If we don't want to do any testing if it's really loaded, fine.
+        if short_test:
             return True
 
         # Because Pygame/SDL is annoying
@@ -126,6 +133,13 @@ class Player:
             self.stop()
         mixer.music.set_volume(1)
         return True
+
+    @property
+    def isCued(self):
+        # Don't mess with playback, we only care about if it's supposed to be loaded.
+        if not self._isLoaded(short_test=True):
+            return False
+        return (self.state.state["pos_true"] == self.state.state["loaded_item"].cue and not self.isPlaying)
 
     @property
     def status(self):
@@ -159,7 +173,7 @@ class Player:
 
     def pause(self):
         try:
-            mixer.music.pause()
+            mixer.music.stop()
         except Exception:
             self.logger.log.exception("Failed to pause.")
             return False
@@ -183,22 +197,31 @@ class Player:
             return True
         return False
 
-    def stop(self):
-        # if self.isPlaying or self.isPaused:
+    def stop(self, user_initiated: bool = False):
         try:
             mixer.music.stop()
         except Exception:
             self.logger.log.exception("Failed to stop playing.")
             return False
-        self.state.update("pos", 0)
-        self.state.update("pos_offset", 0)
-        self.state.update("pos_true", 0)
         self.state.update("paused", False)
 
         self.stopped_manually = True
 
+        if not self.state.state["loaded_item"]:
+            self.logger.log.warning("Tried to stop without a loaded item.")
+            return True
+
+        # This lets users toggle (using the stop button) between cue point and 0.
+        if user_initiated and not self.isCued:
+            # if there's a cue point ant we're not at it, go there.
+            self.seek(self.state.state["loaded_item"].cue)
+        else:
+            # Otherwise, let's go to 0.
+            self.state.update("pos", 0)
+            self.state.update("pos_offset", 0)
+            self.state.update("pos_true", 0)
+
         return True
-        # return False
 
     def seek(self, pos: float) -> bool:
         if self.isPlaying:
@@ -209,6 +232,7 @@ class Player:
                 return False
             return True
         else:
+            self.stopped_manually = True  # Don't trigger _ended() on seeking.
             self.state.update("paused", True)
             self._updateState(pos=pos)
         return True
@@ -325,7 +349,7 @@ class Player:
                 if showplan[i].weight == weight:
                     self.state.update("show_plan", index=i, value=loaded_item)
                 break
-                # TODO: Update the show plan filenames
+                # TODO: Update the show plan filenames???
 
             try:
                 self.logger.log.info("Loading file: " +
@@ -351,6 +375,9 @@ class Player:
                 self.logger.log.exception(
                     "Failed to update the length of item.")
                 return False
+
+            if loaded_item.cue > 0:
+                self.seek(loaded_item.cue)
 
             if self.state.state["play_on_load"]:
                 self.play()
@@ -402,8 +429,53 @@ class Player:
 
         return True
 
-    def ended(self):
+    def set_marker(self, timeslotitemid: int, marker_str: str):
+        set_loaded = False
+        success = True
+        try:
+            marker = Marker(marker_str)
+        except Exception as e:
+            self.logger.log.error("Failed to create Marker instance with {} {}: {}".format(timeslotitemid, marker_str, e))
+            return False
+
+        if timeslotitemid == -1:
+            set_loaded = True
+            if not self.isLoaded:
+                return False
+            timeslotitemid = self.state.state["loaded_item"].timeslotitemid
+
+        plan_copy: List[PlanItem] = copy.copy(self.state.state["show_plan"])
+        for i in range(len(self.state.state["show_plan"])):
+
+            item = plan_copy[i]
+
+            if item.timeslotitemid == timeslotitemid:
+                try:
+                    new_item = item.set_marker(marker)
+                    self.state.update("show_plan", new_item, index=i)
+
+                except Exception as e:
+                    self.logger.log.error(
+                        "Failed to set marker on item {}: {} with marker \n{}".format(timeslotitemid, e, marker))
+                    success = False
+
+        if set_loaded:
+            try:
+                self.state.update("loaded_item", self.state.state["loaded_item"].set_marker(marker))
+            except Exception as e:
+                self.logger.log.error(
+                    "Failed to set marker on loaded_item {}: {} with marker \n{}".format(timeslotitemid, e, marker))
+                success = False
+
+        return success
+
+    # Helper functions
+
+    def _ended(self):
         loaded_item = self.state.state["loaded_item"]
+
+        if not loaded_item:
+            return
 
         # Track has ended
         print("Finished", loaded_item.name, loaded_item.weight)
@@ -459,7 +531,7 @@ class Player:
                 and not self.isPlaying
                 and not self.stopped_manually
             ):
-                self.ended()
+                self._ended()
 
             self.state.update("playing", self.isPlaying)
             self.state.update("loaded", self.isLoaded)
@@ -560,6 +632,8 @@ class Player:
                                  str(loaded_item.filename))
             self.load(loaded_item.weight)
 
+            # Load may jump to the cue point, as it would do on a regular load.
+            # If we were at a different state before, we have to override it now.
             if loaded_state["pos_true"] != 0:
                 self.logger.log.info(
                     "Seeking to pos_true: " + str(loaded_state["pos_true"])
@@ -568,7 +642,7 @@ class Player:
 
             if loaded_state["playing"] is True:
                 self.logger.log.info("Resuming.")
-                self.unpause()
+                self.unpause()  # Use un-pause as we don't want to jump to a new position.
         else:
             self.logger.log.info("No file was previously loaded.")
 
@@ -616,10 +690,11 @@ class Player:
                         ] = {  # TODO Check Types
                             "STATUS": lambda: self._retMsg(self.status, True),
                             # Audio Playout
-                            "PLAY": lambda: self._retMsg(self.play()),
+                            # Unpause, so we don't jump to 0, we play from the current pos.
+                            "PLAY": lambda: self._retMsg(self.unpause()),
                             "PAUSE": lambda: self._retMsg(self.pause()),
                             "UNPAUSE": lambda: self._retMsg(self.unpause()),
-                            "STOP": lambda: self._retMsg(self.stop()),
+                            "STOP": lambda: self._retMsg(self.stop(user_initiated=True)),
                             "SEEK": lambda: self._retMsg(
                                 self.seek(float(self.last_msg.split(":")[1]))
                             ),
@@ -656,6 +731,7 @@ class Player:
                                     int(self.last_msg.split(":")[1]))
                             ),
                             "CLEAR": lambda: self._retMsg(self.clear_channel_plan()),
+                            "SETMARKER": lambda: self._retMsg(self.set_marker(int(self.last_msg.split(":")[1]), self.last_msg.split(":", 2)[2])),
                         }
 
                         message_type: str = self.last_msg.split(":")[0]

@@ -22,15 +22,15 @@ import json
 from logging import INFO
 import os
 
-from plan import PlanItem
+from baps_types.plan import PlanItem
 from helpers.os_environment import resolve_external_file_path
 from helpers.logging_manager import LoggingManager
 from helpers.state_manager import StateManager
 
 
 class MyRadioAPI:
-    # TODO Config type
-    logger = None
+    logger: LoggingManager
+    config: StateManager
 
     def __init__(self, logger: LoggingManager, config: StateManager):
         self.logger = logger
