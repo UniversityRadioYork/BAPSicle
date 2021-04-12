@@ -12,10 +12,12 @@
         November 2020
 """
 
-from types.marker import Marker
-from typing import Any, Dict, Optional
+
+import json
+from typing import Any, Dict, List, Optional
 import os
 
+from baps_types.marker import Marker
 
 class PlanItem:
     _timeslotitemid: int = 0
@@ -25,6 +27,7 @@ class PlanItem:
     _artist: Optional[str]
     _trackid: Optional[int]
     _managedid: Optional[int]
+    _markers: List[Marker] = []
 
     @property
     def weight(self) -> int:
@@ -79,6 +82,34 @@ class PlanItem:
         return "aux" if self.managedid else "central"
 
     @property
+    def intro(self) -> float:
+        markers = list(filter(lambda m: m.position == "start" and m.section is None, self._markers))
+        # TODO: Handle multiple (shouldn't happen?)
+        if len(markers) > 0:
+            return markers[0].time
+        return 0
+
+    @property
+    def cue(self) -> float:
+        markers = list(filter(lambda m: m.position == "mid" and m.section is None, self._markers))
+        # TODO: Handle multiple (shouldn't happen?)
+        if len(markers) > 0:
+            return markers[0].time
+        return 0
+
+    @property
+    def outro(self) -> float:
+        markers = list(filter(lambda m: m.position == "end" and m.section is None, self._markers))
+        # TODO: Handle multiple (shouldn't happen?)
+        if len(markers) > 0:
+            return markers[0].time
+        return 0
+
+    @property
+    def markers(self) -> List[dict]:
+        return [repr.__dict__ for repr in self._markers]
+
+    @property
     def __dict__(self):
         return {
             "weight": self.weight,
@@ -94,6 +125,7 @@ class PlanItem:
             "intro": self.intro,
             "cue": self.cue,
             "outro": self.outro,
+            "markers": self.markers
         }
 
     def __init__(self, new_item: Dict[str, Any]):
@@ -111,9 +143,37 @@ class PlanItem:
         self._title = new_item["title"]
         self._artist = new_item["artist"] if "artist" in new_item else None
         self._length = new_item["length"]
+        self._markers = (
+            [Marker(marker) for marker in new_item["markers"]] if "markers" in new_item else []
+        )
 
-        # Edit this to handle markers when MyRadio supports them
-        self._
+        # TODO: Edit this to handle markers when MyRadio supports them
+        if "intro" in new_item and (isinstance(new_item["intro"], int) or isinstance(new_item["intro"], float)) and new_item["intro"] > 0:
+            marker = {
+                "name": "Intro",
+                "time": new_item["intro"],
+                "position": "start",
+                "section": None
+            }
+            self.set_marker(Marker(json.dumps(marker)))
+        if "cue" in new_item and (isinstance(new_item["cue"], int) or isinstance(new_item["cue"], float)) and new_item["cue"] > 0:
+            marker = {
+                "name": "Cue",
+                "time": new_item["cue"],
+                "position": "mid",
+                "section": None
+            }
+            self.set_marker(Marker(json.dumps(marker)))
+        # TODO: Convert / handle outro being from end of item.
+        if "outro" in new_item and (isinstance(new_item["outro"], int) or isinstance(new_item["outro"], float)) and new_item["outro"] > 0:
+            marker = {
+                "name": "Outro",
+                "time": new_item["outro"],
+                "position": "end",
+                "section": None
+            }
+            self.set_marker(Marker(json.dumps(marker)))
+
 
         # Fix any OS specific / or \'s
         if self.filename:
@@ -122,9 +182,30 @@ class PlanItem:
             else:
                 self._filename = self.filename.replace("/", "\\")
 
-    def set_marker(self, marker: Marker):
-        if not isinstance(marker, Marker):
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, PlanItem):
+            return False
+
+        return o.__dict__ == self.__dict__
+
+    def set_marker(self, new_marker: Marker):
+        if not isinstance(new_marker, Marker):
             raise ValueError("Marker provided is not of type Marker.")
+
+        replaced = False
+        new_markers = []
+        for marker in self._markers:
+            if marker.same_type(new_marker):
+                new_markers.append(new_marker)
+                # Replace marker
+                replaced = True
+            else:
+                new_markers.append(marker)
+
+        if not replaced:
+            new_markers.append(new_marker)
+
+        self._markers = new_markers
 
         # Return updated item for easy chaining.
         return self

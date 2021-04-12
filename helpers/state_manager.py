@@ -6,7 +6,7 @@ from datetime import datetime
 from copy import copy
 from typing import Any, List
 
-from plan import PlanItem
+from baps_types.plan import PlanItem
 from helpers.logging_manager import LoggingManager
 from helpers.os_environment import resolve_external_file_path
 
@@ -99,9 +99,6 @@ class StateManager:
         self.__state = copy(state)
 
     def write_to_file(self, state):
-        if self.__state_in_file == state:
-            # No change to be updated.
-            return
 
         self.__state_in_file = state
 
