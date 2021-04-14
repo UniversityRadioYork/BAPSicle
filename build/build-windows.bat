@@ -6,8 +6,12 @@ SET build_commit=%%F
 )
 echo "BUILD: str = \"%build_commit%\""> ..\build.py
 
-py -m venv ..\venv
-..\venv\Scripts\activate
+if %1 == "no-venv" goto skip-venv
+
+  py -m venv ..\venv
+  ..\venv\Scripts\activate
+
+:skip-venv
 
 pip install -r requirements.txt
 pip install -r requirements-windows.txt
