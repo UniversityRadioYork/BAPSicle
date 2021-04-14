@@ -4,7 +4,7 @@ cd /D "%~dp0"
 FOR /F "tokens=* USEBACKQ" %%F IN (`git rev-parse --short HEAD`) DO (
 SET build_commit=%%F
 )
-echo "BUILD: str = \"%build_commit%\""> ..\build.py
+echo BUILD: str = "%build_commit%"> ..\build.py
 
 if "%1" == "no-venv" goto skip-venv
 
