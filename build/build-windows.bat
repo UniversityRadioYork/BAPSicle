@@ -6,7 +6,7 @@ SET build_commit=%%F
 )
 echo "BUILD: str = \"%build_commit%\""> ..\build.py
 
-if %1 == "no-venv" goto skip-venv
+if "%1" == "no-venv" goto skip-venv
 
   py -m venv ..\venv
   ..\venv\Scripts\activate
