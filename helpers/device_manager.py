@@ -31,18 +31,18 @@ class DeviceManager:
         host_apis = sd.query_hostapis()
         devices: sd.DeviceList = cls._getAudioDevices()
 
-        valid_host_apis = []
         for host_api_id in range(len(host_apis)):
             if isWindows() and host_apis[host_api_id]["name"] not in WINDOWS_APIS:
-                continue
+                host_apis[host_api_id]["usable"] = False
+            else:
+                host_apis[host_api_id]["usable"] = True
 
             host_api_devices = (device for device in devices if device["hostapi"] == host_api_id)
 
             outputs: List[Dict] = list(filter(cls._isOutput, host_api_devices))
             outputs = sorted(outputs, key=lambda k: k["name"])
 
-            valid_host_apis.append(host_apis[host_api_id])
-            valid_host_apis[-1]["output_devices"] = outputs
+            host_apis[host_api_id]["output_devices"] = outputs
 
         return host_apis
 

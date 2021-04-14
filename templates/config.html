@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content_inner %}
 <h3 class="h5">Audio Outputs</h3>
-<p><strong>Please note: Currently BAPSicle does not support choosing which Host API is used. This list is for reference.</strong></p>
+<p><strong>Please note: Currently BAPSicle does not support choosing which Host API is used. Only supported options can be selected.</strong></p>
 
 {% for host_api in data.outputs %}
   <hr>
@@ -9,11 +9,13 @@
   <br>
   <code>
   {% for output in host_api.output_devices %}
+  {% if host_api.usable %}
   Set for:
     {% for channel in data.channels %}
       <a href="/player/{{channel.channel}}/output/{{output.name}}">Channel {{channel.channel}}</a>
     {% endfor %}
-    - {% if output.name %}{{output.name}}{% else %}System Default Output{% endif %}<br>
+    -
+  {% endif %}{% if output.name %}{{output.name}}{% else %}System Default Output{% endif %}<br>
   {% endfor %}
   </code>
 {% endfor %}
