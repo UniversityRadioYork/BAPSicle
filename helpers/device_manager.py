@@ -1,13 +1,20 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import sounddevice as sd
 from helpers.os_environment import isLinux, isMacOS, isWindows
 import glob
+
+# TODO: https://wiki.libsdl.org/FAQUsingSDL maybe try setting some of these env variables for choosing different host APIs?
+WINDOWS_APIS = ["Windows DirectSound"]
 
 
 class DeviceManager:
     @classmethod
     def _isOutput(cls, device: Dict[str, Any]) -> bool:
         return device["max_output_channels"] > 0
+
+    @classmethod
+    def _isHostAPI(cls, host_api) -> bool:
+        return host_api
 
     @classmethod
     def _getAudioDevices(cls) -> sd.DeviceList:
@@ -20,10 +27,24 @@ class DeviceManager:
         return devices
 
     @classmethod
-    def getAudioOutputs(cls) -> List[Dict]:
-        outputs: List[Dict] = list(filter(cls._isOutput, cls._getAudioDevices()))
-        outputs = sorted(outputs, key=lambda k: k["name"])
-        return [{"name": None}] + outputs
+    def getAudioOutputs(cls) -> Tuple[List[Dict]]:
+        host_apis = sd.query_hostapis()
+        devices: sd.DeviceList = cls._getAudioDevices()
+
+        valid_host_apis = []
+        for host_api_id in range(len(host_apis)):
+            if isWindows() and host_apis[host_api_id]["name"] not in WINDOWS_APIS:
+                continue
+
+            host_api_devices = (device for device in devices if device["hostapi"] == host_api_id)
+
+            outputs: List[Dict] = list(filter(cls._isOutput, host_api_devices))
+            outputs = sorted(outputs, key=lambda k: k["name"])
+
+            valid_host_apis.append(host_apis[host_api_id])
+            valid_host_apis[-1]["output_devices"] = outputs
+
+        return host_apis
 
     @classmethod
     def getSerialPorts(cls) -> List[Optional[str]]:
