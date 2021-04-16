@@ -51,9 +51,6 @@ class BAPSicleServer:
 
         startServer()
 
-    # def __del__(self):
-    #    stopServer()
-
     def get_flask(self):
         return app
 
@@ -613,8 +610,9 @@ def startServer():
         setproctitle(process_title)
         CORS(app, supports_credentials=True)  # Allow ALL CORS!!!
 
-        log = logging.getLogger("werkzeug")
-        log.disabled = True
+        if not isBundelled():
+            log = logging.getLogger("werkzeug")
+            log.disabled = True
 
         app.logger.disabled = True
         app.run(
