@@ -1,0 +1,26 @@
+{
+  "name": "bapsicle",
+  "version": "0.1.0",
+  "description": "Broadcast Playout System",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "presenter-install": "cd presenter && git submodule update --init && yarn --network-timeout 100000",
+    "presenter-make": "npm run presenter-install && (rm -r presenter-build || true) && cd presenter && yarn build && cp -r build ../presenter-build && cd ../ && npm install",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "presenter-start": "cd presenter && yarn start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/universityradioyork/bapsicle.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/universityradioyork/bapsicle/issues"
+  },
+  "homepage": "https://github.com/universityradioyork/bapsicle#readme"
+}

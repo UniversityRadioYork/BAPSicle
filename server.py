@@ -502,6 +502,16 @@ def serve_static(path: str):
     return send_from_directory("ui-static", path)
 
 
+@app.route("/presenter/")
+def serve_presenter_index():
+    return send_from_directory("presenter-build", "index.html")
+
+
+@app.route("/presenter/<path:path>")
+def serve_presenter_static(path: str):
+    return send_from_directory("presenter-build", path)
+
+
 def startServer():
     process_title = "startServer"
     setproctitle(process_title)
