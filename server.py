@@ -51,9 +51,6 @@ class BAPSicleServer:
 
         startServer()
 
-    # def __del__(self):
-    #    stopServer()
-
     def get_flask(self):
         return app
 
@@ -502,6 +499,16 @@ def serve_static(path: str):
     return send_from_directory("ui-static", path)
 
 
+@app.route("/presenter/")
+def serve_presenter_index():
+    return send_from_directory("presenter-build", "index.html")
+
+
+@app.route("/presenter/<path:path>")
+def serve_presenter_static(path: str):
+    return send_from_directory("presenter-build", path)
+
+
 def startServer():
     process_title = "startServer"
     setproctitle(process_title)
@@ -603,8 +610,9 @@ def startServer():
         setproctitle(process_title)
         CORS(app, supports_credentials=True)  # Allow ALL CORS!!!
 
-        log = logging.getLogger("werkzeug")
-        log.disabled = True
+        if not isBundelled():
+            log = logging.getLogger("werkzeug")
+            log.disabled = True
 
         app.logger.disabled = True
         app.run(

@@ -72,6 +72,10 @@
   {
    "optionDest": "datas",
    "value": "/ui-static;ui-static/"
+  },
+  {
+   "optionDest": "datas",
+   "value": "/presenter-build;presenter-build/"
   }
  ],
  "nonPyinstallerOptions": {
