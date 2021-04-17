@@ -1,13 +1,22 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import sounddevice as sd
 from helpers.os_environment import isLinux, isMacOS, isWindows
 import glob
+if isWindows():
+    from serial.tools.list_ports_windows import comports
+
+# TODO: https://wiki.libsdl.org/FAQUsingSDL maybe try setting some of these env variables for choosing different host APIs?
+WINDOWS_APIS = ["Windows DirectSound"]
 
 
 class DeviceManager:
     @classmethod
     def _isOutput(cls, device: Dict[str, Any]) -> bool:
         return device["max_output_channels"] > 0
+
+    @classmethod
+    def _isHostAPI(cls, host_api) -> bool:
+        return host_api
 
     @classmethod
     def _getAudioDevices(cls) -> sd.DeviceList:
@@ -20,10 +29,24 @@ class DeviceManager:
         return devices
 
     @classmethod
-    def getAudioOutputs(cls) -> List[Dict]:
-        outputs: List[Dict] = list(filter(cls._isOutput, cls._getAudioDevices()))
-        outputs = sorted(outputs, key=lambda k: k["name"])
-        return [{"name": None}] + outputs
+    def getAudioOutputs(cls) -> Tuple[List[Dict]]:
+        host_apis = sd.query_hostapis()
+        devices: sd.DeviceList = cls._getAudioDevices()
+
+        for host_api_id in range(len(host_apis)):
+            if isWindows() and host_apis[host_api_id]["name"] not in WINDOWS_APIS:
+                host_apis[host_api_id]["usable"] = False
+            else:
+                host_apis[host_api_id]["usable"] = True
+
+            host_api_devices = (device for device in devices if device["hostapi"] == host_api_id)
+
+            outputs: List[Dict] = list(filter(cls._isOutput, host_api_devices))
+            outputs = sorted(outputs, key=lambda k: k["name"])
+
+            host_apis[host_api_id]["output_devices"] = outputs
+
+        return host_apis
 
     @classmethod
     def getSerialPorts(cls) -> List[Optional[str]]:
@@ -34,9 +57,8 @@ class DeviceManager:
         :returns:
             A list of the serial ports available on the system
         """
-        # TODO: Get list of COM ports properly. (Can't use )
         if isWindows():
-            ports = ["COM%s" % (i + 1) for i in range(8)]
+            ports = [port.device for port in comports()]
         elif isLinux():
             # this excludes your current terminal "/dev/tty"
             ports = glob.glob("/dev/tty[A-Za-z]*")
