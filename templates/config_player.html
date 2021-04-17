@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% block content_inner %}
 <h3 class="h5">Audio Outputs</h3>
-<p><strong>Please note: Currently BAPSicle does not support choosing which Host API is used. Only supported options can be selected.</strong></p>
-
+<p>
+  <strong>Please note: Currently BAPSicle does not support choosing which Host API is used. Only supported options can be selected.</strong>
+</p>
 {% for host_api in data.outputs %}
-  <hr>
   {{host_api.name}}
   <br>
   <code>

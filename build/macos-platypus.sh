@@ -5,15 +5,13 @@ then
         echo "----"
         if curl --output /dev/null --silent --head --fail --max-time 1 "http://localhost:13500"
 		then
-            echo "Status"
-            echo "Config"
-            echo "Logs"
+            echo "Presenter"
+            echo "Server"
             echo "----"
 			echo "Stop Server"
         else
-            echo "DISABLED|Status"
-            echo "DISABLED|Config"
-            echo "DISABLED|Logs"
+            echo "DISABLED|Presenter"
+            echo "DISABLED|Server"
             echo "----"
             echo "Start Server"
 		fi

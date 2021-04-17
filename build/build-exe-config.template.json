@@ -7,7 +7,7 @@
   },
   {
    "optionDest": "filenames",
-   "value": "/launch_standalone.py"
+   "value": "/launch.py"
   },
   {
    "optionDest": "onefile",

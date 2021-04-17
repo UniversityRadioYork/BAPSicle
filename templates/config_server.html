@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content_inner %}
   {% if data %}
-    <form action="/server/update" method="POST">
+    <form action="/config/server/update" method="POST">
       <label for="host">Server Host:</label>
       <input type="text" id="host" name="host" class="form-control" value="{{data.state.host}}">
       <br>
