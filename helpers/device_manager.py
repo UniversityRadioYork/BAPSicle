@@ -2,6 +2,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import sounddevice as sd
 from helpers.os_environment import isLinux, isMacOS, isWindows
 import glob
+if isWindows():
+    from serial.tools.list_ports_windows import comports
 
 # TODO: https://wiki.libsdl.org/FAQUsingSDL maybe try setting some of these env variables for choosing different host APIs?
 WINDOWS_APIS = ["Windows DirectSound"]
@@ -55,9 +57,8 @@ class DeviceManager:
         :returns:
             A list of the serial ports available on the system
         """
-        # TODO: Get list of COM ports properly. (Can't use )
         if isWindows():
-            ports = ["COM%s" % (i + 1) for i in range(8)]
+            ports = [port.device for port in comports()]
         elif isLinux():
             # this excludes your current terminal "/dev/tty"
             ports = glob.glob("/dev/tty[A-Za-z]*")
