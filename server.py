@@ -12,12 +12,9 @@
     Date:
         October, November 2020
 """
-from api_handler import APIHandler
-from controllers.mattchbox_usb import MattchBox
 import multiprocessing
 from multiprocessing.queues import Queue
 import time
-import player
 from typing import Any
 import json
 from setproctitle import setproctitle
@@ -38,6 +35,10 @@ from helpers.logging_manager import LoggingManager
 from websocket_server import WebsocketServer
 from web_server import WebServer
 from player_handler import PlayerHandler
+from api_handler import APIHandler
+from controllers.mattchbox_usb import MattchBox
+from helpers.the_terminator import Terminator
+import player
 
 setproctitle("server.py")
 
@@ -77,6 +78,12 @@ class BAPSicleServer:
 
         self.startServer()
 
+        terminator = Terminator()
+        while not terminator.terminate:
+            time.sleep(1)
+
+        self.stopServer()
+
     def startServer(self):
         if isMacOS():
             multiprocessing.set_start_method("spawn", True)
@@ -88,11 +95,15 @@ class BAPSicleServer:
         self.logger = LoggingManager("BAPSicleServer")
 
         self.state = StateManager("BAPSicleServer", self.logger, self.default_state)
-        # TODO: Check these match, if not, trigger any upgrade noticies / welcome
-        self.state.update("server_version", config.VERSION)
+
         build_commit = "Dev"
         if isBundelled():
             build_commit = build.BUILD
+
+        print("Launching BAPSicle...")
+
+        # TODO: Check these match, if not, trigger any upgrade noticies / welcome
+        self.state.update("server_version", config.VERSION)
         self.state.update("server_build", build_commit)
 
         for channel in range(self.state.state["num_channels"]):
@@ -128,20 +139,23 @@ class BAPSicleServer:
 
         # Note, state here will become a copy in the process.
         # It will not update, and callbacks will not work :/
-        websockets_server = multiprocessing.Process(
+        self.websockets_server = multiprocessing.Process(
             target=WebsocketServer, args=(self.player_to_q, self.websocket_to_q, self.state)
         )
-        websockets_server.start()
+        self.websockets_server.start()
 
-        controller_handler = multiprocessing.Process(
+        self.controller_handler = multiprocessing.Process(
             target=MattchBox, args=(self.player_to_q, self.controller_to_q, self.state)
         )
-        controller_handler.start()
+        self.controller_handler.start()
 
-        webserver = multiprocessing.Process(
+        self.webserver = multiprocessing.Process(
             target=WebServer, args=(self.player_to_q, self.ui_to_q, self.api_to_q, self.api_from_q, self.state)
         )
-        webserver.start()
+        self.webserver.start()
+
+        print("Welcome to BAPSicle Server version: {}, build: {}.".format(config.VERSION, build_commit))
+        print("The Server UI is available at http://{}:{}".format(self.state.state["host"], self.state.state["port"]))
 
         # TODO Move this to player or installer.
         if False:
@@ -174,48 +188,40 @@ class BAPSicleServer:
                 self.player_to_q[0].put("LOAD:0")
                 self.player_to_q[0].put("PLAY")
 
-        while True:
-            time.sleep(10000)
-
     def stopServer(self):
-        print("Stopping Controllers")
-        if self.controller_handler:
-            self.controller_handler.terminate()
-            self.controller_handler.join()
+        print("Stopping BASPicle Server.")
 
-        print("Stopping Websockets")
+        print("Stopping Websocket Server")
         self.websocket_to_q[0].put("WEBSOCKET:QUIT")
         if self.websockets_server:
             self.websockets_server.join()
 
-        print("Stopping API Handler")
-        if self.api_handler:
-            self.api_handler.terminate()
-            self.api_handler.join()
-
-        print("Stopping server.py")
+        print("Stopping Players")
         for q in self.player_to_q:
             q.put("ALL:QUIT")
 
         for player in self.player:
             player.join()
 
-        del self.player_from_q
-        del self.player_to_q
-        print("Stopped all players.")
-
-        print("Stopping player handler")
-        if self.player_handler:
-            self.player_handler.terminate()
-            self.player_handler.join()
-
-        print("Stopping webserver")
-
+        print("Stopping Web Server")
         if self.webserver:
             self.webserver.terminate()
             self.webserver.join()
 
-        print("Stopped webserver")
+        print("Stopping Player Handler")
+        if self.player_handler:
+            self.player_handler.terminate()
+            self.player_handler.join()
+
+        print("Stopping API Handler")
+        if self.api_handler:
+            self.api_handler.terminate()
+            self.api_handler.join()
+
+        print("Stopping Controllers")
+        if self.controller_handler:
+            self.controller_handler.terminate()
+            self.controller_handler.join()
 
 
 if __name__ == "__main__":

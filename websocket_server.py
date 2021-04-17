@@ -7,9 +7,10 @@ from typing import List
 import websockets
 import json
 from os import _exit
+from websockets.server import Serve
 
 from helpers.logging_manager import LoggingManager
-from websockets.server import Serve
+from helpers.the_terminator import Terminator
 
 
 class WebsocketServer:
@@ -187,7 +188,10 @@ class WebsocketServer:
             )
 
     async def handle_to_webstudio(self):
-        while True:
+
+        terminator = Terminator()
+        while not terminator.terminate:
+
             for channel in range(len(self.webstudio_to_q)):
                 try:
                     message = self.webstudio_to_q[channel].get_nowait()
@@ -235,6 +239,8 @@ class WebsocketServer:
                         "Exception trying to send to websocket:", e
                     )
             await asyncio.sleep(0.02)
+
+        self.quit()
 
 
 if __name__ == "__main__":

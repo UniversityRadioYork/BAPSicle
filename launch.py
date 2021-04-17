@@ -2,19 +2,24 @@
 import multiprocessing
 import time
 import sys
+from typing import Any
 import webbrowser
 from setproctitle import setproctitle
 
 from server import BAPSicleServer
+from helpers.the_terminator import Terminator
 
-def startServer(notifications = False):
+
+def startServer(notifications=False):
     server = multiprocessing.Process(target=BAPSicleServer)
     server.start()
 
     sent_start_notif = False
+
+    terminator = Terminator()
     try:
-        while True:
-            time.sleep(5)
+        while not terminator.terminate:
+            time.sleep(1)
             if server and server.is_alive():
                 if notifications and not sent_start_notif:
                     print("NOTIFICATION:Welcome to BAPSicle!")
@@ -25,13 +30,21 @@ def startServer(notifications = False):
                 if notifications:
                     print("NOTIFICATION:BAPSicle Server Stopped!")
                 sys.exit(0)
-        # Catch the handler being killed externally.
-    except KeyboardInterrupt:
-        print("Received KeyboardInterupt")
-    except SystemExit:
-        print("Received SystemExit")
+
+        if server and server.is_alive():
+            server.terminate()
+            server.join()
+
+    # Catch the handler being killed externally.
     except Exception as e:
-        print("Received unexpected exception: {}".format(e))
+        printer("Received Exception {} with args: {}".format(type(e).__name__, e.args))
+        if server and server.is_alive():
+            server.terminate()
+            server.join()
+
+
+def printer(msg: Any):
+    print("LAUNCHER:{}".format(msg))
 
 
 if __name__ == "__main__":

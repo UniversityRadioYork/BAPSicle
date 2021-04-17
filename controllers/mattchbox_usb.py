@@ -1,4 +1,5 @@
 
+from helpers.the_terminator import Terminator
 from typing import List, Optional
 from multiprocessing import Queue, current_process
 import serial
@@ -44,6 +45,7 @@ class MattchBox(Controller):
         self.handler()
 
     # This doesn't run, the callback function gets lost in StateManager.
+
     def _state_handler(self):
         new_port = self.server_state.state["serial_port"]
         self.logger.log.info("Got server config update. New port: {}".format(new_port))
@@ -72,7 +74,8 @@ class MattchBox(Controller):
             self.ser = None
 
     def handler(self):
-        while True:
+        terminator = Terminator()
+        while not terminator.terminate:
             if (
                 self.ser and self.ser.is_open and self.port
             ):  # If self.port is changing (via state_handler), we should stop.
@@ -113,6 +116,8 @@ class MattchBox(Controller):
                         self.server_state.update("ser_connected", True)
                         continue  # skip the sleep.
                 time.sleep(10)
+
+        self.connect(None)
 
     def sendToPlayer(self, channel: int, msg: str):
         self.logger.log.info("Sending message to server: " + msg)
