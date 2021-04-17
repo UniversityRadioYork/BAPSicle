@@ -312,6 +312,7 @@ def channel_json(channel: int):
 
 @app.route("/plan/list")
 def list_showplans():
+
     while not api_from_q.empty():
         api_from_q.get()  # Just waste any previous status responses.
 
@@ -620,6 +621,7 @@ def startServer():
             port=state.state["port"],
             debug=True,
             use_reloader=False,
+            threaded=False  # While API handles are singlethreaded.
         )
 
     global webserver

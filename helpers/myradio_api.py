@@ -94,15 +94,19 @@ class MyRadioAPI:
 
         if not payload["current"]:
             self._logException("API did not return a current show.")
-            return []
 
         if not payload["next"]:
             self._logException("API did not return a list of next shows.")
-            return []
 
         shows = []
         shows.append(payload["current"])
         shows.extend(payload["next"])
+
+        timeslots = []
+        # Remove jukebox etc
+        for show in shows:
+            if not "timeslot_id" in show:
+                shows.remove(show)
 
         # TODO filter out jukebox
         return shows
