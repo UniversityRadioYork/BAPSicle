@@ -139,6 +139,11 @@ class WebsocketServer:
                     extra += str(data["weight"])
                 elif command == "GET_PLAN":
                     extra += str(data["timeslotId"])
+                elif command == "SETMARKER":
+                    extra += "{}:{}".format(
+                        data["timeslotitemid"],
+                        json.dumps(data["marker"])
+                    )
 
                 # SPECIAL CASE ALERT! We need to talk to two channels here.
                 elif command == "MOVE":

@@ -429,7 +429,8 @@ class Player:
 
         return True
 
-    def set_marker(self, timeslotitemid: int, marker_str: str):
+    # Timeslotitemid can be a ghost (un-submitted item), so may be "IXXX"
+    def set_marker(self, timeslotitemid: str, marker_str: str):
         set_loaded = False
         success = True
         try:
@@ -438,7 +439,7 @@ class Player:
             self.logger.log.error("Failed to create Marker instance with {} {}: {}".format(timeslotitemid, marker_str, e))
             return False
 
-        if timeslotitemid == -1:
+        if timeslotitemid == "-1":
             set_loaded = True
             if not self.isLoaded:
                 return False
@@ -449,7 +450,7 @@ class Player:
 
             item = plan_copy[i]
 
-            if item.timeslotitemid == timeslotitemid:
+            if str(item.timeslotitemid) == str(timeslotitemid):
                 try:
                     new_item = item.set_marker(marker)
                     self.state.update("show_plan", new_item, index=i)
@@ -522,6 +523,7 @@ class Player:
             elif self.isPlaying:
                 # Get one last update in, incase we're about to pause/stop it.
                 self.state.update("pos", max(0, mixer.music.get_pos() / 1000))
+            # TODO this is wrong now we don't pause the mixer.
             elif not self.isPaused:
                 self.state.update("pos", 0)  # Reset back to 0 if stopped.
                 self.state.update("pos_offset", 0)
@@ -558,7 +560,7 @@ class Player:
             or self.last_time_update + UPDATES_FREQ_SECS < time.time()
         ):
             self.last_time_update = time.time()
-            self._retAll("POS:" + str(int(self.state.state["pos_true"])))
+            self._retAll("POS:" + str(self.state.state["pos_true"]))
 
     def _retAll(self, msg):
         self.out_q.put("ALL:" + msg)
@@ -582,7 +584,7 @@ class Player:
             response += "FAIL"
         self.logger.log.debug(("Preparing to send: {}".format(response)))
         if self.out_q:
-            self.logger.log.info(("Sending: {}".format(response)))
+            self.logger.log.debug(("Sending: {}".format(response)))
             self.out_q.put(response)
 
     def _send_status(self):
@@ -666,7 +668,7 @@ class Player:
                     self.last_msg_source = source
                     self.last_msg = message.split(":", 1)[1]
 
-                    self.logger.log.info(
+                    self.logger.log.debug(
                         "Recieved message from source {}: {}".format(
                             self.last_msg_source, self.last_msg
                         )
@@ -731,7 +733,7 @@ class Player:
                                     int(self.last_msg.split(":")[1]))
                             ),
                             "CLEAR": lambda: self._retMsg(self.clear_channel_plan()),
-                            "SETMARKER": lambda: self._retMsg(self.set_marker(int(self.last_msg.split(":")[1]), self.last_msg.split(":", 2)[2])),
+                            "SETMARKER": lambda: self._retMsg(self.set_marker(self.last_msg.split(":")[1], self.last_msg.split(":", 2)[2])),
                         }
 
                         message_type: str = self.last_msg.split(":")[0]
