@@ -149,7 +149,7 @@ class BAPSicleServer:
 
         process_title = "startServer"
         setproctitle(process_title)
-        # multiprocessing.current_process().name = process_title
+        multiprocessing.current_process().name = process_title
 
         self.logger = LoggingManager("BAPSicleServer")
 
@@ -224,6 +224,7 @@ class BAPSicleServer:
         self.websocket_to_q[0].put("WEBSOCKET:QUIT")
         if self.websockets_server:
             self.websockets_server.join()
+        del self.websockets_server
 
         print("Stopping Players")
         for q in self.player_to_q:
@@ -232,20 +233,25 @@ class BAPSicleServer:
         for player in self.player:
             player.join()
 
+        del self.player
+
         print("Stopping Web Server")
         if self.webserver:
             self.webserver.terminate()
             self.webserver.join()
+            del self.webserver
 
         print("Stopping Player Handler")
         if self.player_handler:
             self.player_handler.terminate()
             self.player_handler.join()
+            del self.player_handler
 
         print("Stopping Controllers")
         if self.controller_handler:
             self.controller_handler.terminate()
             self.controller_handler.join()
+            del self.controller_handler
 
 
 if __name__ == "__main__":

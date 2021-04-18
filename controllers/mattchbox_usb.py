@@ -24,10 +24,10 @@ class MattchBox(Controller):
 
         process_title = "ControllerHandler"
         setproctitle(process_title)
+        current_process().name = process_title
 
         self.ser = None
         self.logger = LoggingManager("ControllerMattchBox")
-        current_process().name = process_title
 
         self.server_state = state  # This is a copy, will not update :/
 

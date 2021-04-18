@@ -8,6 +8,8 @@ import websockets
 import json
 from os import _exit
 from websockets.server import Serve
+from setproctitle import setproctitle
+from multiprocessing import current_process
 
 from helpers.logging_manager import LoggingManager
 from helpers.the_terminator import Terminator
@@ -29,6 +31,10 @@ class WebsocketServer:
 
         self.channel_to_q = in_q
         self.webstudio_to_q = out_q
+
+        process_title = "Websockets Servr"
+        setproctitle(process_title)
+        current_process().name = process_title
 
         self.logger = LoggingManager("Websockets")
         self.server_name = state.get()["server_name"]

@@ -35,8 +35,6 @@ def resolve_local_file_path(relative_path: str):
     except Exception:
         base_path = os.path.abspath(".")
 
-    print("LOCAL PATH:", os.path.join(base_path, relative_path))
-
     return os.path.join(base_path, relative_path)
 
 
