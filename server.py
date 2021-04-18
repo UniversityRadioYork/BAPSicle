@@ -15,7 +15,7 @@
 import multiprocessing
 from multiprocessing.queues import Queue
 import time
-from typing import Any
+from typing import Any, Optional
 import json
 from setproctitle import setproctitle
 
@@ -68,20 +68,69 @@ class BAPSicleServer:
     api_to_q: Queue
 
     player: List[multiprocessing.Process] = []
-    websockets_server: multiprocessing.Process
-    controller_handler: multiprocessing.Process
-    player_handler: multiprocessing.Process
-    webserver: multiprocessing.Process
+    websockets_server: Optional[multiprocessing.Process] = None
+    controller_handler: Optional[multiprocessing.Process] = None
+    player_handler: Optional[multiprocessing.Process] = None
+    webserver: Optional[multiprocessing.Process] = None
 
     def __init__(self):
 
         self.startServer()
 
-        terminator = Terminator()
-        while not terminator.terminate:
-            time.sleep(1)
+        self.check_processes()
 
         self.stopServer()
+
+    def check_processes(self):
+
+        terminator = Terminator()
+        log_function = self.logger.log.info
+        while not terminator.terminate:
+
+            # Note, state here will become a copy in the process.
+            # callbacks will not passthrough :/
+
+            for channel in range(self.state.state["num_channels"]):
+                if not self.player[channel] or not self.player[channel].is_alive():
+                    log_function("Player {} not running, (re)starting.".format(channel))
+                    self.player[channel] = multiprocessing.Process(
+                        target=player.Player,
+                        args=(channel, self.player_to_q[channel], self.player_from_q[channel], self.state)
+                    )
+                    self.player[channel].start()
+
+            if not self.player_handler or not self.player_handler.is_alive():
+                log_function("Player Handler not running, (re)starting.")
+                self.player_handler = multiprocessing.Process(
+                    target=PlayerHandler,
+                    args=(self.player_from_q, self.websocket_to_q, self.ui_to_q, self.controller_to_q),
+                )
+                self.player_handler.start()
+
+            if not self.websockets_server or not self.websockets_server.is_alive():
+                log_function("Websocket Server not running, (re)starting.")
+                self.websockets_server = multiprocessing.Process(
+                    target=WebsocketServer, args=(self.player_to_q, self.websocket_to_q, self.state)
+                )
+                self.websockets_server.start()
+
+            if not self.webserver or not self.webserver.is_alive():
+                log_function("Webserver not running, (re)starting.")
+                self.webserver = multiprocessing.Process(
+                    target=WebServer, args=(self.player_to_q, self.ui_to_q, self.state)
+                )
+                self.webserver.start()
+
+            if not self.controller_handler or not self.controller_handler.is_alive():
+                log_function("Controller Handler not running, (re)starting.")
+                self.controller_handler = multiprocessing.Process(
+                    target=MattchBox, args=(self.player_to_q, self.controller_to_q, self.state)
+                )
+                self.controller_handler.start()
+
+            # After first starting processes, switch logger to error, since any future starts will have been failures.
+            log_function = self.logger.log.error
+            time.sleep(1)
 
     def startServer(self):
         if isMacOS():
@@ -105,6 +154,9 @@ class BAPSicleServer:
         self.state.update("server_version", config.VERSION)
         self.state.update("server_build", build_commit)
 
+        channel_count = self.state.state["num_channels"]
+        self.player = [None] * channel_count
+
         for channel in range(self.state.state["num_channels"]):
 
             self.player_to_q.append(multiprocessing.Queue())
@@ -112,39 +164,6 @@ class BAPSicleServer:
             self.ui_to_q.append(multiprocessing.Queue())
             self.websocket_to_q.append(multiprocessing.Queue())
             self.controller_to_q.append(multiprocessing.Queue())
-
-            # TODO Replace state with individual read-only StateManagers or something nicer?
-
-            self.player.append(
-                multiprocessing.Process(
-                    target=player.Player,
-                    args=(channel, self.player_to_q[-1], self.player_from_q[-1], self.state)
-                )
-            )
-            self.player[channel].start()
-
-        self.player_handler = multiprocessing.Process(
-            target=PlayerHandler,
-            args=(self.player_from_q, self.websocket_to_q, self.ui_to_q, self.controller_to_q),
-        )
-        self.player_handler.start()
-
-        # Note, state here will become a copy in the process.
-        # It will not update, and callbacks will not work :/
-        self.websockets_server = multiprocessing.Process(
-            target=WebsocketServer, args=(self.player_to_q, self.websocket_to_q, self.state)
-        )
-        self.websockets_server.start()
-
-        self.controller_handler = multiprocessing.Process(
-            target=MattchBox, args=(self.player_to_q, self.controller_to_q, self.state)
-        )
-        self.controller_handler.start()
-
-        self.webserver = multiprocessing.Process(
-            target=WebServer, args=(self.player_to_q, self.ui_to_q, self.state)
-        )
-        self.webserver.start()
 
         print("Welcome to BAPSicle Server version: {}, build: {}.".format(config.VERSION, build_commit))
         print("The Server UI is available at http://{}:{}".format(self.state.state["host"], self.state.state["port"]))
