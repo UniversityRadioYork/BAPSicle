@@ -14,11 +14,11 @@
 """
 import multiprocessing
 from multiprocessing.queues import Queue
+import multiprocessing.managers as m
 import time
 from typing import Any, Optional
 import json
 from setproctitle import setproctitle
-
 from helpers.os_environment import isBundelled, isMacOS
 
 if not isMacOS():
@@ -41,6 +41,12 @@ import player
 
 setproctitle("server.py")
 
+""" Proxy Manager to proxy Class Objects into multiprocessing processes, instead of making a copy. """
+
+
+class ProxyManager(m.BaseManager):
+    pass  # Pass is really enough. Nothing needs to be done here.
+
 
 class BAPSicleServer:
 
@@ -56,7 +62,8 @@ class BAPSicleServer:
         "ser_connected": False,
         "myradio_api_key": None,
         "myradio_base_url": "https://ury.org.uk/myradio",
-        "myradio_api_url": "https://ury.org.uk/api"
+        "myradio_api_url": "https://ury.org.uk/api",
+        "running_state": "running"
     }
 
     player_to_q: List[Queue] = []
@@ -75,22 +82,26 @@ class BAPSicleServer:
 
     def __init__(self):
 
-        self.startServer()
+        while True:
+            self.startServer()
 
-        self.check_processes()
+            self.check_processes()
 
-        self.stopServer()
+            self.stopServer()
+
+            if self.state.get()["running_state"] == "restarting":
+                continue
+
+            break
 
     def check_processes(self):
 
         terminator = Terminator()
         log_function = self.logger.log.info
-        while not terminator.terminate:
 
-            # Note, state here will become a copy in the process.
-            # callbacks will not passthrough :/
+        while not terminator.terminate and self.state.get()["running_state"] == "running":
 
-            for channel in range(self.state.state["num_channels"]):
+            for channel in range(self.state.get()["num_channels"]):
                 if not self.player[channel] or not self.player[channel].is_alive():
                     log_function("Player {} not running, (re)starting.".format(channel))
                     self.player[channel] = multiprocessing.Process(
@@ -142,7 +153,14 @@ class BAPSicleServer:
 
         self.logger = LoggingManager("BAPSicleServer")
 
-        self.state = StateManager("BAPSicleServer", self.logger, self.default_state)
+        # Since we're passing the StateManager across processes, it must be made a manager.
+        # PLEASE NOTE: You can't read attributes directly, use state.get()["var"] and state.update("var", "val")
+        ProxyManager.register("StateManager", StateManager)
+        manager = ProxyManager()
+        manager.start()
+        self.state: StateManager = manager.StateManager("BAPSicleServer", self.logger, self.default_state)
+
+        self.state.update("running_state", "running")
 
         build_commit = "Dev"
         if isBundelled():
@@ -154,10 +172,10 @@ class BAPSicleServer:
         self.state.update("server_version", config.VERSION)
         self.state.update("server_build", build_commit)
 
-        channel_count = self.state.state["num_channels"]
+        channel_count = self.state.get()["num_channels"]
         self.player = [None] * channel_count
 
-        for channel in range(self.state.state["num_channels"]):
+        for channel in range(self.state.get()["num_channels"]):
 
             self.player_to_q.append(multiprocessing.Queue())
             self.player_from_q.append(multiprocessing.Queue())
@@ -166,7 +184,7 @@ class BAPSicleServer:
             self.controller_to_q.append(multiprocessing.Queue())
 
         print("Welcome to BAPSicle Server version: {}, build: {}.".format(config.VERSION, build_commit))
-        print("The Server UI is available at http://{}:{}".format(self.state.state["host"], self.state.state["port"]))
+        print("The Server UI is available at http://{}:{}".format(self.state.get()["host"], self.state.get()["port"]))
 
         # TODO Move this to player or installer.
         if False:

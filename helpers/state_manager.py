@@ -16,7 +16,6 @@ class StateManager:
     logger: LoggingManager
     callbacks: List[Any] = []
     __state = {}
-    __state_in_file = {}
     # Dict of times that params can be updated after, if the time is before current time, it can be written immediately.
     __rate_limit_params_until = {}
     __rate_limit_period_s = 0
@@ -93,6 +92,10 @@ class StateManager:
     @property
     def state(self):
         return copy(self.__state)
+
+    # Useful for pipeproxy, since it can't read attributes direct.
+    def get(self):
+        return self.state
 
     @state.setter
     def state(self, state):

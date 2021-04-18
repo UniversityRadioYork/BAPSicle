@@ -48,12 +48,12 @@ class MyRadioAPI:
 
     async def get_non_api_call(self, url):
 
-        url = "{}{}".format(self.config.state["myradio_base_url"], url)
+        url = "{}{}".format(self.config.get()["myradio_base_url"], url)
 
         if "?" in url:
-            url += "&api_key={}".format(self.config.state["myradio_api_key"])
+            url += "&api_key={}".format(self.config.get()["myradio_api_key"])
         else:
-            url += "?api_key={}".format(self.config.state["myradio_api_key"])
+            url += "?api_key={}".format(self.config.get()["myradio_api_key"])
 
         self._log("Requesting non-API URL: " + url)
         request = self.get(url)
@@ -63,12 +63,12 @@ class MyRadioAPI:
 
     async def get_apiv2_call(self, url):
 
-        url = "{}/v2{}".format(self.config.state["myradio_api_url"], url)
+        url = "{}/v2{}".format(self.config.get()["myradio_api_url"], url)
 
         if "?" in url:
-            url += "&api_key={}".format(self.config.state["myradio_api_key"])
+            url += "&api_key={}".format(self.config.get()["myradio_api_key"])
         else:
-            url += "?api_key={}".format(self.config.state["myradio_api_key"])
+            url += "?api_key={}".format(self.config.get()["myradio_api_key"])
 
         self._log("Requesting API V2 URL: " + url)
         request = self.get(url)

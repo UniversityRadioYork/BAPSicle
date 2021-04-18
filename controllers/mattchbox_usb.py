@@ -37,7 +37,7 @@ class MattchBox(Controller):
 
         # Allow server config changes to trigger controller reload if required.
         self.port = None
-        self.next_port = self.server_state.state["serial_port"]
+        self.next_port = self.server_state.get()["serial_port"]
 
         self.server_from_q = server_from_q
         self.server_to_q = server_to_q
@@ -47,7 +47,7 @@ class MattchBox(Controller):
     # This doesn't run, the callback function gets lost in StateManager.
 
     def _state_handler(self):
-        new_port = self.server_state.state["serial_port"]
+        new_port = self.server_state.get()["serial_port"]
         self.logger.log.info("Got server config update. New port: {}".format(new_port))
         if new_port != self.port:
             self.logger.log.info(

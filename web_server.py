@@ -56,9 +56,9 @@ def ui_index(request):
     data = {
         "ui_page": "index",
         "ui_title": "",
-        "server_version": server_state.state["server_version"],
-        "server_build": server_state.state["server_build"],
-        "server_name": server_state.state["server_name"],
+        "server_version": server_state.get()["server_version"],
+        "server_build": server_state.get()["server_build"],
+        "server_name": server_state.get()["server_name"],
     }
     return render_template("index.html", data=data)
 
@@ -66,7 +66,7 @@ def ui_index(request):
 @app.route("/status")
 def ui_status(request):
     channel_states = []
-    for i in range(server_state.state["num_channels"]):
+    for i in range(server_state.get()["num_channels"]):
         channel_states.append(status(i))
 
     data = {"channels": channel_states,
@@ -77,7 +77,7 @@ def ui_status(request):
 @app.route("/config/player")
 def ui_config_player(request):
     channel_states = []
-    for i in range(server_state.state["num_channels"]):
+    for i in range(server_state.get()["num_channels"]):
         channel_states.append(status(i))
 
     outputs = DeviceManager.getAudioOutputs()
@@ -96,7 +96,7 @@ def ui_config_server(request):
     data = {
         "ui_page": "server",
         "ui_title": "Server Config",
-        "state": server_state.state,
+        "state": server_state.get(),
         "ser_ports": DeviceManager.getSerialPorts(),
     }
     return render_template("config_server.html", data=data)
@@ -127,7 +127,7 @@ def ui_logs_list(request):
         "ui_page": "logs",
         "ui_title": "Logs",
         "logs": ["BAPSicleServer"]
-        + ["Player{}".format(x) for x in range(server_state.state["num_channels"])],
+        + ["Player{}".format(x) for x in range(server_state.get()["num_channels"])],
     }
     return render_template("loglist.html", data=data)
 
@@ -281,9 +281,9 @@ async def api_get_playlist(request, type: str, library_id: str):
 @app.route("/status-json")
 def json_status(request):
     channel_states = []
-    for i in range(server_state.state["num_channels"]):
+    for i in range(server_state.get()["num_channels"]):
         channel_states.append(status(i))
-    return resp_json({"server": server_state.state, "channels": channel_states})
+    return resp_json({"server": server_state.get(), "channels": channel_states})
 
 
 # Get audio for UI to generate waveforms.
@@ -336,8 +336,14 @@ def status(channel: int):
 
 @app.route("/quit")
 def quit(request):
-    # stopServer()
-    return "Shutting down..."
+    server_state.update("running_state", "quitting")
+    return text("Server quitting...")
+
+
+@app.route("/restart")
+def restart(request):
+    server_state.update("running_state", "restarting")
+    return text("Server restarting...")
 
 
 # Don't use reloader, it causes Nested Processes!
@@ -365,8 +371,8 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
     while not terminate.terminate:
         try:
             sync(app.run(
-                host=server_state.state["host"],
-                port=server_state.state["port"],
+                host=server_state.get()["host"],
+                port=server_state.get()["port"],
                 debug=True,
                 # workers=10,
                 auto_reload=False

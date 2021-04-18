@@ -31,10 +31,10 @@ class WebsocketServer:
         self.webstudio_to_q = out_q
 
         self.logger = LoggingManager("Websockets")
-        self.server_name = state.state["server_name"]
+        self.server_name = state.get()["server_name"]
 
         self.websocket_server = websockets.serve(
-            self.websocket_handler, state.state["host"], state.state["ws_port"]
+            self.websocket_handler, state.get()["host"], state.get()["ws_port"]
         )
 
         asyncio.get_event_loop().run_until_complete(self.websocket_server)
