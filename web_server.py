@@ -1,3 +1,4 @@
+from helpers.myradio_api import MyRadioAPI
 from sanic import Sanic
 from sanic.exceptions import NotFound, abort
 from sanic.response import html, text, file, redirect
@@ -35,9 +36,7 @@ def render_template(file, data, status=200):
 
 logger: LoggingManager
 server_state: StateManager
-
-api_from_q: Queue
-api_to_q: Queue
+api: MyRadioAPI
 
 player_to_q: List[Queue] = []
 player_from_q: List[Queue] = []
@@ -159,7 +158,7 @@ def player_simple(request, channel: int, command: str):
     abort(404)
 
 
-@app.route("/player/<channel:int>/seek/<pos:float>")
+@app.route("/player/<channel:int>/seek/<pos:number>")
 def player_seek(request, channel: int, pos: float):
 
     player_to_q[channel].put("UI:SEEK:" + str(pos))
@@ -240,104 +239,39 @@ def plan_clear(request):
 # API Proxy Endpoints
 
 @app.route("/plan/list")
-def api_list_showplans(request):
+async def api_list_showplans(request):
 
-    while not api_from_q.empty():
-        api_from_q.get()  # Just waste any previous status responses.
-
-    api_to_q.put("LIST_PLANS")
-
-    while True:
-        try:
-            response = api_from_q.get_nowait()
-            if response.startswith("LIST_PLANS:"):
-                response = response[response.index(":") + 1:]
-                return text(response)
-
-        except Empty:
-            pass
-
-        sleep(0.02)
+    return resp_json(await api.get_showplans())
 
 
-@app.route("/library/search/<type>")
-def api_search_library(request, type: str):
+@app.route("/library/search/track")
+async def api_search_library(request):
 
-    if type not in ["managed", "track"]:
-        abort(404)
-
-    while not api_from_q.empty():
-        api_from_q.get()  # Just waste any previous status responses.
-
-    params = json.dumps(
-        {"title": request.args.get("title"), "artist": request.args.get("artist")}
-    )
-    command = "SEARCH_TRACK:{}".format(params)
-    api_to_q.put(command)
-
-    while True:
-        try:
-            response = api_from_q.get_nowait()
-            if response.startswith("SEARCH_TRACK:"):
-                response = response[len(command)+1:]
-                return text(response)
-
-        except Empty:
-            pass
-
-        sleep(0.02)
+    return resp_json(await api.get_track_search(request.args.get("title"), request.args.get("artist")))
 
 
 @app.route("/library/playlists/<type:string>")
-def api_get_playlists(request, type: str):
+async def api_get_playlists(request, type: str):
 
     if type not in ["music", "aux"]:
         abort(401)
 
-    while not api_from_q.empty():
-        api_from_q.get()  # Just waste any previous status responses.
-
-    command = "LIST_PLAYLIST_{}".format(type.upper())
-    api_to_q.put(command)
-
-    while True:
-        try:
-            response = api_from_q.get_nowait()
-            if response.startswith(command):
-                response = response.split(":", 1)[1]
-                return text(response)
-
-        except Empty:
-            pass
-
-        sleep(0.02)
+    if type == "music":
+        return resp_json(await api.get_playlist_music())
+    else:
+        return resp_json(await api.get_playlist_aux())
 
 
 @app.route("/library/playlist/<type:string>/<library_id:string>")
-def api_get_playlist(request, type: str, library_id: str):
+async def api_get_playlist(request, type: str, library_id: str):
 
     if type not in ["music", "aux"]:
         abort(401)
 
-    while not api_from_q.empty():
-        api_from_q.get()  # Just waste any previous status responses.
-
-    command = "GET_PLAYLIST_{}:{}".format(type.upper(), library_id)
-    api_to_q.put(command)
-
-    while True:
-        try:
-            response = api_from_q.get_nowait()
-            if response.startswith(command):
-                response = response[len(command) + 1:]
-                if response == "null":
-                    abort(401)
-                return text(response)
-
-        except Empty:
-            pass
-
-        sleep(0.02)
+    if type == "music":
+        return resp_json(await api.get_playlist_music_items(library_id))
+    else:
+        return resp_json(await api.get_playlist_aux_items(library_id))
 
 
 # JSON Outputs
@@ -406,14 +340,15 @@ def quit(request):
 
 
 # Don't use reloader, it causes Nested Processes!
-def WebServer(player_to: List[Queue], player_from: List[Queue], api_to: Queue, api_from: Queue, state: StateManager):
+def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateManager):
 
-    global player_to_q, player_from_q, api_to_q, api_from_q, server_state
+    global player_to_q, player_from_q, server_state, api
     player_to_q = player_to
     player_from_q = player_from
-    api_from_q = api_from
-    api_to_q = api_to
     server_state = state
+
+    logger = LoggingManager("WebServer")
+    api = MyRadioAPI(logger, state)
 
     process_title = "Web Server"
     setproctitle(process_title)
@@ -432,7 +367,7 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], api_to: Queue, a
                 host=server_state.state["host"],
                 port=server_state.state["port"],
                 debug=True,
-                workers=1,
+                # workers=10,
                 auto_reload=False
 
                 # use_reloader=False,

@@ -35,7 +35,6 @@ from helpers.logging_manager import LoggingManager
 from websocket_server import WebsocketServer
 from web_server import WebServer
 from player_handler import PlayerHandler
-from api_handler import APIHandler
 from controllers.mattchbox_usb import MattchBox
 from helpers.the_terminator import Terminator
 import player
@@ -124,13 +123,6 @@ class BAPSicleServer:
             )
             self.player[channel].start()
 
-        self.api_to_q = multiprocessing.Queue()
-        self.api_from_q = multiprocessing.Queue()
-        self.api_handler = multiprocessing.Process(
-            target=APIHandler, args=(self.api_to_q, self.api_from_q, self.state)
-        )
-        self.api_handler.start()
-
         self.player_handler = multiprocessing.Process(
             target=PlayerHandler,
             args=(self.player_from_q, self.websocket_to_q, self.ui_to_q, self.controller_to_q),
@@ -150,7 +142,7 @@ class BAPSicleServer:
         self.controller_handler.start()
 
         self.webserver = multiprocessing.Process(
-            target=WebServer, args=(self.player_to_q, self.ui_to_q, self.api_to_q, self.api_from_q, self.state)
+            target=WebServer, args=(self.player_to_q, self.ui_to_q, self.state)
         )
         self.webserver.start()
 
@@ -212,11 +204,6 @@ class BAPSicleServer:
         if self.player_handler:
             self.player_handler.terminate()
             self.player_handler.join()
-
-        print("Stopping API Handler")
-        if self.api_handler:
-            self.api_handler.terminate()
-            self.api_handler.join()
 
         print("Stopping Controllers")
         if self.controller_handler:

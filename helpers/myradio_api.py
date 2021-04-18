@@ -17,7 +17,7 @@
         November 2020
 """
 from typing import Optional
-import requests
+import aiohttp
 import json
 from logging import INFO
 import os
@@ -36,7 +36,17 @@ class MyRadioAPI:
         self.logger = logger
         self.config = config
 
-    def get_non_api_call(self, url):
+    async def get(self, url, timeout=10):
+        async with aiohttp.ClientSession(read_timeout=timeout) as session:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    self._logException(
+                        "Failed to get API request. Status code: " + str(response.status)
+                    )
+                    self._logException(str(response.text()))
+                return await response.read()
+
+    async def get_non_api_call(self, url):
 
         url = "{}{}".format(self.config.state["myradio_base_url"], url)
 
@@ -46,19 +56,12 @@ class MyRadioAPI:
             url += "?api_key={}".format(self.config.state["myradio_api_key"])
 
         self._log("Requesting non-API URL: " + url)
-        request = requests.get(url, timeout=10)
+        request = self.get(url)
         self._log("Finished request.")
-
-        if request.status_code != 200:
-            self._logException(
-                "Failed to get API request. Status code: " + str(request.status_code)
-            )
-            self._logException(str(request.content))
-            return None
 
         return request
 
-    def get_apiv2_call(self, url):
+    async def get_apiv2_call(self, url):
 
         url = "{}/v2{}".format(self.config.state["myradio_api_url"], url)
 
@@ -68,29 +71,22 @@ class MyRadioAPI:
             url += "?api_key={}".format(self.config.state["myradio_api_key"])
 
         self._log("Requesting API V2 URL: " + url)
-        request = requests.get(url, timeout=10)
+        request = self.get(url)
         self._log("Finished request.")
-
-        if request.status_code != 200:
-            self._logException(
-                "Failed to get API request. Status code: " + str(request.status_code)
-            )
-            self._logException(str(request.content))
-            return None
 
         return request
 
     # Show plans
 
-    def get_showplans(self):
+    async def get_showplans(self):
         url = "/timeslot/currentandnextobjects?n=10"
-        request = self.get_apiv2_call(url)
+        request = await self.get_apiv2_call(url)
 
         if not request:
             self._logException("Failed to get list of show plans.")
             return None
 
-        payload = json.loads(request.content)["payload"]
+        payload = json.loads(await request)["payload"]
 
         if not payload["current"]:
             self._logException("API did not return a current show.")
@@ -111,20 +107,20 @@ class MyRadioAPI:
         # TODO filter out jukebox
         return shows
 
-    def get_showplan(self, timeslotid: int):
+    async def get_showplan(self, timeslotid: int):
 
         url = "/timeslot/{}/showplan".format(timeslotid)
-        request = self.get_apiv2_call(url)
+        request = await self.get_apiv2_call(url)
 
         if not request:
             self._logException("Failed to get show plan.")
             return None
 
-        return json.loads(request.content)["payload"]
+        return json.loads(await request)["payload"]
 
     # Audio Library
 
-    def get_filename(self, item: PlanItem):
+    async def get_filename(self, item: PlanItem):
         format = "mp3"  # TODO: Maybe we want this customisable?
         if item.trackid:
             itemType = "track"
@@ -158,14 +154,14 @@ class MyRadioAPI:
             return filename
 
         # File doesn't exist, download it.
-        request = self.get_non_api_call(url)
+        request = await self.get_non_api_call(url)
 
         if not request:
             return None
 
         try:
             with open(filename, "wb") as file:
-                file.write(request.content)
+                file.write(await request)
         except Exception as e:
             self._logException("Failed to write music file: {}".format(e))
             return None
@@ -173,35 +169,35 @@ class MyRadioAPI:
         return filename
 
     # Gets the list of managed music playlists.
-    def get_playlist_music(self):
+    async def get_playlist_music(self):
         url = "/playlist/allitonesplaylists"
-        request = self.get_apiv2_call(url)
+        request = await self.get_apiv2_call(url)
 
         if not request:
             self._logException("Failed to retrieve music playlists.")
             return None
 
-        return json.loads(request.content)["payload"]
+        return json.loads(await request)["payload"]
 
     # Gets the list of managed aux playlists (sfx, beds etc.)
-    def get_playlist_aux(self):
+    async def get_playlist_aux(self):
         url = "/nipswebPlaylist/allmanagedplaylists"
-        request = self.get_apiv2_call(url)
+        request = await self.get_apiv2_call(url)
 
         if not request:
             self._logException("Failed to retrieve music playlists.")
             return None
 
-        return json.loads(request.content)["payload"]
+        return json.loads(await request)["payload"]
 
     # Loads the playlist items for a certain managed aux playlist
-    def get_playlist_aux_items(self, library_id: str):
+    async def get_playlist_aux_items(self, library_id: str):
         # Sometimes they have "aux-<ID>", we only need the index.
         if library_id.index("-") > -1:
             library_id = library_id[library_id.index("-") + 1:]
 
         url = "/nipswebPlaylist/{}/items".format(library_id)
-        request = self.get_apiv2_call(url)
+        request = await self.get_apiv2_call(url)
 
         if not request:
             self._logException(
@@ -209,13 +205,13 @@ class MyRadioAPI:
             )
             return None
 
-        return json.loads(request.content)["payload"]
+        return json.loads(await request)["payload"]
 
         # Loads the playlist items for a certain managed playlist
 
-    def get_playlist_music_items(self, library_id: str):
+    async def get_playlist_music_items(self, library_id: str):
         url = "/playlist/{}/tracks".format(library_id)
-        request = self.get_apiv2_call(url)
+        request = await self.get_apiv2_call(url)
 
         if not request:
             self._logException(
@@ -223,21 +219,21 @@ class MyRadioAPI:
             )
             return None
 
-        return json.loads(request.content)["payload"]
+        return json.loads(await request)["payload"]
 
-    def get_track_search(
+    async def get_track_search(
         self, title: Optional[str], artist: Optional[str], limit: int = 100
     ):
         url = "/track/search?title={}&artist={}&digitised=1&limit={}".format(
             title if title else "", artist if artist else "", limit
         )
-        request = self.get_apiv2_call(url)
+        request = await self.get_apiv2_call(url)
 
         if not request:
             self._logException("Failed to search for track.")
             return None
 
-        return json.loads(request.content)["payload"]
+        return json.loads(await request)["payload"]
 
     def _log(self, text: str, level: int = INFO):
         self.logger.log.log(level, "MyRadio API: " + text)

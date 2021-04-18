@@ -32,6 +32,7 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 from pygame import mixer
 from mutagen.mp3 import MP3
+from syncer import sync
 
 from helpers.myradio_api import MyRadioAPI
 from helpers.state_manager import StateManager
@@ -254,7 +255,7 @@ class Player:
 
     # Show Plan Related Methods
     def get_plan(self, message: int):
-        plan = self.api.get_showplan(message)
+        plan = sync(self.api.get_showplan(message))
         self.clear_channel_plan()
         channel = self.state.state["channel"]
         self.logger.log.info(plan)
@@ -338,7 +339,7 @@ class Player:
                 reload = True
 
             if reload:
-                loaded_item.filename = self.api.get_filename(item=loaded_item)
+                loaded_item.filename = sync(self.api.get_filename(item=loaded_item))
 
             if not loaded_item.filename:
                 return False
