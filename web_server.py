@@ -5,6 +5,7 @@ from sanic.response import html, text, file, redirect
 from sanic.response import json as resp_json
 from sanic_cors import CORS
 from syncer import sync
+import asyncio
 
 from jinja2 import Environment, FileSystemLoader
 from urllib.parse import unquote
@@ -349,7 +350,7 @@ def restart(request):
 # Don't use reloader, it causes Nested Processes!
 def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateManager):
 
-    global player_to_q, player_from_q, server_state, api
+    global player_to_q, player_from_q, server_state, api, app
     player_to_q = player_to
     player_from_q = player_from
     server_state = state
@@ -370,6 +371,11 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
                 debug=True,
                 auto_reload=False
             ))
-            sleep(1)
         except Exception:
             break
+    loop = asyncio.get_event_loop()
+    if loop:
+        loop.close()
+    if app:
+        app.stop()
+        del app
