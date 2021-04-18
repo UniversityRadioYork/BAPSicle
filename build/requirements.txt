@@ -1,7 +1,7 @@
 autopep8
 pygame==2.0.1
-flask
-flask-cors
+sanic
+sanic-cors
 mutagen
 sounddevice
 autopep8
