@@ -104,21 +104,21 @@ def ui_config_server(request):
 
 @app.route("/config/server/update", methods=["POST"])
 def ui_config_server_update(request):
-    server_state.update("server_name", request.form["name"])
-    server_state.update("host", request.form["host"])
-    server_state.update("port", int(request.form["port"]))
-    server_state.update("num_channels", int(request.form["channels"]))
-    server_state.update("ws_port", int(request.form["ws_port"]))
-    server_state.update("serial_port", request.form["serial_port"])
+    server_state.update("server_name", request.form.get("name"))
+    server_state.update("host", request.form.get("host"))
+    server_state.update("port", int(request.form.get("port")))
+    server_state.update("num_channels", int(request.form.get("channels")))
+    server_state.update("ws_port", int(request.form.get("ws_port")))
+    server_state.update("serial_port", request.form.get("serial_port"))
 
     # Because we're not showing the api key once it's set.
-    if "myradio_api_key" in request.form and request.form["myradio_api_key"] != "":
-        server_state.update("myradio_api_key", request.form["myradio_api_key"])
+    if "myradio_api_key" in request.form and request.form.get("myradio_api_key") != "":
+        server_state.update("myradio_api_key", request.form.get("myradio_api_key"))
 
-    server_state.update("myradio_base_url", request.form["myradio_base_url"])
-    server_state.update("myradio_api_url", request.form["myradio_api_url"])
-    # stopServer()
-    return ui_config_server(request)
+    server_state.update("myradio_base_url", request.form.get("myradio_base_url"))
+    server_state.update("myradio_api_url", request.form.get("myradio_api_url"))
+
+    return redirect("/restart")
 
 
 @app.route("/logs")
@@ -221,7 +221,7 @@ def player_all_stop(request):
 
 # Show Plan Functions
 
-@app.route("/plan/load/<int:timeslotid>")
+@app.route("/plan/load/<timeslotid:int>")
 def plan_load(request, timeslotid: int):
 
     for channel in player_to_q:
@@ -361,12 +361,6 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
     setproctitle(process_title)
     CORS(app, supports_credentials=True)  # Allow ALL CORS!!!
 
-    # if not isBundelled():
-    #    log = logging.getLogger("werkzeug")
-    #    log.disabled = True
-
-    #app.logger.disabled = True
-
     terminate = Terminator()
     while not terminate.terminate:
         try:
@@ -374,11 +368,7 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
                 host=server_state.get()["host"],
                 port=server_state.get()["port"],
                 debug=True,
-                # workers=10,
                 auto_reload=False
-
-                # use_reloader=False,
-                # threaded=False  # While API handles are singlethreaded.
             ))
             sleep(1)
         except Exception:
