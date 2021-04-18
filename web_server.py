@@ -4,6 +4,7 @@ from sanic.exceptions import NotFound, abort
 from sanic.response import html, text, file, redirect
 from sanic.response import json as resp_json
 from sanic_cors import CORS
+from syncer import sync
 
 from jinja2 import Environment, FileSystemLoader
 from urllib.parse import unquote
@@ -18,7 +19,7 @@ from time import sleep
 import json
 import os
 
-from helpers.os_environment import isBundelled, isMacOS
+from helpers.os_environment import isBundelled, isMacOS, resolve_local_file_path
 from helpers.logging_manager import LoggingManager
 from helpers.device_manager import DeviceManager
 from helpers.state_manager import StateManager
@@ -296,10 +297,10 @@ async def audio_file(request, type: str, id: int):
 
 
 # Static Files
-app.static("/favicon.ico", "./ui-static/favicon.ico", name="ui-favicon")
-app.static("/static", "./ui-static", name="ui-static")
-app.static("/presenter/", "./presenter-build/index.html", strict_slashes=True)
-app.static("/presenter", "./presenter-build")
+app.static("/favicon.ico", resolve_local_file_path("ui-static/favicon.ico"), name="ui-favicon")
+app.static("/static", resolve_local_file_path("ui-static"), name="ui-static")
+app.static("/presenter/", resolve_local_file_path("presenter-build/index.html"), strict_slashes=True, name="presenter-index")
+app.static("/presenter/", resolve_local_file_path("presenter-build"))
 
 
 # Helper Functions
@@ -363,7 +364,7 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
     terminate = Terminator()
     while not terminate.terminate:
         try:
-            app.run(
+            sync(app.run(
                 host=server_state.state["host"],
                 port=server_state.state["port"],
                 debug=True,
@@ -372,7 +373,7 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
 
                 # use_reloader=False,
                 # threaded=False  # While API handles are singlethreaded.
-            )
+            ))
+            sleep(1)
         except Exception:
             break
-    app.stop()

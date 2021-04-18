@@ -25,11 +25,17 @@ def isMacOS():
 
 def resolve_local_file_path(relative_path: str):
     """ Get absolute path to resource, works for dev and for PyInstaller """
+    if relative_path.startswith("/"):
+        relative_path = relative_path[1:]
+
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path: str = sys._MEIPASS
+        print("MEI", base_path)
     except Exception:
         base_path = os.path.abspath(".")
+
+    print("LOCAL PATH:", os.path.join(base_path, relative_path))
 
     return os.path.join(base_path, relative_path)
 
