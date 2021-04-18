@@ -34,6 +34,7 @@
             <a href="/">
               <h1 class="h1 text-light d-inline">BAPSicle</h1>
             </a>
+            {% if data.ui_menu is undefined or data.ui_menu is true %}
             <div class="d-inline float-right">
               <a href="/status" class="btn btn-user btn-outline-light btn-primary ml-4 {% if data.ui_page == 'status' %}active{% endif %}">
                 Status
@@ -48,6 +49,7 @@
                 Logs
               </a>
             </div>
+            {% endif %}
             <div class="card o-hidden border-0 shadow-lg my-3">
               {% block content %}
 

@@ -338,13 +338,31 @@ def status(channel: int):
 @app.route("/quit")
 def quit(request):
     server_state.update("running_state", "quitting")
-    return text("Server quitting...")
+
+    data = {
+        "ui_page": "message",
+        "ui_title": "Quitting BAPSicle",
+        "title": "See you later!",
+        "ui_menu": False,
+        "message": "BAPSicle is going back into winter hibernation, see you again soon!"
+    }
+    return render_template("message.html", data)
 
 
 @app.route("/restart")
 def restart(request):
     server_state.update("running_state", "restarting")
-    return text("Server restarting...")
+
+    data = {
+        "ui_page": "message",
+        "ui_title": "Restarting BAPSicle",
+        "title": "Please Wait...",
+        "ui_menu": False,
+        "message": "Just putting BAPSicle back in the freezer for a moment!",
+        "redirect_to": "/",
+        "redirect_wait_ms": 10000
+    }
+    return render_template("message.html", data)
 
 
 # Don't use reloader, it causes Nested Processes!
