@@ -1,3 +1,10 @@
 from setuptools import setup, find_packages
+import package
 
-setup(name="bapsicle", version="0.0.1", packages=find_packages())
+setup(
+    name=package.NAME,
+    version=package.VERSION,
+    description=package.DESCRIPTION,
+    author=package.AUTHOR,
+    license=package.LICENSE,
+    packages=find_packages())

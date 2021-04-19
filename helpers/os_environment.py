@@ -31,7 +31,6 @@ def resolve_local_file_path(relative_path: str):
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path: str = sys._MEIPASS
-        print("MEI", base_path)
     except Exception:
         base_path = os.path.abspath(".")
 

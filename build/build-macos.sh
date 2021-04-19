@@ -3,7 +3,6 @@ cd "$(dirname "$0")"
 
 build_commit="$(git rev-parse --short HEAD)"
 echo "BUILD: str = \"$build_commit\"" > ../build.py
-sed -i '' -e "s/BUILD_COMMIT/$build_commit/" "../config.py"
 
 python3 -m venv ../venv
 source ../venv/bin/activate
@@ -20,6 +19,12 @@ bash ./build-exe-pyinstaller-command.sh
 
 rm ./*.spec
 
+cd ../
+python3 build/generate-platypus-config.py
+cd build
+
 brew install platypus
 
 platypus --load-profile ./BAPSicle.platypus --overwrite ./output/BAPSicle.app
+
+rm ../build.py

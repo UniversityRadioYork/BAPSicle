@@ -28,7 +28,7 @@ if not isMacOS():
 if isBundelled():
     import build
 
-import config
+import package
 from typing import Dict, List
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
@@ -162,15 +162,11 @@ class BAPSicleServer:
 
         self.state.update("running_state", "running")
 
-        build_commit = "Dev"
-        if isBundelled():
-            build_commit = build.BUILD
-
         print("Launching BAPSicle...")
 
         # TODO: Check these match, if not, trigger any upgrade noticies / welcome
-        self.state.update("server_version", config.VERSION)
-        self.state.update("server_build", build_commit)
+        self.state.update("server_version", package.VERSION)
+        self.state.update("server_build", package.BUILD)
 
         channel_count = self.state.get()["num_channels"]
         self.player = [None] * channel_count
@@ -183,7 +179,7 @@ class BAPSicleServer:
             self.websocket_to_q.append(multiprocessing.Queue())
             self.controller_to_q.append(multiprocessing.Queue())
 
-        print("Welcome to BAPSicle Server version: {}, build: {}.".format(config.VERSION, build_commit))
+        print("Welcome to BAPSicle Server version: {}, build: {}.".format(package.VERSION, package.BUILD))
         print("The Server UI is available at http://{}:{}".format(self.state.get()["host"], self.state.get()["port"]))
 
         # TODO Move this to player or installer.

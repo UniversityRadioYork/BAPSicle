@@ -9,6 +9,7 @@ venv/
 build/build-exe-config.json
 build/build-exe-pyinstaller-command.bat
 build/build-exe-pyinstaller-command.sh
+build/BAPSicle.platypus
 build/build/BAPSicle/
 build/output/
 *.spec

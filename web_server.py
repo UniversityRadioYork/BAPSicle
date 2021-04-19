@@ -20,7 +20,7 @@ from time import sleep
 import json
 import os
 
-from helpers.os_environment import resolve_local_file_path
+from helpers.os_environment import isBundelled, resolve_local_file_path
 from helpers.logging_manager import LoggingManager
 from helpers.device_manager import DeviceManager
 from helpers.state_manager import StateManager
@@ -386,8 +386,9 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
             sync(app.run(
                 host=server_state.get()["host"],
                 port=server_state.get()["port"],
-                debug=True,
-                auto_reload=False
+                debug=(not isBundelled()),
+                auto_reload=False,
+                access_log=(not isBundelled())
             ))
         except Exception:
             break

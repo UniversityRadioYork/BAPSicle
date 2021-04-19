@@ -6,11 +6,13 @@ from typing import Any
 import webbrowser
 from setproctitle import setproctitle
 
-from server import BAPSicleServer
 from helpers.the_terminator import Terminator
 
 
 def startServer(notifications=False):
+    # Only spend the time importing the Server if we want to start the server. Speeds up web browser opens.
+    from server import BAPSicleServer
+
     server = multiprocessing.Process(target=BAPSicleServer)
     server.start()
 
@@ -60,6 +62,7 @@ if __name__ == "__main__":
         # We got an argument! It's probably Platypus's UI.
         try:
             if (sys.argv[1]) == "Start Server":
+                print("NOTIFICATION:BAPSicle is starting, please wait...")
                 webbrowser.open("http://localhost:13500/")
                 startServer(notifications=True)
             if sys.argv[1] == "Server":
@@ -67,7 +70,7 @@ if __name__ == "__main__":
             if sys.argv[1] == "Presenter":
                 webbrowser.open("http://localhost:13500/presenter/")
         except Exception as e:
-            print("ALERT:BAPSicle failed with exception:\n", e)
+            print("ALERT:BAPSicle failed with exception of type {}:\n{}".format(type(e).__name__, str(e)))
             sys.exit(1)
 
         sys.exit(0)

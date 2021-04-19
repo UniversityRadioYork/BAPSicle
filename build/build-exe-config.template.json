@@ -76,7 +76,11 @@
   {
    "optionDest": "datas",
    "value": "/presenter-build;presenter-build/"
-  }
+  },
+  {
+    "optionDest": "datas",
+    "value": "/package.json;./"
+   }
  ],
  "nonPyinstallerOptions": {
   "increaseRecursionLimit": false,

@@ -28,5 +28,7 @@ build-exe-pyinstaller-command.bat
 
 del *.spec /q
 
+del ..\build.py /q
+
 echo "Output file should be located in 'output/' folder."
 TIMEOUT 5
