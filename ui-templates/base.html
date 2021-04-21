@@ -10,7 +10,7 @@
   {% block head %}
   {% endblock %}
 
-  <title>BAPSicle {% if data.ui_title %} | {{data.ui_title}}{% endif %}</title>
+  <title>BAPSicle{% if data.ui_title %} | {{data.ui_title}}{% endif %}</title>
 
   <!-- Custom fonts for this template-->
   <link href="/static/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
@@ -25,32 +25,34 @@
 <body class="bg-gradient-primary">
 
     <div class="container">
-  
+
       <!-- Outer Row -->
       <div class="row justify-content-center">
-  
+
         <div class="col-xl-10 col-lg-12 col-md-9">
           <div class="mt-5">
             <a href="/">
               <h1 class="h1 text-light d-inline">BAPSicle</h1>
             </a>
+            {% if data.ui_menu is undefined or data.ui_menu is true %}
             <div class="d-inline float-right">
               <a href="/status" class="btn btn-user btn-outline-light btn-primary ml-4 {% if data.ui_page == 'status' %}active{% endif %}">
                 Status
               </a>
-              <a href="/config" class="btn btn-user btn-outline-light btn-primary ml-4 {% if data.ui_page == 'config' %}active{% endif %}">
-                Channel Config
+              <a href="/config/player" class="btn btn-user btn-outline-light btn-primary ml-4 {% if data.ui_page == 'config' %}active{% endif %}">
+                Player Config
               </a>
-              <a href="/server" class="btn btn-user btn-outline-light btn-primary ml-4 {% if data.ui_page == 'server' %}active{% endif %}">
+              <a href="/config/server" class="btn btn-user btn-outline-light btn-primary ml-4 {% if data.ui_page == 'server' %}active{% endif %}">
                 Server Config
               </a>
               <a href="/logs" class="btn btn-user btn-outline-light btn-primary ml-4 {% if data.ui_page == 'logs' %}active{% endif %}">
                 Logs
               </a>
             </div>
+            {% endif %}
             <div class="card o-hidden border-0 shadow-lg my-3">
               {% block content %}
-                
+
                 <div class="card-body p-0">
                   <!-- Nested Row within Card Body -->
                   <div class="row">
@@ -72,15 +74,15 @@
                     </div>
                   </div>
                 </div>
-    
+
               {% endblock %}
             </div>
           </div>
-  
+
         </div>
-  
+
       </div>
-  
+
     </div>
 </body>
 

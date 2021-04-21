@@ -7,9 +7,12 @@ from typing import List
 import websockets
 import json
 from os import _exit
+from websockets.server import Serve
+from setproctitle import setproctitle
+from multiprocessing import current_process
 
 from helpers.logging_manager import LoggingManager
-from websockets.server import Serve
+from helpers.the_terminator import Terminator
 
 
 class WebsocketServer:
@@ -29,11 +32,15 @@ class WebsocketServer:
         self.channel_to_q = in_q
         self.webstudio_to_q = out_q
 
+        process_title = "Websockets Servr"
+        setproctitle(process_title)
+        current_process().name = process_title
+
         self.logger = LoggingManager("Websockets")
-        self.server_name = state.state["server_name"]
+        self.server_name = state.get()["server_name"]
 
         self.websocket_server = websockets.serve(
-            self.websocket_handler, state.state["host"], state.state["ws_port"]
+            self.websocket_handler, state.get()["host"], state.get()["ws_port"]
         )
 
         asyncio.get_event_loop().run_until_complete(self.websocket_server)
@@ -187,7 +194,10 @@ class WebsocketServer:
             )
 
     async def handle_to_webstudio(self):
-        while True:
+
+        terminator = Terminator()
+        while not terminator.terminate:
+
             for channel in range(len(self.webstudio_to_q)):
                 try:
                     message = self.webstudio_to_q[channel].get_nowait()
@@ -235,6 +245,8 @@ class WebsocketServer:
                         "Exception trying to send to websocket:", e
                     )
             await asyncio.sleep(0.02)
+
+        self.quit()
 
 
 if __name__ == "__main__":

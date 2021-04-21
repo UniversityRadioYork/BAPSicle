@@ -32,6 +32,7 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 from pygame import mixer
 from mutagen.mp3 import MP3
+from syncer import sync
 
 from helpers.myradio_api import MyRadioAPI
 from helpers.state_manager import StateManager
@@ -95,14 +96,14 @@ class Player:
 
     @property
     def isPaused(self) -> bool:
-        return self.state.state["paused"]
+        return self.state.get()["paused"]
 
     @property
     def isLoaded(self):
         return self._isLoaded()
 
     def _isLoaded(self, short_test: bool = False):
-        if not self.state.state["loaded_item"]:
+        if not self.state.get()["loaded_item"]:
             return False
         if self.isPlaying:
             return True
@@ -115,7 +116,7 @@ class Player:
         # We're not playing now, so we can quickly test run
         # If that works, we're loaded.
         try:
-            position: float = self.state.state["pos"]
+            position: float = self.state.get()["pos"]
             mixer.music.set_volume(0)
             mixer.music.play(0)
         except Exception:
@@ -139,7 +140,7 @@ class Player:
         # Don't mess with playback, we only care about if it's supposed to be loaded.
         if not self._isLoaded(short_test=True):
             return False
-        return (self.state.state["pos_true"] == self.state.state["loaded_item"].cue and not self.isPlaying)
+        return (self.state.get()["pos_true"] == self.state.get()["loaded_item"].cue and not self.isPlaying)
 
     @property
     def status(self):
@@ -184,7 +185,7 @@ class Player:
 
     def unpause(self):
         if not self.isPlaying:
-            position: float = self.state.state["pos_true"]
+            position: float = self.state.get()["pos_true"]
             try:
                 self.play(position)
             except Exception:
@@ -207,14 +208,14 @@ class Player:
 
         self.stopped_manually = True
 
-        if not self.state.state["loaded_item"]:
+        if not self.state.get()["loaded_item"]:
             self.logger.log.warning("Tried to stop without a loaded item.")
             return True
 
         # This lets users toggle (using the stop button) between cue point and 0.
         if user_initiated and not self.isCued:
             # if there's a cue point ant we're not at it, go there.
-            self.seek(self.state.state["loaded_item"].cue)
+            self.seek(self.state.get()["loaded_item"].cue)
         else:
             # Otherwise, let's go to 0.
             self.state.update("pos", 0)
@@ -254,9 +255,9 @@ class Player:
 
     # Show Plan Related Methods
     def get_plan(self, message: int):
-        plan = self.api.get_showplan(message)
+        plan = sync(self.api.get_showplan(message))
         self.clear_channel_plan()
-        channel = self.state.state["channel"]
+        channel = self.state.get()["channel"]
         self.logger.log.info(plan)
         if len(plan) > channel:
             for plan_item in plan[str(channel)]:
@@ -272,7 +273,7 @@ class Player:
 
     def add_to_plan(self, new_item: Dict[str, Any]) -> bool:
         new_item_obj = PlanItem(new_item)
-        plan_copy: List[PlanItem] = copy.copy(self.state.state["show_plan"])
+        plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
         # Shift any plan items after the new position down one to make space.
         for item in plan_copy:
             if item.weight >= new_item_obj.weight:
@@ -289,7 +290,7 @@ class Player:
         return True
 
     def remove_from_plan(self, weight: int) -> bool:
-        plan_copy: List[PlanItem] = copy.copy(self.state.state["show_plan"])
+        plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
         found = False
         for i in plan_copy:
             if i.weight == weight:
@@ -312,7 +313,7 @@ class Player:
         if not self.isPlaying:
             self.unload()
 
-            showplan = self.state.state["show_plan"]
+            showplan = self.state.get()["show_plan"]
 
             loaded_item: Optional[PlanItem] = None
 
@@ -338,7 +339,7 @@ class Player:
                 reload = True
 
             if reload:
-                loaded_item.filename = self.api.get_filename(item=loaded_item)
+                loaded_item.filename = sync(self.api.get_filename(item=loaded_item))
 
             if not loaded_item.filename:
                 return False
@@ -379,7 +380,7 @@ class Player:
             if loaded_item.cue > 0:
                 self.seek(loaded_item.cue)
 
-            if self.state.state["play_on_load"]:
+            if self.state.get()["play_on_load"]:
                 self.play()
 
         return True
@@ -404,7 +405,7 @@ class Player:
             self.logger.log.exception("Failed to quit mixer.")
 
     def output(self, name: Optional[str] = None):
-        wasPlaying = self.state.state["playing"]
+        wasPlaying = self.state.get()["playing"]
 
         name = None if (not name or name.lower() == "none") else name
 
@@ -421,7 +422,7 @@ class Player:
             )
             return False
 
-        loadedItem = self.state.state["loaded_item"]
+        loadedItem = self.state.get()["loaded_item"]
         if loadedItem:
             self.load(loadedItem.weight)
         if wasPlaying:
@@ -443,10 +444,10 @@ class Player:
             set_loaded = True
             if not self.isLoaded:
                 return False
-            timeslotitemid = self.state.state["loaded_item"].timeslotitemid
+            timeslotitemid = self.state.get()["loaded_item"].timeslotitemid
 
-        plan_copy: List[PlanItem] = copy.copy(self.state.state["show_plan"])
-        for i in range(len(self.state.state["show_plan"])):
+        plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
+        for i in range(len(self.state.get()["show_plan"])):
 
             item = plan_copy[i]
 
@@ -462,7 +463,7 @@ class Player:
 
         if set_loaded:
             try:
-                self.state.update("loaded_item", self.state.state["loaded_item"].set_marker(marker))
+                self.state.update("loaded_item", self.state.get()["loaded_item"].set_marker(marker))
             except Exception as e:
                 self.logger.log.error(
                     "Failed to set marker on loaded_item {}: {} with marker \n{}".format(timeslotitemid, e, marker))
@@ -473,7 +474,7 @@ class Player:
     # Helper functions
 
     def _ended(self):
-        loaded_item = self.state.state["loaded_item"]
+        loaded_item = self.state.get()["loaded_item"]
 
         if not loaded_item:
             return
@@ -483,29 +484,29 @@ class Player:
 
         # Repeat 1
         # TODO ENUM
-        if self.state.state["repeat"] == "one":
+        if self.state.get()["repeat"] == "one":
             self.play()
             return
 
         loaded_new_item = False
         # Auto Advance
-        if self.state.state["auto_advance"]:
-            for i in range(len(self.state.state["show_plan"])):
-                if self.state.state["show_plan"][i].weight == loaded_item.weight:
-                    if len(self.state.state["show_plan"]) > i + 1:
-                        self.load(self.state.state["show_plan"][i + 1].weight)
+        if self.state.get()["auto_advance"]:
+            for i in range(len(self.state.get()["show_plan"])):
+                if self.state.get()["show_plan"][i].weight == loaded_item.weight:
+                    if len(self.state.get()["show_plan"]) > i + 1:
+                        self.load(self.state.get()["show_plan"][i + 1].weight)
                         loaded_new_item = True
                         break
 
                     # Repeat All
                     # TODO ENUM
-                    elif self.state.state["repeat"] == "all":
-                        self.load(self.state.state["show_plan"][0].weight)
+                    elif self.state.get()["repeat"] == "all":
+                        self.load(self.state.get()["show_plan"][0].weight)
                         loaded_new_item = True
                         break
 
         # Play on Load
-        if self.state.state["play_on_load"] and loaded_new_item:
+        if self.state.get()["play_on_load"] and loaded_new_item:
             self.play()
             return
 
@@ -529,7 +530,7 @@ class Player:
                 self.state.update("pos_offset", 0)
 
             if (
-                self.state.state["playing"]
+                self.state.get()["playing"]
                 and not self.isPlaying
                 and not self.stopped_manually
             ):
@@ -541,15 +542,15 @@ class Player:
             self.state.update(
                 "pos_true",
                 min(
-                    self.state.state["length"],
-                    self.state.state["pos"] + self.state.state["pos_offset"],
+                    self.state.get()["length"],
+                    self.state.get()["pos"] + self.state.get()["pos_offset"],
                 ),
             )
 
             self.state.update(
                 "remaining",
-                max(0, (self.state.state["length"] -
-                    self.state.state["pos_true"])),
+                max(0, (self.state.get()["length"] -
+                    self.state.get()["pos_true"])),
             )
 
     def _ping_times(self):
@@ -560,7 +561,7 @@ class Player:
             or self.last_time_update + UPDATES_FREQ_SECS < time.time()
         ):
             self.last_time_update = time.time()
-            self._retAll("POS:" + str(self.state.state["pos_true"]))
+            self._retAll("POS:" + str(self.state.get()["pos_true"]))
 
     def _retAll(self, msg):
         self.out_q.put("ALL:" + msg)

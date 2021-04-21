@@ -21,3 +21,5 @@ bash ./build-exe-pyinstaller-command.sh
 
 rm ./*.spec
 
+rm ../build.py
+

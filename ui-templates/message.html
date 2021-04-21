@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block content_inner %}
+<div class="text-center">
+  <p class="lead text-gray-800 mb-2">{{ data.title }}</p>
+  <p class="text-gray-900 mb-3">{{ data.message }}</p>
+</div>
+{% if data.redirect_to %}
+<script>
+
+function check_and_redirect() {
+  var myRequest = new Request('{{data.redirect_to}}');
+  console.log("Requesting {{data.redirect_to}}")
+  fetch(myRequest).then(function(response) {
+    console.log("Fetched new page, got status code: ", response.status)
+    if (response.status == 200) {
+      window.location.href = "{{data.redirect_to}}"
+    }
+  });
+}
+setTimeout(
+  () => {
+    setInterval(check_and_redirect, 5000)
+  },
+  {{data.redirect_wait_ms or '5000'}}
+)
+
+</script>
+{% endif %}
+{% endblock %}

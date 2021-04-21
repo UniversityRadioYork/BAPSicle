@@ -12,23 +12,14 @@
     Date:
         October, November 2020
 """
-from api_handler import APIHandler
-from controllers.mattchbox_usb import MattchBox
 import multiprocessing
-import queue
+from multiprocessing.queues import Queue
+import multiprocessing.managers as m
 import time
-import player
-from flask import Flask, render_template, send_from_directory, request, jsonify, abort
-from flask_cors import CORS
 from typing import Any, Optional
 import json
 from setproctitle import setproctitle
-import logging
-
-from player_handler import PlayerHandler
-
 from helpers.os_environment import isBundelled, isMacOS
-from helpers.device_manager import DeviceManager
 
 if not isMacOS():
     # Rip, this doesn't like threading on MacOS.
@@ -37,633 +28,226 @@ if not isMacOS():
 if isBundelled():
     import build
 
-import config
+import package
 from typing import Dict, List
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
 from websocket_server import WebsocketServer
+from web_server import WebServer
+from player_handler import PlayerHandler
+from controllers.mattchbox_usb import MattchBox
+from helpers.the_terminator import Terminator
+import player
 
-setproctitle("BAPSicleServer.py")
+setproctitle("server.py")
+
+""" Proxy Manager to proxy Class Objects into multiprocessing processes, instead of making a copy. """
+
+
+class ProxyManager(m.BaseManager):
+    pass  # Pass is really enough. Nothing needs to be done here.
 
 
 class BAPSicleServer:
+
+    default_state = {
+        "server_version": "",
+        "server_build": "",
+        "server_name": "URY BAPSicle",
+        "host": "localhost",
+        "port": 13500,
+        "ws_port": 13501,
+        "num_channels": 3,
+        "serial_port": None,
+        "ser_connected": False,
+        "myradio_api_key": None,
+        "myradio_base_url": "https://ury.org.uk/myradio",
+        "myradio_api_url": "https://ury.org.uk/api",
+        "running_state": "running"
+    }
+
+    player_to_q: List[Queue] = []
+    player_from_q: List[Queue] = []
+    ui_to_q: List[Queue] = []
+    websocket_to_q: List[Queue] = []
+    controller_to_q: List[Queue] = []
+    api_from_q: Queue
+    api_to_q: Queue
+
+    player: List[multiprocessing.Process] = []
+    websockets_server: Optional[multiprocessing.Process] = None
+    controller_handler: Optional[multiprocessing.Process] = None
+    player_handler: Optional[multiprocessing.Process] = None
+    webserver: Optional[multiprocessing.Process] = None
+
     def __init__(self):
 
-        startServer()
-
-    def get_flask(self):
-        return app
-
-
-default_state = {
-    "server_version": "",
-    "server_build": "",
-    "server_name": "URY BAPSicle",
-    "host": "localhost",
-    "port": 13500,
-    "ws_port": 13501,
-    "num_channels": 3,
-    "serial_port": None,
-    "ser_connected": False,
-    "myradio_api_key": None,
-    "myradio_base_url": "https://ury.org.uk/myradio",
-    "myradio_api_url": "https://ury.org.uk/api"
-}
-
-
-app = Flask(__name__, static_url_path="")
-
-
-logger: LoggingManager
-state: StateManager
-
-api_from_q: queue.Queue
-api_to_q: queue.Queue
-
-channel_to_q: List[queue.Queue] = []
-channel_from_q: List[queue.Queue] = []
-ui_to_q: List[queue.Queue] = []
-websocket_to_q: List[queue.Queue] = []
-controller_to_q: List[queue.Queue] = []
-
-channel_p: List[multiprocessing.Process] = []
-websockets_server: multiprocessing.Process
-controller_handler: multiprocessing.Process
-webserver: multiprocessing.Process
-
-# General Endpoints
-
-
-@app.errorhandler(404)
-def page_not_found(e: Any):
-    data = {"ui_page": "404", "ui_title": "404"}
-    return render_template("404.html", data=data), 404
-
-
-@app.route("/")
-def ui_index():
-    data = {
-        "ui_page": "index",
-        "ui_title": "",
-        "server_version": state.state["server_version"],
-        "server_build": state.state["server_build"],
-        "server_name": state.state["server_name"],
-    }
-    return render_template("index.html", data=data)
-
-
-@app.route("/config")
-def ui_config():
-    channel_states = []
-    for i in range(state.state["num_channels"]):
-        channel_states.append(status(i))
-
-    outputs = DeviceManager.getAudioOutputs()
-
-    data = {
-        "channels": channel_states,
-        "outputs": outputs,
-        "ui_page": "config",
-        "ui_title": "Config",
-    }
-    return render_template("config.html", data=data)
-
-
-@app.route("/status")
-def ui_status():
-    channel_states = []
-    for i in range(state.state["num_channels"]):
-        channel_states.append(status(i))
-
-    data = {"channels": channel_states,
-            "ui_page": "status", "ui_title": "Status"}
-    return render_template("status.html", data=data)
-
-
-@app.route("/status-json")
-def json_status():
-    channel_states = []
-    for i in range(state.state["num_channels"]):
-        channel_states.append(status(i))
-    return {"server": state.state, "channels": channel_states}
-
-
-@app.route("/server")
-def server_config():
-    data = {
-        "ui_page": "server",
-        "ui_title": "Server Config",
-        "state": state.state,
-        "ser_ports": DeviceManager.getSerialPorts(),
-    }
-    return render_template("server.html", data=data)
-
-
-@app.route("/server/update", methods=["POST"])
-def update_server():
-    state.update("server_name", request.form["name"])
-    state.update("host", request.form["host"])
-    state.update("port", int(request.form["port"]))
-    state.update("num_channels", int(request.form["channels"]))
-    state.update("ws_port", int(request.form["ws_port"]))
-    state.update("serial_port", request.form["serial_port"])
-
-    # Because we're not showing the api key once it's set.
-    if "myradio_api_key" in request.form and request.form["myradio_api_key"] != "":
-        state.update("myradio_api_key", request.form["myradio_api_key"])
-
-    state.update("myradio_base_url", request.form["myradio_base_url"])
-    state.update("myradio_api_url", request.form["myradio_api_url"])
-    # stopServer()
-    return server_config()
-
-
-# Get audio for UI to generate waveforms.
-
-
-@app.route("/audiofile/<type>/<int:id>")
-def audio_file(type: str, id: int):
-    if type not in ["managed", "track"]:
-        abort(404)
-    return send_from_directory("music-tmp", type + "-" + str(id) + ".mp3")
-
-
-# Channel Audio Options
-
-
-@app.route("/player/<int:channel>/play")
-def play(channel: int):
-
-    channel_to_q[channel].put("UI:PLAY")
-
-    return ui_status()
-
-
-@app.route("/player/<int:channel>/pause")
-def pause(channel: int):
-
-    channel_to_q[channel].put("UI:PAUSE")
-
-    return ui_status()
-
-
-@app.route("/player/<int:channel>/unpause")
-def unPause(channel: int):
-
-    channel_to_q[channel].put("UI:UNPAUSE")
-
-    return ui_status()
-
-
-@app.route("/player/<int:channel>/stop")
-def stop(channel: int):
-
-    channel_to_q[channel].put("UI:STOP")
-
-    return ui_status()
-
-
-@app.route("/player/<int:channel>/seek/<float:pos>")
-def seek(channel: int, pos: float):
-
-    channel_to_q[channel].put("UI:SEEK:" + str(pos))
-
-    return ui_status()
-
-
-@app.route("/player/<int:channel>/output/<name>")
-def output(channel: int, name: Optional[str]):
-    channel_to_q[channel].put("UI:OUTPUT:" + str(name))
-    return ui_config()
-
-
-@app.route("/player/<int:channel>/autoadvance/<int:state>")
-def autoadvance(channel: int, state: int):
-    channel_to_q[channel].put("UI:AUTOADVANCE:" + str(state))
-    return ui_status()
-
-
-@app.route("/player/<int:channel>/repeat/<state>")
-def repeat(channel: int, state: str):
-    channel_to_q[channel].put("UI:REPEAT:" + state.upper())
-    return ui_status()
-
-
-@app.route("/player/<int:channel>/playonload/<int:state>")
-def playonload(channel: int, state: int):
-    channel_to_q[channel].put("UI:PLAYONLOAD:" + str(state))
-    return ui_status()
-
-
-# Channel Items
-
-
-@app.route("/player/<int:channel>/load/<int:channel_weight>")
-def load(channel: int, channel_weight: int):
-    channel_to_q[channel].put("UI:LOAD:" + str(channel_weight))
-    return ui_status()
-
-
-@app.route("/player/<int:channel>/unload")
-def unload(channel: int):
-
-    channel_to_q[channel].put("UI:UNLOAD")
-
-    return ui_status()
-
-
-@app.route("/player/<int:channel>/add", methods=["POST"])
-def add_to_plan(channel: int):
-    new_item: Dict[str, Any] = {
-        "channel_weight": int(request.form["channel_weight"]),
-        "filename": request.form["filename"],
-        "title": request.form["title"],
-        "artist": request.form["artist"],
-    }
-
-    channel_to_q[channel].put("UI:ADD:" + json.dumps(new_item))
-
-    return new_item
-
-
-# @app.route("/player/<int:channel>/remove/<int:channel_weight>")
-def remove_plan(channel: int, channel_weight: int):
-    channel_to_q[channel].put("UI:REMOVE:" + str(channel_weight))
-
-    # TODO Return
-    return True
-
-
-# @app.route("/player/<int:channel>/clear")
-def clear_channel_plan(channel: int):
-    channel_to_q[channel].put("UI:CLEAR")
-
-    # TODO Return
-    return True
-
-
-# General Channel Endpoints
-
-
-@app.route("/player/<int:channel>/status")
-def channel_json(channel: int):
-    return jsonify(status(channel))
-
-
-@app.route("/plan/list")
-def list_showplans():
-
-    while not api_from_q.empty():
-        api_from_q.get()  # Just waste any previous status responses.
-
-    api_to_q.put("LIST_PLANS")
-
-    while True:
-        try:
-            response = api_from_q.get_nowait()
-            if response.startswith("LIST_PLANS:"):
-                response = response[response.index(":") + 1:]
-                return response
-
-        except queue.Empty:
-            pass
-
-        time.sleep(0.02)
-
-
-@app.route("/library/search/<type>")
-def search_library(type: str):
-
-    if type not in ["managed", "track"]:
-        abort(404)
-
-    while not api_from_q.empty():
-        api_from_q.get()  # Just waste any previous status responses.
-
-    params = json.dumps(
-        {"title": request.args.get(
-            "title"), "artist": request.args.get("artist")}
-    )
-    api_to_q.put("SEARCH_TRACK:{}".format(params))
-
-    while True:
-        try:
-            response = api_from_q.get_nowait()
-            if response.startswith("SEARCH_TRACK:"):
-                response = response.split(":", 1)[1]
-                return response
-
-        except queue.Empty:
-            pass
-
-        time.sleep(0.02)
-
-
-@app.route("/library/playlists/<type>")
-def get_playlists(type: str):
-
-    if type not in ["music", "aux"]:
-        abort(401)
-
-    while not api_from_q.empty():
-        api_from_q.get()  # Just waste any previous status responses.
-
-    command = "LIST_PLAYLIST_{}".format(type.upper())
-    api_to_q.put(command)
-
-    while True:
-        try:
-            response = api_from_q.get_nowait()
-            if response.startswith(command):
-                response = response.split(":", 1)[1]
-                return response
-
-        except queue.Empty:
-            pass
-
-        time.sleep(0.02)
-
-
-@app.route("/library/playlist/<type>/<library_id>")
-def get_playlist(type: str, library_id: str):
-
-    if type not in ["music", "aux"]:
-        abort(401)
-
-    while not api_from_q.empty():
-        api_from_q.get()  # Just waste any previous status responses.
-
-    command = "GET_PLAYLIST_{}:{}".format(type.upper(), library_id)
-    api_to_q.put(command)
-
-    while True:
-        try:
-            response = api_from_q.get_nowait()
-            if response.startswith(command):
-                response = response[len(command) + 1:]
-                if response == "null":
-                    abort(401)
-                return response
-
-        except queue.Empty:
-            pass
-
-        time.sleep(0.02)
-
-
-@app.route("/plan/load/<int:timeslotid>")
-def load_showplan(timeslotid: int):
-
-    for channel in channel_to_q:
-        channel.put("UI:GET_PLAN:" + str(timeslotid))
-
-    return ui_status()
-
-
-def status(channel: int):
-    while not ui_to_q[channel].empty():
-        ui_to_q[channel].get()  # Just waste any previous status responses.
-
-    channel_to_q[channel].put("UI:STATUS")
-    retries = 0
-    while retries < 40:
-        try:
-            response = ui_to_q[channel].get_nowait()
-            if response.startswith("UI:STATUS:"):
-                response = response.split(":", 2)[2]
-                # TODO: Handle OKAY / FAIL
-                response = response[response.index(":") + 1:]
-                try:
-                    response = json.loads(response)
-                except Exception as e:
-                    raise e
-                return response
-
-        except queue.Empty:
-            pass
-
-        retries += 1
-
-        time.sleep(0.02)
-
-
-@app.route("/quit")
-def quit():
-    stopServer()
-    return "Shutting down..."
-
-
-@app.route("/player/all/stop")
-def all_stop():
-    for channel in channel_to_q:
-        channel.put("UI:STOP")
-    return ui_status()
-
-
-@app.route("/player/all/clear")
-def clear_all_channels():
-    for channel in channel_to_q:
-        channel.put("UI:CLEAR")
-    return ui_status()
-
-
-@app.route("/logs")
-def list_logs():
-    data = {
-        "ui_page": "logs",
-        "ui_title": "Logs",
-        "logs": ["BAPSicleServer"]
-        + ["Player{}".format(x) for x in range(state.state["num_channels"])],
-    }
-    return render_template("loglist.html", data=data)
-
-
-@app.route("/logs/<path:path>")
-def send_logs(path):
-    log_file = open("logs/{}.log".format(path))
-    data = {
-        "logs": log_file.read().splitlines(),
-        "ui_page": "logs",
-        "ui_title": "Logs - {}".format(path),
-    }
-    log_file.close()
-    return render_template("log.html", data=data)
-
-
-@app.route("/favicon.ico")
-def serve_favicon():
-    return send_from_directory("ui-static", "favicon.ico")
-
-
-@app.route("/static/<path:path>")
-def serve_static(path: str):
-    return send_from_directory("ui-static", path)
-
-
-@app.route("/presenter/")
-def serve_presenter_index():
-    return send_from_directory("presenter-build", "index.html")
-
-
-@app.route("/presenter/<path:path>")
-def serve_presenter_static(path: str):
-    return send_from_directory("presenter-build", path)
-
-
-def startServer():
-    process_title = "startServer"
-    setproctitle(process_title)
-    # multiprocessing.current_process().name = process_title
-
-    global logger
-    global state
-    logger = LoggingManager("BAPSicleServer")
-
-    state = StateManager("BAPSicleServer", logger, default_state)
-    # TODO: Check these match, if not, trigger any upgrade noticies / welcome
-    state.update("server_version", config.VERSION)
-    build_commit = "Dev"
-    if isBundelled():
-        build_commit = build.BUILD
-    state.update("server_build", build_commit)
-
-    if isMacOS():
-        multiprocessing.set_start_method("spawn", True)
-    for channel in range(state.state["num_channels"]):
-
-        channel_to_q.append(multiprocessing.Queue())
-        channel_from_q.append(multiprocessing.Queue())
-        ui_to_q.append(multiprocessing.Queue())
-        websocket_to_q.append(multiprocessing.Queue())
-        controller_to_q.append(multiprocessing.Queue())
-
-        # TODO Replace state with individual read-only StateManagers or something nicer?
-
-        channel_p.append(
-            multiprocessing.Process(
-                target=player.Player,
-                args=(channel, channel_to_q[-1], channel_from_q[-1], state)
-                # daemon=True
-            )
-        )
-        channel_p[channel].start()
-
-    global api_from_q, api_to_q, api_handler, player_handler, websockets_server, controller_handler
-    api_to_q = multiprocessing.Queue()
-    api_from_q = multiprocessing.Queue()
-    api_handler = multiprocessing.Process(
-        target=APIHandler, args=(api_to_q, api_from_q, state)
-    )
-    api_handler.start()
-
-    player_handler = multiprocessing.Process(
-        target=PlayerHandler,
-        args=(channel_from_q, websocket_to_q, ui_to_q, controller_to_q),
-    )
-    player_handler.start()
-
-    # Note, state here will become a copy in the process.
-    # It will not update, and callbacks will not work :/
-    websockets_server = multiprocessing.Process(
-        target=WebsocketServer, args=(channel_to_q, websocket_to_q, state)
-    )
-    websockets_server.start()
-
-    controller_handler = multiprocessing.Process(
-        target=MattchBox, args=(channel_to_q, controller_to_q, state)
-    )
-    controller_handler.start()
-
-    # TODO Move this to player or installer.
-    if False:
-        if not isMacOS():
-
-            # Temporary RIP.
-
-            # Welcome Speech
-
-            text_to_speach = pyttsx3.init()
-            text_to_speach.save_to_file(
-                """Thank-you for installing BAPSicle - the play-out server from the broadcasting and presenting suite.
-            By default, this server is accepting connections on port 13500
-            The version of the server service is {}
-            Please refer to the documentation included with this application for further assistance.""".format(
-                    config.VERSION
-                ),
-                "dev/welcome.mp3",
-            )
-            text_to_speach.runAndWait()
-
-            new_item: Dict[str, Any] = {
-                "channel_weight": 0,
-                "filename": "dev/welcome.mp3",
-                "title": "Welcome to BAPSicle",
-                "artist": "University Radio York",
-            }
-
-            channel_to_q[0].put("ADD:" + json.dumps(new_item))
-            channel_to_q[0].put("LOAD:0")
-            channel_to_q[0].put("PLAY")
-
-    # Don't use reloader, it causes Nested Processes!
-    def runWebServer():
-        process_title = "WebServer"
+        while True:
+            self.startServer()
+
+            self.check_processes()
+
+            self.stopServer()
+
+            if self.state.get()["running_state"] == "restarting":
+                continue
+
+            break
+
+    def check_processes(self):
+
+        terminator = Terminator()
+        log_function = self.logger.log.info
+
+        while not terminator.terminate and self.state.get()["running_state"] == "running":
+
+            for channel in range(self.state.get()["num_channels"]):
+                if not self.player[channel] or not self.player[channel].is_alive():
+                    log_function("Player {} not running, (re)starting.".format(channel))
+                    self.player[channel] = multiprocessing.Process(
+                        target=player.Player,
+                        args=(channel, self.player_to_q[channel], self.player_from_q[channel], self.state)
+                    )
+                    self.player[channel].start()
+
+            if not self.player_handler or not self.player_handler.is_alive():
+                log_function("Player Handler not running, (re)starting.")
+                self.player_handler = multiprocessing.Process(
+                    target=PlayerHandler,
+                    args=(self.player_from_q, self.websocket_to_q, self.ui_to_q, self.controller_to_q),
+                )
+                self.player_handler.start()
+
+            if not self.websockets_server or not self.websockets_server.is_alive():
+                log_function("Websocket Server not running, (re)starting.")
+                self.websockets_server = multiprocessing.Process(
+                    target=WebsocketServer, args=(self.player_to_q, self.websocket_to_q, self.state)
+                )
+                self.websockets_server.start()
+
+            if not self.webserver or not self.webserver.is_alive():
+                log_function("Webserver not running, (re)starting.")
+                self.webserver = multiprocessing.Process(
+                    target=WebServer, args=(self.player_to_q, self.ui_to_q, self.state)
+                )
+                self.webserver.start()
+
+            if not self.controller_handler or not self.controller_handler.is_alive():
+                log_function("Controller Handler not running, (re)starting.")
+                self.controller_handler = multiprocessing.Process(
+                    target=MattchBox, args=(self.player_to_q, self.controller_to_q, self.state)
+                )
+                self.controller_handler.start()
+
+            # After first starting processes, switch logger to error, since any future starts will have been failures.
+            log_function = self.logger.log.error
+            time.sleep(1)
+
+    def startServer(self):
+        if isMacOS():
+            multiprocessing.set_start_method("spawn", True)
+
+        process_title = "startServer"
         setproctitle(process_title)
-        CORS(app, supports_credentials=True)  # Allow ALL CORS!!!
+        multiprocessing.current_process().name = process_title
 
-        if not isBundelled():
-            log = logging.getLogger("werkzeug")
-            log.disabled = True
+        self.logger = LoggingManager("BAPSicleServer")
 
-        app.logger.disabled = True
-        app.run(
-            host=state.state["host"],
-            port=state.state["port"],
-            debug=True,
-            use_reloader=False,
-            threaded=False  # While API handles are singlethreaded.
-        )
+        # Since we're passing the StateManager across processes, it must be made a manager.
+        # PLEASE NOTE: You can't read attributes directly, use state.get()["var"] and state.update("var", "val")
+        ProxyManager.register("StateManager", StateManager)
+        manager = ProxyManager()
+        manager.start()
+        self.state: StateManager = manager.StateManager("BAPSicleServer", self.logger, self.default_state)
 
-    global webserver
-    webserver = multiprocessing.Process(runWebServer())
-    webserver.start()
+        self.state.update("running_state", "running")
 
+        print("Launching BAPSicle...")
 
-def stopServer():
-    global channel_p, channel_from_q, channel_to_q, websockets_server, controller_handler, webserver
-    print("Stopping Controllers")
-    if controller_handler:
-        controller_handler.terminate()
-        controller_handler.join()
+        # TODO: Check these match, if not, trigger any upgrade noticies / welcome
+        self.state.update("server_version", package.VERSION)
+        self.state.update("server_build", package.BUILD)
 
-    print("Stopping Websockets")
-    websocket_to_q[0].put("WEBSOCKET:QUIT")
-    if websockets_server:
-        websockets_server.join()
-        del websockets_server
+        channel_count = self.state.get()["num_channels"]
+        self.player = [None] * channel_count
 
-    print("Stopping server.py")
-    for q in channel_to_q:
-        q.put("ALL:QUIT")
-    for channel in channel_p:
-        try:
-            channel.join()
-        except Exception as e:
-            print("*** Ignoring exception:", e)
-            pass
-        finally:
-            del channel
-    del channel_from_q
-    del channel_to_q
-    print("Stopped all players.")
+        for channel in range(self.state.get()["num_channels"]):
 
-    print("Stopping webserver")
+            self.player_to_q.append(multiprocessing.Queue())
+            self.player_from_q.append(multiprocessing.Queue())
+            self.ui_to_q.append(multiprocessing.Queue())
+            self.websocket_to_q.append(multiprocessing.Queue())
+            self.controller_to_q.append(multiprocessing.Queue())
 
-    if webserver:
-        webserver.terminate()
-        webserver.join()
+        print("Welcome to BAPSicle Server version: {}, build: {}.".format(package.VERSION, package.BUILD))
+        print("The Server UI is available at http://{}:{}".format(self.state.get()["host"], self.state.get()["port"]))
 
-    print("Stopped webserver")
+        # TODO Move this to player or installer.
+        if False:
+            if not isMacOS():
+
+                # Temporary RIP.
+
+                # Welcome Speech
+
+                text_to_speach = pyttsx3.init()
+                text_to_speach.save_to_file(
+                    """Thank-you for installing BAPSicle - the play-out server from the broadcasting and presenting suite.
+                By default, this server is accepting connections on port 13500
+                The version of the server service is {}
+                Please refer to the documentation included with this application for further assistance.""".format(
+                        config.VERSION
+                    ),
+                    "dev/welcome.mp3",
+                )
+                text_to_speach.runAndWait()
+
+                new_item: Dict[str, Any] = {
+                    "channel_weight": 0,
+                    "filename": "dev/welcome.mp3",
+                    "title": "Welcome to BAPSicle",
+                    "artist": "University Radio York",
+                }
+
+                self.player_to_q[0].put("ADD:" + json.dumps(new_item))
+                self.player_to_q[0].put("LOAD:0")
+                self.player_to_q[0].put("PLAY")
+
+    def stopServer(self):
+        print("Stopping BASPicle Server.")
+
+        print("Stopping Websocket Server")
+        self.websocket_to_q[0].put("WEBSOCKET:QUIT")
+        if self.websockets_server:
+            self.websockets_server.join()
+        del self.websockets_server
+
+        print("Stopping Players")
+        for q in self.player_to_q:
+            q.put("ALL:QUIT")
+
+        for player in self.player:
+            player.join()
+
+        del self.player
+
+        print("Stopping Web Server")
+        if self.webserver:
+            self.webserver.terminate()
+            self.webserver.join()
+            del self.webserver
+
+        print("Stopping Player Handler")
+        if self.player_handler:
+            self.player_handler.terminate()
+            self.player_handler.join()
+            del self.player_handler
+
+        print("Stopping Controllers")
+        if self.controller_handler:
+            self.controller_handler.terminate()
+            self.controller_handler.join()
+            del self.controller_handler
 
 
 if __name__ == "__main__":
