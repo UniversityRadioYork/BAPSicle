@@ -39,6 +39,8 @@ from controllers.mattchbox_usb import MattchBox
 from helpers.the_terminator import Terminator
 import player
 
+PROCESS_KILL_TIMEOUT_S = 5
+
 setproctitle("server.py")
 
 """ Proxy Manager to proxy Class Objects into multiprocessing processes, instead of making a copy. """
@@ -51,8 +53,8 @@ class ProxyManager(m.BaseManager):
 class BAPSicleServer:
 
     default_state = {
-        "server_version": "",
-        "server_build": "",
+        "server_version": "unknown",
+        "server_build": "unknown",
         "server_name": "URY BAPSicle",
         "host": "localhost",
         "port": 13500,
@@ -63,7 +65,9 @@ class BAPSicleServer:
         "myradio_api_key": None,
         "myradio_base_url": "https://ury.org.uk/myradio",
         "myradio_api_url": "https://ury.org.uk/api",
-        "running_state": "running"
+        "myradio_api_tracklist_source": "",
+        "running_state": "running",
+        "tracklist_mode": "off",
     }
 
     player_to_q: List[Queue] = []
@@ -219,7 +223,7 @@ class BAPSicleServer:
         print("Stopping Websocket Server")
         self.websocket_to_q[0].put("WEBSOCKET:QUIT")
         if self.websockets_server:
-            self.websockets_server.join()
+            self.websockets_server.join(timeout=PROCESS_KILL_TIMEOUT_S)
         del self.websockets_server
 
         print("Stopping Players")
@@ -227,26 +231,26 @@ class BAPSicleServer:
             q.put("ALL:QUIT")
 
         for player in self.player:
-            player.join()
+            player.join(timeout=PROCESS_KILL_TIMEOUT_S)
 
         del self.player
 
         print("Stopping Web Server")
         if self.webserver:
             self.webserver.terminate()
-            self.webserver.join()
+            self.webserver.join(timeout=PROCESS_KILL_TIMEOUT_S)
             del self.webserver
 
         print("Stopping Player Handler")
         if self.player_handler:
             self.player_handler.terminate()
-            self.player_handler.join()
+            self.player_handler.join(timeout=PROCESS_KILL_TIMEOUT_S)
             del self.player_handler
 
         print("Stopping Controllers")
         if self.controller_handler:
             self.controller_handler.terminate()
-            self.controller_handler.join()
+            self.controller_handler.join(timeout=PROCESS_KILL_TIMEOUT_S)
             del self.controller_handler
 
 
