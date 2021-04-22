@@ -97,12 +97,15 @@ def ui_config_server(request):
         "ui_title": "Server Config",
         "state": server_state.get(),
         "ser_ports": DeviceManager.getSerialPorts(),
+        "tracklist_modes": ["off", "on", "delayed"]
     }
     return render_template("config_server.html", data=data)
 
 
 @app.route("/config/server/update", methods=["POST"])
 def ui_config_server_update(request):
+    # TODO Validation!
+
     server_state.update("server_name", request.form.get("name"))
     server_state.update("host", request.form.get("host"))
     server_state.update("port", int(request.form.get("port")))
@@ -116,6 +119,8 @@ def ui_config_server_update(request):
 
     server_state.update("myradio_base_url", request.form.get("myradio_base_url"))
     server_state.update("myradio_api_url", request.form.get("myradio_api_url"))
+    server_state.update("myradio_api_tracklist_source", request.form.get("myradio_api_tracklist_source"))
+    server_state.update("tracklist_mode", request.form.get("tracklist_mode"))
 
     return redirect("/restart")
 

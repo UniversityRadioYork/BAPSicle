@@ -33,6 +33,18 @@
       <br>
       <label for="myradio_api_key">MyRadio API Key:</label>
       <input type="text" id="myradio_api_key" name="myradio_api_key" class="form-control" placeholder="Hidden ({% if data.state.myradio_api_key %}value set, type to replace{% else %}value not set yet{% endif %})" value="">
+      <br>
+      <label for="myradio_api_tracklist_source">Tracklist Source ID (char):</label>
+      <input type="text" id="myradio_api_tracklist_source" name="myradio_api_tracklist_source" class="form-control" value="{{data.state.myradio_api_tracklist_source}}">
+      <br>
+      <label for="serial_port">Tracklist Mode:</label>
+      <select class="form-control" name="tracklist_mode">
+        <label>Modes</label>
+        {% for mode in data.tracklist_modes %}
+          <option value="{{mode}}" {% if mode == data.state.tracklist_mode %}selected{% endif %}>{{ mode.capitalize() }}</option>
+        {% endfor %}
+      </select>
+      <p><small>Delayed tracklisting is 20s, to account for cueing with fader down.</small></p>
       <hr>
       <input type="submit" class="btn btn-primary" value="Save & Restart Server">
     </form>
