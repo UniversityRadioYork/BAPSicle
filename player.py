@@ -508,12 +508,13 @@ class Player:
 
     # This essentially allows the tracklist end API call to happen in a separate thread, to avoid hanging playout/loading.
     def _potentially_end_tracklist(self):
-        loaded_item = self.state.get()["loaded_item"]
-        if not loaded_item:
-            self.logger.log.warning("Tried to call _tracklist_end() with no loaded item!")
 
         # Make a copy of the tracklist_id, it will get reset as we load the next item.
         tracklist_id = self.state.get()["tracklist_id"]
+        if not tracklist_id:
+            self.logger.log.info("No tracklist to end.")
+            return
+
         self.logger.log.info("Setting timer for ending tracklist_id {}".format(tracklist_id))
         if tracklist_id:
             self.logger.log.info("Attempting to end tracklist_id {}".format(tracklist_id))
