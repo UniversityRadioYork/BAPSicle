@@ -226,9 +226,7 @@ class Player:
             self.seek(self.state.get()["loaded_item"].cue)
         else:
             # Otherwise, let's go to 0.
-            self.state.update("pos", 0)
-            self.state.update("pos_offset", 0)
-            self.state.update("pos_true", 0)
+            self.seek(0)
 
         return True
 
@@ -242,7 +240,8 @@ class Player:
             return True
         else:
             self.stopped_manually = True  # Don't trigger _ended() on seeking.
-            self.state.update("paused", True)
+            if pos > 0:
+                self.state.update("paused", True)
             self._updateState(pos=pos)
         return True
 
@@ -605,15 +604,14 @@ class Player:
 
         self.state.update("initialised", self.isInit)
         if self.isInit:
-            if pos:
-                self.state.update("pos", max(0, pos))
+            if pos is not None:
+                #self.state.update("pos_true", max(0, pos))
+                self.state.update("pos", pos)  # Reset back to 0 if stopped.
+                self.state.update("pos_offset", 0)
             elif self.isPlaying:
+                # This is the bit that makes the time actually progress during playback.
                 # Get one last update in, incase we're about to pause/stop it.
                 self.state.update("pos", max(0, mixer.music.get_pos() / 1000))
-            # TODO this is wrong now we don't pause the mixer.
-            elif not self.isPaused:
-                self.state.update("pos", 0)  # Reset back to 0 if stopped.
-                self.state.update("pos_offset", 0)
 
             # If the state is changing from playing to not playing, and the user didn't stop it, the item must have ended.
             if (
