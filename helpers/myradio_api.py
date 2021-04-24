@@ -183,7 +183,21 @@ class MyRadioAPI:
             self._logException("Failed to get show plan.")
             return None
 
-        return json.loads(await request)["payload"]
+        payload = json.loads(await request)["payload"]
+
+        plan = {}
+
+        # Account for MyRadio api being dumb depending on if it's cached or not.
+        if isinstance(payload, list):
+            for channel in range(len(payload)):
+                plan[str(channel)] = payload[channel]
+            return plan
+        elif isinstance(payload, dict):
+            return payload
+
+        self.logger.log.error("Show plan in unknown format.")
+        return None
+
 
     # Audio Library
 
