@@ -424,6 +424,7 @@ class Player:
 
     def output(self, name: Optional[str] = None):
         wasPlaying = self.state.get()["playing"]
+        oldPos = self.state.get()["pos_true"]
 
         name = None if (not name or name.lower() == "none") else name
 
@@ -444,7 +445,7 @@ class Player:
         if loadedItem:
             self.load(loadedItem.weight)
         if wasPlaying:
-            self.unpause()
+            self.play(oldPos)
 
         return True
 
