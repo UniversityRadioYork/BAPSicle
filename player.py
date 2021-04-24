@@ -20,7 +20,6 @@
 # that we respond with something, FAIL or OKAY. The server doesn't like to be kept waiting.
 
 # Stop the Pygame Hello message.
-from baps_types.enums import TracklistMode
 import os
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 
