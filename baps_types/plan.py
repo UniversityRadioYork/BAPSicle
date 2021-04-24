@@ -14,13 +14,13 @@
 
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 import os
 
 from baps_types.marker import Marker
 
 class PlanItem:
-    _timeslotitemid: int = 0
+    _timeslotitemid: str = "0"
     _weight: int = 0
     _filename: Optional[str]
     _title: str
@@ -38,8 +38,12 @@ class PlanItem:
         self._weight = value
 
     @property
-    def timeslotitemid(self) -> int:
+    def timeslotitemid(self) -> str:
         return self._timeslotitemid
+
+    @timeslotitemid.setter
+    def timeslotitemid(self, value):
+        self._timeslotitemid = str(value)
 
     @property
     def filename(self) -> Optional[str]:
@@ -129,7 +133,7 @@ class PlanItem:
         }
 
     def __init__(self, new_item: Dict[str, Any]):
-        self._timeslotitemid = new_item["timeslotitemid"]
+        self._timeslotitemid = str(new_item["timeslotitemid"])
         self._managedid = new_item["managedid"] if "managedid" in new_item else None
         self._trackid = (
             int(new_item["trackid"])

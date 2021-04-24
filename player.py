@@ -278,8 +278,17 @@ class Player:
 
         return True
 
+    def _check_ghosts(self, item: PlanItem):
+        if isinstance(item.timeslotitemid, str) and item.timeslotitemid.startswith("I"):
+            # Kinda a bodge for the moment, each "Ghost" (item which is not saved in the database showplan yet) needs to have a unique temporary item.
+            # To do this, we'll start with the channel number the item was originally added to (to stop items somehow simultaneously added to different channels from having the same id)
+            # And chuck in the unix epoch in ns for good measure.
+            item.timeslotitemid = "GHOST-{}-{}".format(self.state.get()["channel"], time.time_ns())
+        return item
+
     def add_to_plan(self, new_item: Dict[str, Any]) -> bool:
         new_item_obj = PlanItem(new_item)
+        new_item_obj = self._check_ghosts(new_item_obj)
         plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
         # Shift any plan items after the new position down one to make space.
         for item in plan_copy:
@@ -288,10 +297,7 @@ class Player:
 
         plan_copy += [new_item_obj]  # Add the new item.
 
-        def sort_weight(e: PlanItem):
-            return e.weight
-
-        plan_copy.sort(key=sort_weight)  # Sort into weighted order.
+        plan_copy = self._fix_weights(plan_copy)
 
         self.state.update("show_plan", plan_copy)
         return True
@@ -303,11 +309,8 @@ class Player:
             if i.weight == weight:
                 plan_copy.remove(i)
                 found = True
-            elif (
-                i.weight > weight
-            ):  # Shuffle up the weights of the items following the deleted one.
-                i.weight -= 1
         if found:
+            plan_copy = self._fix_weights(plan_copy)
             self.state.update("show_plan", plan_copy)
             return True
         return False
@@ -490,7 +493,7 @@ class Player:
 
     # This essentially allows the tracklist end API call to happen in a separate thread, to avoid hanging playout/loading.
     def _potentially_tracklist(self):
-        mode: TracklistMode = self.state.get()["tracklist_mode"]
+        mode = self.state.get()["tracklist_mode"]
 
         time: int = -1
         if mode == "on":
@@ -680,6 +683,24 @@ class Player:
         self._retMsg(str(self.status), okay_str=True,
                      custom_prefix="ALL:STATUS:")
 
+    def _fix_weights(self, plan):
+        def _sort_weight(e: PlanItem):
+            return e.weight
+
+        for item in plan:
+            self.logger.log.info("Pre weights:\n{}".format(item))
+        plan.sort(key=_sort_weight)  # Sort into weighted order.
+
+        for item in plan:
+            self.logger.log.info("Post Sort:\n{}".format(item))
+
+        for i in range(len(plan)):
+            plan[i].weight = i  # Recorrect the weights on the channel.
+
+        for item in plan:
+            self.logger.log.info("Post Weights:\n{}".format(item))
+        return plan
+
     def __init__(
         self, channel: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue, server_state: StateManager
     ):
@@ -706,6 +727,11 @@ class Player:
 
         self.state.update("channel", channel)
         self.state.update("tracklist_mode", server_state.get()["tracklist_mode"])
+
+        # Just in case there's any weights somehow messed up, let's fix them.
+        plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
+        plan_copy = self._fix_weights(plan_copy)
+        self.state.update("show_plan", plan_copy)
 
         loaded_state = copy.copy(self.state.state)
 
