@@ -386,6 +386,8 @@ class Player:
 
             if loaded_item.cue > 0:
                 self.seek(loaded_item.cue)
+            else:
+                self.seek(0)
 
             if self.state.get()["play_on_load"]:
                 self.play()
@@ -605,7 +607,7 @@ class Player:
         self.state.update("initialised", self.isInit)
         if self.isInit:
             if pos is not None:
-                #self.state.update("pos_true", max(0, pos))
+                # Seeking sets the position like this when not playing.
                 self.state.update("pos", pos)  # Reset back to 0 if stopped.
                 self.state.update("pos_offset", 0)
             elif self.isPlaying:
