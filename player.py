@@ -20,6 +20,7 @@
 # that we respond with something, FAIL or OKAY. The server doesn't like to be kept waiting.
 
 # Stop the Pygame Hello message.
+from baps_types.enums import TracklistMode
 import os
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 
@@ -33,6 +34,7 @@ from typing import Any, Callable, Dict, List, Optional
 from pygame import mixer
 from mutagen.mp3 import MP3
 from syncer import sync
+from threading import Timer
 
 from helpers.myradio_api import MyRadioAPI
 from helpers.state_manager import StateManager
@@ -42,6 +44,7 @@ from baps_types.marker import Marker
 
 # TODO ENUM
 VALID_MESSAGE_SOURCES = ["WEBSOCKET", "UI", "CONTROLLER", "TEST", "ALL"]
+TRACKLISTING_DELAYED_S = 20
 
 
 class Player:
@@ -57,6 +60,9 @@ class Player:
     running: bool = False
 
     stopped_manually: bool = False
+
+    tracklist_start_timer: Optional[Timer] = None
+    tracklist_end_timer: Optional[Timer] = None
 
     __default_state = {
         "initialised": False,
@@ -75,6 +81,8 @@ class Player:
         "play_on_load": False,
         "output": None,
         "show_plan": [],
+        "tracklist_mode": "off",
+        "tracklist_id": None,
     }
 
     __rate_limited_params = ["pos", "pos_offset", "pos_true", "remaining"]
@@ -116,7 +124,6 @@ class Player:
         # We're not playing now, so we can quickly test run
         # If that works, we're loaded.
         try:
-            position: float = self.state.get()["pos"]
             mixer.music.set_volume(0)
             mixer.music.play(0)
         except Exception:
@@ -128,10 +135,9 @@ class Player:
                 )
                 pass
             return False
-        if position > 0:
-            self.pause()
-        else:
-            self.stop()
+        finally:
+            mixer.music.stop()
+
         mixer.music.set_volume(1)
         return True
 
@@ -168,7 +174,7 @@ class Player:
             self.logger.log.exception("Failed to play at pos: " + str(pos))
             return False
         self.state.update("paused", False)
-
+        self._potentially_tracklist()
         self.stopped_manually = False
         return True
 
@@ -205,6 +211,9 @@ class Player:
             self.logger.log.exception("Failed to stop playing.")
             return False
         self.state.update("paused", False)
+
+        if user_initiated:
+            self._potentially_end_tracklist()
 
         self.stopped_manually = True
 
@@ -394,6 +403,12 @@ class Player:
             except Exception:
                 self.logger.log.exception("Failed to unload channel.")
                 return False
+
+        self._potentially_end_tracklist()
+        # If we unloaded successfully, reset the tracklist_id, ready for the next item.
+        if not self.isLoaded:
+            self.state.update("tracklist_id", None)
+
         return not self.isLoaded
 
     def quit(self):
@@ -473,7 +488,79 @@ class Player:
 
     # Helper functions
 
+    # This essentially allows the tracklist end API call to happen in a separate thread, to avoid hanging playout/loading.
+    def _potentially_tracklist(self):
+        mode: TracklistMode = self.state.get()["tracklist_mode"]
+
+        time: int = -1
+        if mode == "on":
+            time = 1  # Let's do it pretty quickly.
+        elif mode == "delayed":
+            # Let's do it in a bit, once we're sure it's been playing. (Useful if we've got no idea if it's live or cueing.)
+            time = TRACKLISTING_DELAYED_S
+
+        if time >= 0 and not self.tracklist_start_timer:
+            self.logger.log.info("Setting timer for tracklisting in {} secs due to Mode: {}".format(time, mode))
+            self.tracklist_start_timer = Timer(time, self._tracklist_start)
+            self.tracklist_start_timer.start()
+        elif self.tracklist_start_timer:
+            self.logger.log.error("Failed to potentially tracklist, timer already busy.")
+
+    # This essentially allows the tracklist end API call to happen in a separate thread, to avoid hanging playout/loading.
+    def _potentially_end_tracklist(self):
+
+        # Make a copy of the tracklist_id, it will get reset as we load the next item.
+        tracklist_id = self.state.get()["tracklist_id"]
+        if not tracklist_id:
+            self.logger.log.info("No tracklist to end.")
+            return
+
+        self.logger.log.info("Setting timer for ending tracklist_id {}".format(tracklist_id))
+        if tracklist_id:
+            self.logger.log.info("Attempting to end tracklist_id {}".format(tracklist_id))
+            if self.tracklist_end_timer:
+                self.logger.log.error("Failed to potentially end tracklist, timer already busy.")
+                return
+            # This threads it, so it won't hang track loading if it fails.
+            self.tracklist_end_timer = Timer(1, self._tracklist_end, [tracklist_id])
+            self.tracklist_end_timer.start()
+        else:
+            self.logger.log.warning("Failed to potentially end tracklist, no tracklist started.")
+
+    def _tracklist_start(self):
+        loaded_item = self.state.get()["loaded_item"]
+        if not loaded_item:
+            self.logger.log.error("Tried to call _tracklist_start() with no loaded item!")
+            return
+
+        tracklist_id = self.state.get()["tracklist_id"]
+        if (not tracklist_id):
+            self.logger.log.info("Tracklisting item: {}".format(loaded_item.name))
+            tracklist_id = self.api.post_tracklist_start(loaded_item)
+            if not tracklist_id:
+                self.logger.log.error("Failed to tracklist {}".format(loaded_item.name))
+            else:
+                self.logger.log.info("Tracklist id: {}".format(tracklist_id))
+                self.state.update("tracklist_id", tracklist_id)
+        else:
+            self.logger.log.info("Not tracklisting item {}, already got tracklistid: {}".format(
+                loaded_item.name, tracklist_id))
+
+        self.tracklist_start_timer = None
+
+    def _tracklist_end(self, tracklist_id):
+
+        if tracklist_id:
+            self.logger.log.info("Attempting to end tracklist_id {}".format(tracklist_id))
+            self.api.post_tracklist_end(tracklist_id)
+        else:
+            self.logger.log.error("Tracklist_id to _tracklist_end() missing. Failed to end tracklist.")
+
+        self.tracklist_end_timer = None
+
     def _ended(self):
+        self._potentially_end_tracklist()
+
         loaded_item = self.state.get()["loaded_item"]
 
         if not loaded_item:
@@ -529,6 +616,7 @@ class Player:
                 self.state.update("pos", 0)  # Reset back to 0 if stopped.
                 self.state.update("pos_offset", 0)
 
+            # If the state is changing from playing to not playing, and the user didn't stop it, the item must have ended.
             if (
                 self.state.get()["playing"]
                 and not self.isPlaying
@@ -594,7 +682,7 @@ class Player:
                      custom_prefix="ALL:STATUS:")
 
     def __init__(
-        self, channel: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue, server_config: StateManager
+        self, channel: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue, server_state: StateManager
     ):
 
         process_title = "Player: Channel " + str(channel)
@@ -606,7 +694,7 @@ class Player:
 
         self.logger = LoggingManager("Player" + str(channel))
 
-        self.api = MyRadioAPI(self.logger, server_config)
+        self.api = MyRadioAPI(self.logger, server_state)
 
         self.state = StateManager(
             "Player" + str(channel),
@@ -618,6 +706,7 @@ class Player:
         self.state.add_callback(self._send_status)
 
         self.state.update("channel", channel)
+        self.state.update("tracklist_mode", server_state.get()["tracklist_mode"])
 
         loaded_state = copy.copy(self.state.state)
 

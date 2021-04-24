@@ -4,7 +4,7 @@ from logging import CRITICAL, INFO
 import time
 from datetime import datetime
 from copy import copy
-from typing import Any, List
+from typing import Any, Dict, List
 
 from baps_types.plan import PlanItem
 from helpers.logging_manager import LoggingManager
@@ -24,7 +24,7 @@ class StateManager:
         self,
         name,
         logger: LoggingManager,
-        default_state=None,
+        default_state: Dict[str, Any] = None,
         rate_limit_params=[],
         rate_limit_period_s=5,
     ):
@@ -57,10 +57,9 @@ class StateManager:
         if file_state == "":
             self._log("State file is empty. Setting default state.")
             self.state = default_state
-            self.__state_in_file = copy(self.state)
         else:
             try:
-                file_state = json.loads(file_state)
+                file_state: Dict[str, Any] = json.loads(file_state)
 
                 # Turn from JSON -> PlanItem
                 if "channel" in file_state:
@@ -75,12 +74,18 @@ class StateManager:
 
                 # Now feed the loaded state into the initialised state manager.
                 self.state = file_state
+
+                # If there are any new config options in the default state, save them.
+                # Uses update() to save them to file too.
+                for key in default_state.keys():
+                    if not key in file_state.keys():
+                        self.update(key, default_state[key])
+
             except Exception:
                 self._logException(
                     "Failed to parse state JSON. Resetting to default state."
                 )
                 self.state = default_state
-                self.__state_in_file = copy(self.state)
 
         # Now setup the rate limiting
         # Essentially rate limit all values to "now" to start with, allowing the first update
@@ -102,8 +107,6 @@ class StateManager:
         self.__state = copy(state)
 
     def write_to_file(self, state):
-
-        self.__state_in_file = state
 
         # Make sure we're not manipulating state
         state_to_json = copy(state)
