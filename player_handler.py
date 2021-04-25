@@ -26,7 +26,9 @@ class PlayerHandler:
                         message = channel_from_q[channel].get_nowait()
                         source = message.split(":")[0]
                         command = message.split(":")[1]
-                        if command == "GET_PLAN":
+
+                        # Let the file manager manage the files based on status and loading new show plan triggers.
+                        if command == "GET_PLAN" or command == "STATUS":
                             file_to_q[channel].put(message)
 
 
