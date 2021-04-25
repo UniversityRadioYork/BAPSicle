@@ -395,7 +395,7 @@ class Player:
                 self.seek(0)
 
             if self.state.get()["play_on_load"]:
-                self.play()
+                self.unpause()
 
         return True
 
@@ -581,27 +581,19 @@ class Player:
             self.play()
             return
 
-        loaded_new_item = False
         # Auto Advance
         if self.state.get()["auto_advance"]:
             for i in range(len(self.state.get()["show_plan"])):
                 if self.state.get()["show_plan"][i].weight == loaded_item.weight:
                     if len(self.state.get()["show_plan"]) > i + 1:
                         self.load(self.state.get()["show_plan"][i + 1].weight)
-                        loaded_new_item = True
-                        break
+                        return
 
                     # Repeat All
                     # TODO ENUM
                     elif self.state.get()["repeat"] == "all":
                         self.load(self.state.get()["show_plan"][0].weight)
-                        loaded_new_item = True
-                        break
-
-        # Play on Load
-        if self.state.get()["play_on_load"] and loaded_new_item:
-            self.play()
-            return
+                        return
 
         # No automations, just stop playing.
         self.stop()
