@@ -265,8 +265,10 @@ class Player:
         plan = sync(self.api.get_showplan(message))
         self.clear_channel_plan()
         channel = self.state.get()["channel"]
-        self.logger.log.info(plan)
-        if len(plan) > channel:
+        self.logger.log.debug(plan)
+        if not isinstance(plan, dict):
+            return False
+        if str(channel) in plan.keys():
             for plan_item in plan[str(channel)]:
                 try:
                     self.add_to_plan(plan_item)
