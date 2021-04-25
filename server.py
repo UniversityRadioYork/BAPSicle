@@ -12,6 +12,7 @@
     Date:
         October, November 2020
 """
+from file_manager import FileManager
 import multiprocessing
 from multiprocessing.queues import Queue
 import multiprocessing.managers as m
@@ -75,6 +76,7 @@ class BAPSicleServer:
     ui_to_q: List[Queue] = []
     websocket_to_q: List[Queue] = []
     controller_to_q: List[Queue] = []
+    file_to_q: List[Queue] = []
     api_from_q: Queue
     api_to_q: Queue
 
@@ -82,6 +84,7 @@ class BAPSicleServer:
     websockets_server: Optional[multiprocessing.Process] = None
     controller_handler: Optional[multiprocessing.Process] = None
     player_handler: Optional[multiprocessing.Process] = None
+    file_manager: Optional[multiprocessing.Process] = None
     webserver: Optional[multiprocessing.Process] = None
 
     def __init__(self):
@@ -118,9 +121,17 @@ class BAPSicleServer:
                 log_function("Player Handler not running, (re)starting.")
                 self.player_handler = multiprocessing.Process(
                     target=PlayerHandler,
-                    args=(self.player_from_q, self.websocket_to_q, self.ui_to_q, self.controller_to_q),
+                    args=(self.player_from_q, self.websocket_to_q, self.ui_to_q, self.controller_to_q, self.file_to_q),
                 )
                 self.player_handler.start()
+
+            if not self.file_manager or not self.file_manager.is_alive():
+                log_function("File Manager not running, (re)starting.")
+                self.file_manager = multiprocessing.Process(
+                    target=FileManager,
+                    args=(self.file_to_q, self.state),
+                )
+                self.file_manager.start()
 
             if not self.websockets_server or not self.websockets_server.is_alive():
                 log_function("Websocket Server not running, (re)starting.")
@@ -182,6 +193,7 @@ class BAPSicleServer:
             self.ui_to_q.append(multiprocessing.Queue())
             self.websocket_to_q.append(multiprocessing.Queue())
             self.controller_to_q.append(multiprocessing.Queue())
+            self.file_to_q.append(multiprocessing.Queue())
 
         print("Welcome to BAPSicle Server version: {}, build: {}.".format(package.VERSION, package.BUILD))
         print("The Server UI is available at http://{}:{}".format(self.state.get()["host"], self.state.get()["port"]))
@@ -247,11 +259,18 @@ class BAPSicleServer:
             self.player_handler.join(timeout=PROCESS_KILL_TIMEOUT_S)
             del self.player_handler
 
+        print("Stopping File Manager")
+        if self.file_manager:
+            self.file_manager.terminate()
+            self.file_manager.join(timeout=PROCESS_KILL_TIMEOUT_S)
+            del self.file_manager
+
         print("Stopping Controllers")
         if self.controller_handler:
             self.controller_handler.terminate()
             self.controller_handler.join(timeout=PROCESS_KILL_TIMEOUT_S)
             del self.controller_handler
+        print("Stopped all processes.")
 
 
 if __name__ == "__main__":
