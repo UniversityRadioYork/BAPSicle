@@ -21,7 +21,7 @@ for option in config["pyinstallerOptions"]:
         if not isWindows():
             option["value"] = option["value"].replace(";", ":")
         elif relative_fix:
-            option["value"] += ".\\" # Add the windows relative path.
+            option["value"] += "." # Add the windows relative path.
 
 out_file = open('build-exe-config.json', 'w')
 out_file.write(json.dumps(config, indent=2))
