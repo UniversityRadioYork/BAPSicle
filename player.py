@@ -466,6 +466,9 @@ class Player:
             if not self.isLoaded:
                 return False
             timeslotitemid = self.state.get()["loaded_item"].timeslotitemid
+        elif self.isLoaded and self.state.get()["loaded_item"].timeslotitemid == timeslotitemid:
+            set_loaded = True
+
 
         plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
         for i in range(len(self.state.get()["show_plan"])):

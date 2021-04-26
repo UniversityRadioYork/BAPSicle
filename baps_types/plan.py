@@ -200,7 +200,9 @@ class PlanItem:
         new_markers = []
         for marker in self._markers:
             if marker.same_type(new_marker):
-                new_markers.append(new_marker)
+                # Only add new marker if the marker is > 0 (to delete markers otherwise)
+                if new_marker.time != 0:
+                    new_markers.append(new_marker)
                 # Replace marker
                 replaced = True
             else:
