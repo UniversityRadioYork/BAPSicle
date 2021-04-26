@@ -13,7 +13,8 @@ for option in config["pyinstallerOptions"]:
     if option["optionDest"] in ["datas", "filenames", "icon_file"]:
         # If we wanted a relative output directory, this will go missing in abspath on windows.
         relative_fix = False
-        if option["value"].split(";")[1] == "./":
+        split = option["value"].split(";")
+        if len(split) > 1 and split[1] == "./":
             relative_fix = True
 
         option["value"] = os.path.abspath(parent_path + option["value"])
