@@ -80,7 +80,7 @@
   {
     "optionDest": "datas",
     "value": "/package.json;./"
-   }
+  }
  ],
  "nonPyinstallerOptions": {
   "increaseRecursionLimit": false,

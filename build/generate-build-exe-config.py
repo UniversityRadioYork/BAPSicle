@@ -11,9 +11,16 @@ in_file.close()
 
 for option in config["pyinstallerOptions"]:
     if option["optionDest"] in ["datas", "filenames", "icon_file"]:
+        # If we wanted a relative output directory, this will go missing in abspath on windows.
+        relative_fix = False
+        if option["value"].split(";")[1] == "./":
+            relative_fix = True
+
         option["value"] = os.path.abspath(parent_path + option["value"])
         if not isWindows():
             option["value"] = option["value"].replace(";", ":")
+        elif relative_fix:
+            option["value"] += ".\\" # Add the windows relative path.
 
 out_file = open('build-exe-config.json', 'w')
 out_file.write(json.dumps(config, indent=2))
