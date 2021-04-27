@@ -30,7 +30,7 @@ class FileManager:
         terminator = Terminator()
         channel_count = len(channel_from_q)
         channel_received = None
-        last_known_show_plan = [None]*channel_count
+        last_known_show_plan = [[]]*channel_count
         next_channel_preload = 0
         last_known_item_ids = [[]]*channel_count
         try:
