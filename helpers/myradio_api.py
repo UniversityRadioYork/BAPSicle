@@ -183,11 +183,25 @@ class MyRadioAPI:
             self._logException("Failed to get show plan.")
             return None
 
-        return json.loads(await request)["payload"]
+        payload = json.loads(await request)["payload"]
+
+        plan = {}
+
+        # Account for MyRadio api being dumb depending on if it's cached or not.
+        if isinstance(payload, list):
+            for channel in range(len(payload)):
+                plan[str(channel)] = payload[channel]
+            return plan
+        elif isinstance(payload, dict):
+            return payload
+
+        self.logger.log.error("Show plan in unknown format.")
+        return None
+
 
     # Audio Library
 
-    async def get_filename(self, item: PlanItem):
+    async def get_filename(self, item: PlanItem, did_download: bool = False):
         format = "mp3"  # TODO: Maybe we want this customisable?
         if item.trackid:
             itemType = "track"
@@ -200,7 +214,7 @@ class MyRadioAPI:
             url = "/NIPSWeb/managed_play?managedid={}".format(id)
 
         else:
-            return None
+            return (None, False) if did_download else None
 
         # Now check if the file already exists
         path: str = resolve_external_file_path("/music-tmp/")
@@ -211,29 +225,29 @@ class MyRadioAPI:
                 os.mkdir(path)
             except Exception as e:
                 self._logException("Failed to create music-tmp folder: {}".format(e))
-                return None
+                return (None, False) if did_download else None
 
         filename: str = resolve_external_file_path(
             "/music-tmp/{}-{}.{}".format(itemType, id, format)
         )
 
         if os.path.isfile(filename):
-            return filename
+            return (filename, False) if did_download else filename
 
         # File doesn't exist, download it.
         request = await self.async_api_call(url, api_version="non")
 
         if not request:
-            return None
+            return (None, False) if did_download else None
 
         try:
             with open(filename, "wb") as file:
                 file.write(await request)
         except Exception as e:
             self._logException("Failed to write music file: {}".format(e))
-            return None
+            return (None, False) if did_download else None
 
-        return filename
+        return (filename, True) if did_download else filename
 
     # Gets the list of managed music playlists.
     async def get_playlist_music(self):

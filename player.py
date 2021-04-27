@@ -226,9 +226,7 @@ class Player:
             self.seek(self.state.get()["loaded_item"].cue)
         else:
             # Otherwise, let's go to 0.
-            self.state.update("pos", 0)
-            self.state.update("pos_offset", 0)
-            self.state.update("pos_true", 0)
+            self.seek(0)
 
         return True
 
@@ -242,7 +240,8 @@ class Player:
             return True
         else:
             self.stopped_manually = True  # Don't trigger _ended() on seeking.
-            self.state.update("paused", True)
+            if pos > 0:
+                self.state.update("paused", True)
             self._updateState(pos=pos)
         return True
 
@@ -266,8 +265,10 @@ class Player:
         plan = sync(self.api.get_showplan(message))
         self.clear_channel_plan()
         channel = self.state.get()["channel"]
-        self.logger.log.info(plan)
-        if len(plan) > channel:
+        self.logger.log.debug(plan)
+        if not isinstance(plan, dict):
+            return False
+        if str(channel) in plan.keys():
             for plan_item in plan[str(channel)]:
                 try:
                     self.add_to_plan(plan_item)
@@ -279,8 +280,17 @@ class Player:
 
         return True
 
+    def _check_ghosts(self, item: PlanItem):
+        if isinstance(item.timeslotitemid, str) and item.timeslotitemid.startswith("I"):
+            # Kinda a bodge for the moment, each "Ghost" (item which is not saved in the database showplan yet) needs to have a unique temporary item.
+            # To do this, we'll start with the channel number the item was originally added to (to stop items somehow simultaneously added to different channels from having the same id)
+            # And chuck in the unix epoch in ns for good measure.
+            item.timeslotitemid = "GHOST-{}-{}".format(self.state.get()["channel"], time.time_ns())
+        return item
+
     def add_to_plan(self, new_item: Dict[str, Any]) -> bool:
         new_item_obj = PlanItem(new_item)
+        new_item_obj = self._check_ghosts(new_item_obj)
         plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
         # Shift any plan items after the new position down one to make space.
         for item in plan_copy:
@@ -289,10 +299,7 @@ class Player:
 
         plan_copy += [new_item_obj]  # Add the new item.
 
-        def sort_weight(e: PlanItem):
-            return e.weight
-
-        plan_copy.sort(key=sort_weight)  # Sort into weighted order.
+        plan_copy = self._fix_weights(plan_copy)
 
         self.state.update("show_plan", plan_copy)
         return True
@@ -304,11 +311,8 @@ class Player:
             if i.weight == weight:
                 plan_copy.remove(i)
                 found = True
-            elif (
-                i.weight > weight
-            ):  # Shuffle up the weights of the items following the deleted one.
-                i.weight -= 1
         if found:
+            plan_copy = self._fix_weights(plan_copy)
             self.state.update("show_plan", plan_copy)
             return True
         return False
@@ -387,9 +391,11 @@ class Player:
 
             if loaded_item.cue > 0:
                 self.seek(loaded_item.cue)
+            else:
+                self.seek(0)
 
             if self.state.get()["play_on_load"]:
-                self.play()
+                self.unpause()
 
         return True
 
@@ -420,6 +426,7 @@ class Player:
 
     def output(self, name: Optional[str] = None):
         wasPlaying = self.state.get()["playing"]
+        oldPos = self.state.get()["pos_true"]
 
         name = None if (not name or name.lower() == "none") else name
 
@@ -440,7 +447,7 @@ class Player:
         if loadedItem:
             self.load(loadedItem.weight)
         if wasPlaying:
-            self.unpause()
+            self.play(oldPos)
 
         return True
 
@@ -459,6 +466,9 @@ class Player:
             if not self.isLoaded:
                 return False
             timeslotitemid = self.state.get()["loaded_item"].timeslotitemid
+        elif self.isLoaded and self.state.get()["loaded_item"].timeslotitemid == timeslotitemid:
+            set_loaded = True
+
 
         plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
         for i in range(len(self.state.get()["show_plan"])):
@@ -489,7 +499,7 @@ class Player:
 
     # This essentially allows the tracklist end API call to happen in a separate thread, to avoid hanging playout/loading.
     def _potentially_tracklist(self):
-        mode: TracklistMode = self.state.get()["tracklist_mode"]
+        mode = self.state.get()["tracklist_mode"]
 
         time: int = -1
         if mode == "on":
@@ -574,27 +584,19 @@ class Player:
             self.play()
             return
 
-        loaded_new_item = False
         # Auto Advance
         if self.state.get()["auto_advance"]:
             for i in range(len(self.state.get()["show_plan"])):
                 if self.state.get()["show_plan"][i].weight == loaded_item.weight:
                     if len(self.state.get()["show_plan"]) > i + 1:
                         self.load(self.state.get()["show_plan"][i + 1].weight)
-                        loaded_new_item = True
-                        break
+                        return
 
                     # Repeat All
                     # TODO ENUM
                     elif self.state.get()["repeat"] == "all":
                         self.load(self.state.get()["show_plan"][0].weight)
-                        loaded_new_item = True
-                        break
-
-        # Play on Load
-        if self.state.get()["play_on_load"] and loaded_new_item:
-            self.play()
-            return
+                        return
 
         # No automations, just stop playing.
         self.stop()
@@ -605,15 +607,14 @@ class Player:
 
         self.state.update("initialised", self.isInit)
         if self.isInit:
-            if pos:
-                self.state.update("pos", max(0, pos))
+            if pos is not None:
+                # Seeking sets the position like this when not playing.
+                self.state.update("pos", pos)  # Reset back to 0 if stopped.
+                self.state.update("pos_offset", 0)
             elif self.isPlaying:
+                # This is the bit that makes the time actually progress during playback.
                 # Get one last update in, incase we're about to pause/stop it.
                 self.state.update("pos", max(0, mixer.music.get_pos() / 1000))
-            # TODO this is wrong now we don't pause the mixer.
-            elif not self.isPaused:
-                self.state.update("pos", 0)  # Reset back to 0 if stopped.
-                self.state.update("pos_offset", 0)
 
             # If the state is changing from playing to not playing, and the user didn't stop it, the item must have ended.
             if (
@@ -680,6 +681,24 @@ class Player:
         self._retMsg(str(self.status), okay_str=True,
                      custom_prefix="ALL:STATUS:")
 
+    def _fix_weights(self, plan):
+        def _sort_weight(e: PlanItem):
+            return e.weight
+
+        for item in plan:
+            self.logger.log.info("Pre weights:\n{}".format(item))
+        plan.sort(key=_sort_weight)  # Sort into weighted order.
+
+        for item in plan:
+            self.logger.log.info("Post Sort:\n{}".format(item))
+
+        for i in range(len(plan)):
+            plan[i].weight = i  # Recorrect the weights on the channel.
+
+        for item in plan:
+            self.logger.log.info("Post Weights:\n{}".format(item))
+        return plan
+
     def __init__(
         self, channel: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue, server_state: StateManager
     ):
@@ -706,6 +725,11 @@ class Player:
 
         self.state.update("channel", channel)
         self.state.update("tracklist_mode", server_state.get()["tracklist_mode"])
+
+        # Just in case there's any weights somehow messed up, let's fix them.
+        plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
+        plan_copy = self._fix_weights(plan_copy)
+        self.state.update("show_plan", plan_copy)
 
         loaded_state = copy.copy(self.state.state)
 

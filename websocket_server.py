@@ -123,7 +123,7 @@ class WebsocketServer:
             # Message format:
             # SOURCE:COMMAND:EXTRADATA
 
-            message = "WEBSOCKET:" + command
+            message = "WEBSOCKET:"
 
             # If we just want PLAY, PAUSE etc, we're all done.
             # Else, let's pipe in some extra info.
@@ -154,18 +154,29 @@ class WebsocketServer:
 
                 # SPECIAL CASE ALERT! We need to talk to two channels here.
                 elif command == "MOVE":
-                    # TODO Should we trust the client with the item info?
 
-                    # Tell the old channel to remove "weight"
-                    extra += str(data["weight"])
+                    # remove the exiting item first
+                    self.channel_to_q[channel].put(
+                        "{}REMOVE:{}".format(message, data["weight"])
+                    )
+
+                    # Now hijack to send the new add on the new channel.
 
                     # Now modify the item with the weight in the new channel
                     new_channel = int(data["new_channel"])
                     item = data["item"]
                     item["weight"] = int(data["new_weight"])
+
+                    # If we're moving within the same channel, add 1 to the weight, since we're adding the new item before we remove the old one, UI gave us the weight expected after removing.
+                    if channel == new_channel and data["new_weight"] > data["weight"]:
+                        item["weight"] += 1
+
                     # Now send the special case.
                     self.channel_to_q[new_channel].put(
-                        "ADD:" + json.dumps(item))
+                        "WEBSOCKET:ADD:" + json.dumps(item))
+
+                    # Don't bother, we should be done.
+                    return
 
             except ValueError as e:
                 self.logger.log.exception(
@@ -176,6 +187,7 @@ class WebsocketServer:
                 pass
 
             # Stick the message together and send!
+            message += command # Put the command in at the end, in case MOVE etc changed it.
             if extra != "":
                 message += ":" + extra
 
