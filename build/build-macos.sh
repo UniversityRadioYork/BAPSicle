@@ -1,8 +1,11 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 
+# Get the git commit / branch and write it into build.py.
 build_commit="$(git rev-parse --short HEAD)"
+build_branch="$(git branch --show-current)"
 echo "BUILD: str = \"$build_commit\"" > ../build.py
+echo "BRANCH: str = \"$build_branch\"" >> ../build.py
 
 python3 -m venv ../venv
 source ../venv/bin/activate

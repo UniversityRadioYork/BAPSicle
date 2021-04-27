@@ -1,10 +1,14 @@
 cd /D "%~dp0"
 
-: Get the git commit and write it into build.py.
+: Get the git commit / branch and write it into build.py.
 FOR /F "tokens=* USEBACKQ" %%F IN (`git rev-parse --short HEAD`) DO (
 SET build_commit=%%F
 )
+FOR /F "tokens=* USEBACKQ" %%F IN (`git branch --show-current`) DO (
+SET build_branch=%%F
+)
 echo BUILD: str = "%build_commit%"> ..\build.py
+echo BRANCH: str = "%build_branch%">> ..\build.py
 
 if "%1" == "no-venv" goto skip-venv
 

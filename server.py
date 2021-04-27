@@ -56,6 +56,8 @@ class BAPSicleServer:
     default_state = {
         "server_version": "unknown",
         "server_build": "unknown",
+        "server_branch": "unknown",
+        "server_beta": True,
         "server_name": "URY BAPSicle",
         "host": "localhost",
         "port": 13500,
@@ -182,6 +184,8 @@ class BAPSicleServer:
         # TODO: Check these match, if not, trigger any upgrade noticies / welcome
         self.state.update("server_version", package.VERSION)
         self.state.update("server_build", package.BUILD)
+        self.state.update("server_branch", package.BRANCH)
+        self.state.update("server_beta", package.BETA)
 
         channel_count = self.state.get()["num_channels"]
         self.player = [None] * channel_count

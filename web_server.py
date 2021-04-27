@@ -52,12 +52,15 @@ def page_not_found(request, e: Any):
 
 @app.route("/")
 def ui_index(request):
+    config = server_state.get()
     data = {
         "ui_page": "index",
         "ui_title": "",
-        "server_version": server_state.get()["server_version"],
-        "server_build": server_state.get()["server_build"],
-        "server_name": server_state.get()["server_name"],
+        "server_version": config["server_version"],
+        "server_build": config["server_build"],
+        "server_name": config["server_name"],
+        "server_beta": config["server_beta"],
+        "server_branch": config["server_branch"]
     }
     return render_template("index.html", data=data)
 

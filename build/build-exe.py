@@ -16,7 +16,6 @@ for option in config["pyinstallerOptions"]:
 
     # The json is rather inconsistent :/
     if option_dest in json_dests:
-        print("in")
         option_dest = pyi_dests[json_dests.index(option_dest)]
 
     option_dest = option_dest.replace("_", "-")
