@@ -1,7 +1,7 @@
 {
   "name": "bapsicle",
   "nice_name": "BAPSicle",
-  "version": "0.1.0",
+  "version": "3.0.0",
   "description": "BAPS3, the third generation of University Radio York's Broadcast and Presenting Suite. This package includes the Server (BAPSicle) and Presenter (WebStudio)",
   "main": "index.js",
   "directories": {
