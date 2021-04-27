@@ -66,7 +66,9 @@ class FileManager:
 
                           files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
                           for file in files:
-                            os.remove(path+"/"+file)
+                            filepath = path+"/"+file
+                            self.logger.log.info("Removing file {} on new show load.".format(filepath))
+                            os.remove(filepath)
                           channel_received[channel] = True
 
                         # If we receive a new status message, let's check for files which have not been pre-loaded.
@@ -97,18 +99,19 @@ class FileManager:
 
                   item_obj = PlanItem(last_known_show_plan[next_channel_preload][i])
                   if not item_obj.filename:
-                    print("Checking pre-load on channel {}, weight {}: {}".format(next_channel_preload, item_obj.weight, item_obj.name))
+                    self.logger.log.info("Checking pre-load on channel {}, weight {}: {}".format(next_channel_preload, item_obj.weight, item_obj.name))
 
                     # Getting the file name will only pull the new file if the file doesn't already exist, so this is not too inefficient.
                     item_obj.filename,did_download = sync(self.api.get_filename(item_obj, True))
                     # Alright, we've done one, now let's give back control to process new statuses etc.
-                    # Given we probably took some time to download, let's not sleep in the loop.
 
                     # Save back the resulting item back in regular dict form
                     last_known_show_plan[next_channel_preload][i] = item_obj.__dict__
 
                     if did_download:
+                      # Given we probably took some time to download, let's not sleep in the loop.
                       delay = False
+                      self.logger.log.info("File successfully preloaded: {}".format(item_obj.filename))
                       break
                     else:
                       # We didn't download anything this time, file was already loaded.
