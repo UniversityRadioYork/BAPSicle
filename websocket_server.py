@@ -152,6 +152,7 @@ class WebsocketServer:
                         json.dumps(data["marker"])
                     )
 
+                # TODO: Move this to player handler.
                 # SPECIAL CASE ALERT! We need to talk to two channels here.
                 elif command == "MOVE":
 
@@ -166,10 +167,6 @@ class WebsocketServer:
                     new_channel = int(data["new_channel"])
                     item = data["item"]
                     item["weight"] = int(data["new_weight"])
-
-                    # If we're moving within the same channel, add 1 to the weight, since we're adding the new item before we remove the old one, UI gave us the weight expected after removing.
-                    if channel == new_channel and data["new_weight"] > data["weight"]:
-                        item["weight"] += 1
 
                     # Now send the special case.
                     self.channel_to_q[new_channel].put(

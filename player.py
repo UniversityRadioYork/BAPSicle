@@ -290,6 +290,7 @@ class Player:
             item.timeslotitemid = "GHOST-{}-{}".format(self.state.get()["channel"], time.time_ns())
         return item
 
+    # TODO Allow just moving an item inside the channel instead of removing and adding.
     def add_to_plan(self, new_item: Dict[str, Any]) -> bool:
         new_item_obj = PlanItem(new_item)
         new_item_obj = self._check_ghosts(new_item_obj)
@@ -304,6 +305,27 @@ class Player:
         plan_copy = self._fix_weights(plan_copy)
 
         self.state.update("show_plan", plan_copy)
+
+
+
+        loaded_item = self.state.get()["loaded_item"]
+        if loaded_item:
+
+            # If we added the loaded item back into this channel, update it's weight
+            # So we know how/not to autoadvance.
+            if loaded_item.timeslotitemid == new_item_obj.timeslotitemid:
+                loaded_item.weight = new_item_obj.weight
+
+            # Bump the loaded_item's weight if we just added a new item above it.
+            elif loaded_item.weight >= new_item_obj.weight:
+                loaded_item.weight += 1
+
+            # Else, new weight stays the same.
+            else:
+                return True
+
+            self.state.update("loaded_item", loaded_item)
+
         return True
 
     def remove_from_plan(self, weight: int) -> bool:
@@ -316,6 +338,22 @@ class Player:
         if found:
             plan_copy = self._fix_weights(plan_copy)
             self.state.update("show_plan", plan_copy)
+
+            # If we removed the loaded item from this channel, update it's weight
+            # So we know how/not to autoadvance.
+            loaded_item = self.state.get()["loaded_item"]
+            if loaded_item:
+                # We're removing the loaded item form the channel.
+                if loaded_item.weight == weight:
+                    loaded_item.weight = -1
+                # We removed an item above it. Shift it up.
+                elif loaded_item.weight > weight:
+                    loaded_item.weight -= 1
+                # Else, new weight stays the same.
+                else:
+                    return True
+
+                self.state.update("loaded_item", loaded_item)
             return True
         return False
 
@@ -579,7 +617,9 @@ class Player:
     def _ended(self):
         self._potentially_end_tracklist()
 
-        loaded_item = self.state.get()["loaded_item"]
+        state = self.state.get()
+
+        loaded_item = state["loaded_item"]
 
         if not loaded_item:
             return
@@ -589,28 +629,35 @@ class Player:
 
         # Repeat 1
         # TODO ENUM
-        if self.state.get()["repeat"] == "one":
+        if state["repeat"] == "one":
             self.play()
             return
 
         # Auto Advance
-        if self.state.get()["auto_advance"]:
-            for i in range(len(self.state.get()["show_plan"])):
-                if self.state.get()["show_plan"][i].weight == loaded_item.weight:
-                    if len(self.state.get()["show_plan"]) > i + 1:
-                        self.load(self.state.get()["show_plan"][i + 1].weight)
-                        return
+        if state["auto_advance"]:
 
-                    # Repeat All
-                    # TODO ENUM
-                    elif self.state.get()["repeat"] == "all":
-                        self.load(self.state.get()["show_plan"][0].weight)
-                        return
+            # Check for loaded item in show plan.
+            # If it's been removed, weight will be -1.
+            # Just stop in this case.
+            if loaded_item.weight < 0:
+                self.logger.log.debug("Loaded item is no longer in channel (weight {}), not auto advancing.".format(loaded_item.weight))
+            else:
+                self.logger.log.debug("Found current loaded item in this channel show plan. Auto Advancing.")
+
+                # If there's another item after this one, load that.
+                if len(state["show_plan"]) > loaded_item.weight+1:
+                    self.load(loaded_item.weight+1)
+                    return
+
+                # Repeat All (Jump to top again)
+                # TODO ENUM
+                elif state["repeat"] == "all":
+                    self.load(0) # Jump to the top.
+                    return
 
         # No automations, just stop playing.
         self.stop()
-        if self.out_q:
-            self._retAll("STOPPED")  # Tell clients that we've stopped playing.
+        self._retAll("STOPPED")  # Tell clients that we've stopped playing.
 
     def _updateState(self, pos: Optional[float] = None):
 
@@ -661,7 +708,8 @@ class Player:
             self._retAll("POS:" + str(self.state.get()["pos_true"]))
 
     def _retAll(self, msg):
-        self.out_q.put("ALL:" + msg)
+        if self.out_q:
+            self.out_q.put("ALL:" + msg)
 
     def _retMsg(
         self, msg: Any, okay_str: bool = False, custom_prefix: Optional[str] = None
