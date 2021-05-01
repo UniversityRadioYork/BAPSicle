@@ -744,9 +744,8 @@ class Player:
 
         loaded_item = loaded_state["loaded_item"]
         if loaded_item:
-            self.logger.log.info("Loading filename: " +
-                                 str(loaded_item.filename))
-            self.load(loaded_item.weight)
+            # No need to load on init, the output switch does this, as it would for regular output switching.
+            #self.load(loaded_item.weight)
 
             # Load may jump to the cue point, as it would do on a regular load.
             # If we were at a different state before, we have to override it now.
