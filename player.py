@@ -165,7 +165,7 @@ class Player:
     def play(self, pos: float = 0):
         if not self.isLoaded:
             return
-
+        self.logger.log.info("Playing from pos: " + str(pos))
         try:
             mixer.music.play(0, pos)
             self.state.update("pos_offset", pos)
@@ -231,6 +231,7 @@ class Player:
         return True
 
     def seek(self, pos: float) -> bool:
+        self.logger.log.info("Seeking to pos:" + str(pos))
         if self.isPlaying:
             try:
                 self.play(pos)
@@ -239,6 +240,7 @@ class Player:
                 return False
             return True
         else:
+            self.logger.log.debug("Not playing during seek, setting pos state for next play.")
             self.stopped_manually = True  # Don't trigger _ended() on seeking.
             if pos > 0:
                 self.state.update("paused", True)
@@ -445,8 +447,10 @@ class Player:
 
         loadedItem = self.state.get()["loaded_item"]
         if loadedItem:
+            self.logger.log.info("Reloading after output change.")
             self.load(loadedItem.weight)
         if wasPlaying:
+            self.logger.log.info("Resuming playback after output change.")
             self.play(oldPos)
 
         return True
@@ -547,7 +551,7 @@ class Player:
             self.logger.log.info("Tracklisting item: {}".format(loaded_item.name))
             tracklist_id = self.api.post_tracklist_start(loaded_item)
             if not tracklist_id:
-                self.logger.log.error("Failed to tracklist {}".format(loaded_item.name))
+                self.logger.log.warning("Failed to tracklist {}".format(loaded_item.name))
             else:
                 self.logger.log.info("Tracklist id: {}".format(tracklist_id))
                 self.state.update("tracklist_id", tracklist_id)
@@ -576,7 +580,7 @@ class Player:
             return
 
         # Track has ended
-        print("Finished", loaded_item.name, loaded_item.weight)
+        self.logger.log.info("Playback ended of {}, weight {}:".format(loaded_item.name, loaded_item.weight))
 
         # Repeat 1
         # TODO ENUM
@@ -671,10 +675,14 @@ class Player:
                 response += "FAIL:" + msg
         else:
             response += "FAIL"
-        self.logger.log.debug(("Preparing to send: {}".format(response)))
+
         if self.out_q:
-            self.logger.log.debug(("Sending: {}".format(response)))
+            if ("STATUS:" not in response):
+                # Don't fill logs with status pushes, it's a mess.
+                self.logger.log.debug(("Sending: {}".format(response)))
             self.out_q.put(response)
+        else:
+            self.logger.log.exception("Message return Queue is missing!!!! Can't send message.")
 
     def _send_status(self):
         # TODO This is hacky
@@ -685,18 +693,11 @@ class Player:
         def _sort_weight(e: PlanItem):
             return e.weight
 
-        for item in plan:
-            self.logger.log.info("Pre weights:\n{}".format(item))
         plan.sort(key=_sort_weight)  # Sort into weighted order.
-
-        for item in plan:
-            self.logger.log.info("Post Sort:\n{}".format(item))
 
         for i in range(len(plan)):
             plan[i].weight = i  # Recorrect the weights on the channel.
 
-        for item in plan:
-            self.logger.log.info("Post Weights:\n{}".format(item))
         return plan
 
     def __init__(
@@ -756,10 +757,10 @@ class Player:
                 self.seek(loaded_state["pos_true"])
 
             if loaded_state["playing"] is True:
-                self.logger.log.info("Resuming.")
+                self.logger.log.info("Resuming playback on init.")
                 self.unpause()  # Use un-pause as we don't want to jump to a new position.
         else:
-            self.logger.log.info("No file was previously loaded.")
+            self.logger.log.info("No file was previously loaded to resume.")
 
         try:
             while self.running:
