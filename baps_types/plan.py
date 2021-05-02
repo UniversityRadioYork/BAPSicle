@@ -28,6 +28,7 @@ class PlanItem:
     _trackid: Optional[int]
     _managedid: Optional[int]
     _markers: List[Marker] = []
+    _play_count: int
 
     @property
     def weight(self) -> int:
@@ -52,6 +53,19 @@ class PlanItem:
     @filename.setter
     def filename(self, value: Optional[str]):
         self._filename = value
+
+    @property
+    def play_count(self) -> int:
+        return self._play_count
+
+    def play_count_increment(self):
+        self._play_count += 1
+
+    def play_count_decrement(self):
+        self._play_count = max(0,self._play_count - 1)
+
+    def play_count_reset(self):
+        self._play_count = 0
 
     @property
     def name(self) -> str:
@@ -129,7 +143,9 @@ class PlanItem:
             "intro": self.intro,
             "cue": self.cue,
             "outro": self.outro,
-            "markers": self.markers
+            "markers": self.markers,
+            "played": self.play_count > 0,
+            "play_count": self.play_count
         }
 
     def __init__(self, new_item: Dict[str, Any]):
@@ -150,6 +166,7 @@ class PlanItem:
         self._markers = (
             [Marker(marker) for marker in new_item["markers"]] if "markers" in new_item else []
         )
+        self._play_count = new_item["play_count"] if "play_count" in new_item else 0
 
         # TODO: Edit this to handle markers when MyRadio supports them
         if "intro" in new_item and (isinstance(new_item["intro"], int) or isinstance(new_item["intro"], float)) and new_item["intro"] > 0:

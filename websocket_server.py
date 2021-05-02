@@ -144,6 +144,8 @@ class WebsocketServer:
                     extra += json.dumps(data["newItem"])
                 elif command == "REMOVE":
                     extra += str(data["weight"])
+                elif command == "RESETPLAYED":
+                    extra += str(data["weight"])
                 elif command == "GET_PLAN":
                     extra += str(data["timeslotId"])
                 elif command == "SETMARKER":

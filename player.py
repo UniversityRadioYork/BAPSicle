@@ -190,7 +190,8 @@ class Player:
 
     def unpause(self):
         if not self.isPlaying:
-            position: float = self.state.get()["pos_true"]
+            state = self.state.get()
+            position: float = state["pos_true"]
             try:
                 self.play(position)
             except Exception:
@@ -200,6 +201,13 @@ class Player:
                 return False
 
             self.state.update("paused", False)
+
+            # Increment Played count
+            loaded_item = state["loaded_item"]
+            if loaded_item:
+                loaded_item.play_count_increment()
+                self.state.update("loaded_item", loaded_item)
+
             return True
         return False
 
@@ -537,6 +545,20 @@ class Player:
 
         return success
 
+    def reset_played(self, weight: int):
+        plan: List[PlanItem] = self.state.get()["show_plan"]
+        if weight == -1:
+            for item in plan:
+                item.play_count_reset()
+            self.state.update("show_plan", plan)
+        elif len(plan) > weight:
+            plan[weight].play_count_reset()
+            self.state.update("show_plan", plan[weight], weight)
+        else:
+            return False
+        return True
+
+
     # Helper functions
 
     # This essentially allows the tracklist end API call to happen in a separate thread, to avoid hanging playout/loading.
@@ -564,6 +586,13 @@ class Player:
             self.logger.log.info("A tracklist start timer was running, cancelling.")
             self.tracklist_start_timer.cancel()
             self.tracklist_start_timer = None
+
+            # Decrement Played count on track we didn't play much of.
+            state = self.state.get()
+            loaded_item = state["loaded_item"]
+            if loaded_item and loaded_item.type == "central":
+                loaded_item.play_count_decrement()
+                self.state.update("loaded_item", loaded_item)
 
         # Make a copy of the tracklist_id, it will get reset as we load the next item.
         tracklist_id = self.state.get()["tracklist_id"]
@@ -900,6 +929,7 @@ class Player:
                             ),
                             "CLEAR": lambda: self._retMsg(self.clear_channel_plan()),
                             "SETMARKER": lambda: self._retMsg(self.set_marker(self.last_msg.split(":")[1], self.last_msg.split(":", 2)[2])),
+                            "RESETPLAYED": lambda: self._retMsg(self.reset_played(int(self.last_msg.split(":")[1])))
                         }
 
                         message_type: str = self.last_msg.split(":")[0]
