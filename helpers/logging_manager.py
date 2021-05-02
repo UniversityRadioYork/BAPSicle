@@ -11,7 +11,7 @@ class LoggingManager:
 
     logger: logging.Logger
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, debug: bool = False):
         self.logger = logging.getLogger(name)
 
         logpath: str = resolve_external_file_path("/logs")
@@ -34,7 +34,7 @@ class LoggingManager:
                 print("Failed to create log file.")
                 return
 
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG if debug else logging.INFO)
         fh = RotatingFileHandler(
             filename,
             maxBytes=LOG_MAX_SIZE_MB * (1024 ** 2),
