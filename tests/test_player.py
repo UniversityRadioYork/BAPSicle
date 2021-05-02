@@ -68,7 +68,7 @@ class TestPlayer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.logger = LoggingManager("Test_Player")
-        cls.server_state = StateManager("BAPSicleServer", cls.logger)  # Mostly dummy here.
+        cls.server_state = StateManager("BAPSicleServer", cls.logger, default_state={"tracklist_mode": "off"})  # Mostly dummy here.
 
     # clean up logic for the test suite declared in the test module
     # code that is executed after all tests in one test run
