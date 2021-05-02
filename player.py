@@ -890,6 +890,7 @@ class Player:
                             # Unpause, so we don't jump to 0, we play from the current pos.
                             "PLAY": lambda: self._retMsg(self.unpause()),
                             "PAUSE": lambda: self._retMsg(self.pause()),
+                            "PLAYPAUSE": lambda: self._retMsg(self.unpause() if not self.isPlaying else self.pause()), # For the hardware controller.
                             "UNPAUSE": lambda: self._retMsg(self.unpause()),
                             "STOP": lambda: self._retMsg(self.stop(user_initiated=True)),
                             "SEEK": lambda: self._retMsg(

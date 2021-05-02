@@ -87,7 +87,7 @@ class MattchBox(Controller):
                     if line == 255:
                         self.ser.write(b"\xff")  # Send 255 back.
                     elif line in [1, 3, 5]:
-                        self.sendToPlayer(int(line / 2), "PLAY")
+                        self.sendToPlayer(int(line / 2), "PLAYPAUSE")
                     elif line in [2, 4, 6]:
                         self.sendToPlayer(int(line / 2) - 1, "STOP")
                 except Exception:
