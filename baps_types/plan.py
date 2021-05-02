@@ -29,6 +29,7 @@ class PlanItem:
     _managedid: Optional[int]
     _markers: List[Marker] = []
     _play_count: int
+    _clean: bool
 
     @property
     def weight(self) -> int:
@@ -100,6 +101,10 @@ class PlanItem:
         return "aux" if self.managedid else "central"
 
     @property
+    def clean(self) -> bool:
+        return self._clean
+
+    @property
     def intro(self) -> float:
         markers = list(filter(lambda m: m.position == "start" and m.section is None, self._markers))
         # TODO: Handle multiple (shouldn't happen?)
@@ -145,7 +150,8 @@ class PlanItem:
             "outro": self.outro,
             "markers": self.markers,
             "played": self.play_count > 0,
-            "play_count": self.play_count
+            "play_count": self.play_count,
+            "clean": self.clean
         }
 
     def __init__(self, new_item: Dict[str, Any]):
@@ -167,6 +173,7 @@ class PlanItem:
             [Marker(marker) for marker in new_item["markers"]] if "markers" in new_item else []
         )
         self._play_count = new_item["play_count"] if "play_count" in new_item else 0
+        self._clean = new_item["clean"] if "clean" in new_item else True
 
         # TODO: Edit this to handle markers when MyRadio supports them
         if "intro" in new_item and (isinstance(new_item["intro"], int) or isinstance(new_item["intro"], float)) and new_item["intro"] > 0:
