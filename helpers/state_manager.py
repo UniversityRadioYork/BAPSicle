@@ -51,15 +51,16 @@ class StateManager:
                 self._log("Failed to create state file.", CRITICAL)
                 return
 
+        file_raw: str
         with open(self.filepath, "r") as file:
-            file_state = file.read()
+            file_raw = file.read()
 
-        if file_state == "":
+        if file_raw == "":
             self._log("State file is empty. Setting default state.")
             self.state = default_state
         else:
             try:
-                file_state: Dict[str, Any] = json.loads(file_state)
+                file_state: Dict[str, Any] = json.loads(file_raw)
 
                 # Turn from JSON -> PlanItem
                 if "channel" in file_state:
@@ -148,7 +149,8 @@ class StateManager:
 
         state_to_update = self.state
 
-        if key in state_to_update and index == -1 and state_to_update[key] == value:
+        # Lists (esp show_plan) is difficult to compare. Just update anyway
+        if key in state_to_update and index == -1 and (not isinstance(value, list)) and state_to_update[key] == value:
             # We're trying to update the state with the same value.
             # In this case, ignore the update
             return
