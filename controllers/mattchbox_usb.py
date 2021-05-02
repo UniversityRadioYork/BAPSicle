@@ -91,7 +91,8 @@ class MattchBox(Controller):
                     elif line in [2, 4, 6]:
                         self.sendToPlayer(int(line / 2) - 1, "STOP")
                 except Exception:
-                    continue
+                    time.sleep(5)
+                    self.connect(self.port)
                 finally:
                     time.sleep(0.01)
 
