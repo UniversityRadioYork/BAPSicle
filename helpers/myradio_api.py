@@ -22,6 +22,7 @@ import json
 from logging import INFO, ERROR, WARNING
 import os
 import requests
+import time
 
 from baps_types.plan import PlanItem
 from helpers.os_environment import resolve_external_file_path
@@ -219,6 +220,8 @@ class MyRadioAPI:
         # Now check if the file already exists
         path: str = resolve_external_file_path("/music-tmp/")
 
+        dl_suffix = ".downloading"
+
         if not os.path.isdir(path):
             self._log("Music-tmp folder is missing, attempting to create.")
             try:
@@ -230,19 +233,42 @@ class MyRadioAPI:
         filename: str = resolve_external_file_path(
             "/music-tmp/{}-{}.{}".format(itemType, id, format)
         )
-
+        # Check if we already downloaded the file. If we did, give that.
         if os.path.isfile(filename):
+            self.logger.log.debug("Already got file. " + filename)
             return (filename, False) if did_download else filename
 
+        # If something else (another channel, the preloader etc) is downloading the track, wait for it.
+        if os.path.isfile(filename + dl_suffix):
+            time_waiting_s = 0
+            self.logger.log.debug("Waiting for download to complete from another worker. " + filename)
+            while time_waiting_s < 20:
+                # TODO: Make something better here.
+                # If the connectivity is super poor or we're loading reeaaaalllly long files, this may be annoying, but this is just in case somehow the other api download gives up.
+                if os.path.isfile(filename):
+                    # Now the file is downloaded successfully
+                    return (filename, False) if did_download else filename
+                time_waiting_s +=1
+                self.logger.log.debug("Still waiting")
+                time.sleep(1)
+
         # File doesn't exist, download it.
+        try:
+            # Just create the file to stop other sources from trying to download too.
+            open(filename + dl_suffix, "a").close()
+        except Exception:
+            self.logger.log.exception("Couldn't create new temp file.")
+            return (None, False) if did_download else None
+
         request = await self.async_api_call(url, api_version="non")
 
         if not request:
             return (None, False) if did_download else None
 
         try:
-            with open(filename, "wb") as file:
+            with open(filename + dl_suffix, "wb") as file:
                 file.write(await request)
+            os.rename(filename + dl_suffix, filename)
         except Exception as e:
             self._logException("Failed to write music file: {}".format(e))
             return (None, False) if did_download else None

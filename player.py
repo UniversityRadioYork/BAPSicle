@@ -412,40 +412,56 @@ class Player:
                 break
                 # TODO: Update the show plan filenames???
 
-            try:
-                self.logger.log.info("Loading file: " +
-                                     str(loaded_item.filename))
-                mixer.music.load(loaded_item.filename)
-            except Exception:
-                # We couldn't load that file.
-                self.logger.log.exception(
-                    "Couldn't load file: " + str(loaded_item.filename)
-                )
-                return False
-
-            try:
-                if ".mp3" in loaded_item.filename:
-                    song = MP3(loaded_item.filename)
-                    self.state.update("length", song.info.length)
-                else:
-                    self.state.update(
-                        "length", mixer.Sound(
-                            loaded_item.filename).get_length() / 1000
+            load_attempt = 0
+            while load_attempt < 5:
+                load_attempt += 1
+                try:
+                    self.logger.log.info("Loading file: " +
+                                        str(loaded_item.filename))
+                    mixer.music.load(loaded_item.filename)
+                except Exception:
+                    # We couldn't load that file.
+                    self.logger.log.exception(
+                        "Couldn't load file: " + str(loaded_item.filename)
                     )
-            except Exception:
-                self.logger.log.exception(
-                    "Failed to update the length of item.")
-                return False
+                    time.sleep(1)
+                    continue # Try loading again.
 
-            if loaded_item.cue > 0:
-                self.seek(loaded_item.cue)
-            else:
-                self.seek(0)
+                if not self.isLoaded:
+                    self.logger.log.error("Pygame loaded file without error, but never actually loaded.")
+                    time.sleep(1)
+                    continue # Try loading again.
 
-            if self.state.get()["play_on_load"]:
-                self.unpause()
+                try:
+                    if ".mp3" in loaded_item.filename:
+                        song = MP3(loaded_item.filename)
+                        self.state.update("length", song.info.length)
+                    else:
+                        self.state.update(
+                            "length", mixer.Sound(
+                                loaded_item.filename).get_length() / 1000
+                        )
+                except Exception:
+                    self.logger.log.exception(
+                        "Failed to update the length of item.")
+                    time.sleep(1)
+                    continue # Try loading again.
 
-        return True
+                # Everything worked, we made it!
+                if loaded_item.cue > 0:
+                    self.seek(loaded_item.cue)
+                else:
+                    self.seek(0)
+
+                if self.state.get()["play_on_load"]:
+                    self.unpause()
+
+                return True
+
+            self.logger.log.error("Failed to load track after numerous retries.")
+            return False
+
+        return False
 
     def unload(self):
         if not self.isPlaying:
