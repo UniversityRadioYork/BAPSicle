@@ -216,7 +216,7 @@ class BAPSicleServer:
                 By default, this server is accepting connections on port 13500
                 The version of the server service is {}
                 Please refer to the documentation included with this application for further assistance.""".format(
-                        config.VERSION
+                        package.VERSION
                     ),
                     "dev/welcome.mp3",
                 )

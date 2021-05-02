@@ -38,7 +38,6 @@ jobs:
       timeout-minutes: 10
       run: |
         python -m sounddevice
-        cp config.py.example config.py # We don't need an API config file for these tests.
         python -m unittest
     - name: Archive test logs
       if: ${{ always() }}
