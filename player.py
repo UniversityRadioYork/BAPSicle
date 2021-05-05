@@ -359,7 +359,7 @@ class Player:
                 # So we'll want to update the weight.
 
                 # We're removing the loaded item from the channel.
-                if loaded_item.weight == weight:
+                #if loaded_item.weight == weight:
                     loaded_item.weight = -1
 
 
