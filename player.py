@@ -338,11 +338,13 @@ class Player:
 
     def remove_from_plan(self, weight: int) -> bool:
         plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
-        found = False
+        found: Optional[PlanItem ] = None
+
         for i in plan_copy:
             if i.weight == weight:
+                found = i
                 plan_copy.remove(i)
-                found = True
+
         if found:
             plan_copy = self._fix_weights(plan_copy)
             self.state.update("show_plan", plan_copy)
@@ -350,18 +352,28 @@ class Player:
             # If we removed the loaded item from this channel, update it's weight
             # So we know how/not to autoadvance.
             loaded_item = self.state.get()["loaded_item"]
-            if loaded_item:
-                # We're removing the loaded item form the channel.
+            if loaded_item == found:
+                # Loaded_item is actually the same PlanItem instance as in the show_plan.
+                # So if it's still in the show plan, we'll have corrected it's weight already.
+                # If it was removed above, fix_weights won't have done anything
+                # So we'll want to update the weight.
+
+                # We're removing the loaded item from the channel.
                 if loaded_item.weight == weight:
                     loaded_item.weight = -1
-                # We removed an item above it. Shift it up.
-                elif loaded_item.weight > weight:
-                    loaded_item.weight -= 1
-                # Else, new weight stays the same.
-                else:
-                    return True
 
-                self.state.update("loaded_item", loaded_item)
+
+
+                # If loaded_item wasn't the same instance, we'd want to do the below.
+
+                # We removed an item above it. Shift it up.
+                #elif loaded_item.weight > weight:
+                #    loaded_item.weight -= 1
+                # Else, new weight stays the same.
+                #else:
+                #    return True
+
+                    self.state.update("loaded_item", loaded_item)
             return True
         return False
 
@@ -791,11 +803,29 @@ class Player:
         def _sort_weight(e: PlanItem):
             return e.weight
 
+        before = []
+        for item in plan:
+            before += (item.weight, item.name)
+
+        self.logger.log.debug("Weights before fixing:\n{}".format(before))
+
+
         plan.sort(key=_sort_weight)  # Sort into weighted order.
+
+        sorted = []
+        for item in plan:
+            sorted += (item.weight, item.name)
+
+        self.logger.log.debug("Weights after sorting:\n{}".format(sorted))
 
         for i in range(len(plan)):
             plan[i].weight = i  # Recorrect the weights on the channel.
 
+        fixed = []
+        for item in plan:
+            fixed += (item.weight, item.name)
+
+        self.logger.log.debug("Weights after sorting:\n{}".format(fixed))
         return plan
 
     def __init__(
@@ -809,7 +839,7 @@ class Player:
         self.running = True
         self.out_q = out_q
 
-        self.logger = LoggingManager("Player" + str(channel))
+        self.logger = LoggingManager("Player" + str(channel), True)
 
         self.api = MyRadioAPI(self.logger, server_state)
 
