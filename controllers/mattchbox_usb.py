@@ -1,4 +1,5 @@
 
+import json
 from helpers.the_terminator import Terminator
 from typing import List, Optional
 from multiprocessing import Queue, current_process
@@ -70,12 +71,33 @@ class MattchBox(Controller):
                     "Could not open serial port {}: {}".format(port, e)
                 )
                 self.ser = None
+            for queue in self.server_from_q:
+                queue.empty()
         else:
             self.ser = None
 
     def handler(self):
         terminator = Terminator()
         while not terminator.terminate:
+            for channel in range(len(self.server_from_q)):
+                queue = self.server_from_q[channel]
+                while True:
+                    try:
+                        message = queue.get_nowait()
+                        data = message.split(":",3)
+                        source = data[0]
+                        command = data[1]
+                        if command == "STATUS":
+                            status = data[2] # OKAY or FAIL
+
+                            if status == "OKAY":
+                                status_json = json.loads(data[3])
+                                print(status_json)
+                                loaded_item = status_json["loaded_item"]
+                                self.sendToController(channel, "TITLE", loaded_item["title"])
+
+                    except Exception:
+                        break
             if (
                 self.ser and self.ser.is_open and self.port
             ):  # If self.port is changing (via state_handler), we should stop.
@@ -123,3 +145,11 @@ class MattchBox(Controller):
     def sendToPlayer(self, channel: int, msg: str):
         self.logger.log.info("Sending message to server: " + msg)
         self.server_to_q[channel].put("CONTROLLER:" + msg)
+
+    def sendToController(self, channel: int, command: str, data: str):
+        output = "\n{}:{}:{}".format(command, channel, data)
+        out_bytes = output.encode("utf-8")
+        print(out_bytes)
+        if self.ser and self.ser.is_open:
+            self.ser.write(out_bytes)
+            print("Sent")
