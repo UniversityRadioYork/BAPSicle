@@ -1,5 +1,5 @@
 from helpers.state_manager import StateManager
-from helpers.os_environment import resolve_external_file_path
+from helpers.os_environment import isWindows, resolve_external_file_path
 from typing import List
 from setproctitle import setproctitle
 from multiprocessing import current_process, Queue
@@ -43,6 +43,10 @@ class FileManager:
                 for channel in range(channel_count):
                     try:
                         message = channel_from_q[channel].get_nowait()
+                    except Exception:
+                      continue
+
+                    try:
                         #source = message.split(":")[0]
                         command = message.split(":",2)[1]
 
@@ -66,7 +70,10 @@ class FileManager:
 
                           files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
                           for file in files:
-                            filepath = path+"/"+file
+                            if isWindows():
+                              filepath = path+"\\"+file
+                            else:
+                              filepath = path+"/"+file
                             self.logger.log.info("Removing file {} on new show load.".format(filepath))
                             os.remove(filepath)
                           channel_received[channel] = True
@@ -90,7 +97,7 @@ class FileManager:
                             last_known_show_plan[channel] = show_plan
 
                     except Exception:
-                        pass
+                        self.logger.log.exception("Failed to handle message {} on channel {}.".format(message, channel))
 
 
                 # Right, let's have a quick check in the status for shows without filenames, to preload them.
