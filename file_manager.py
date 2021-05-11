@@ -75,7 +75,11 @@ class FileManager:
                             else:
                               filepath = path+"/"+file
                             self.logger.log.info("Removing file {} on new show load.".format(filepath))
-                            os.remove(filepath)
+                            try:
+                              os.remove(filepath)
+                            except Exception:
+                              self.logger.log.warning("Failed to remove, skipping. Likely file is still in use.")
+                              continue
                           channel_received[channel] = True
 
                         # If we receive a new status message, let's check for files which have not been pre-loaded.
