@@ -1,6 +1,6 @@
 import json
 import os
-from logging import CRITICAL, INFO
+from logging import CRITICAL, DEBUG, INFO
 import time
 from datetime import datetime
 from copy import copy
@@ -114,6 +114,7 @@ class StateManager:
 
         now = datetime.now()
 
+
         current_time = now.strftime("%H:%M:%S")
         state_to_json["last_updated"] = current_time
 
@@ -149,17 +150,42 @@ class StateManager:
 
         state_to_update = self.state
 
-        # Lists (esp show_plan) is difficult to compare. Just update anyway
-        if key in state_to_update and index == -1 and (not isinstance(value, list)) and state_to_update[key] == value:
-            # We're trying to update the state with the same value.
-            # In this case, ignore the update
-            return
+        if key in state_to_update and index == -1 and state_to_update[key] == value:
+            allow = False
+
+            # It's hard to compare lists, especially of complex objects like show plans, just write it.
+            if (isinstance(value, list)):
+                allow = True
+
+            # If the two objects have dict representations, and they don't match, allow writing.
+            # TODO: This should be easier.
+            if (getattr(value, "__dict__", None) and getattr(state_to_update[key], "__dict__", None)):
+                if value.__dict__ != state_to_update[key].__dict__:
+                    allow = True
+
+
+
+
+
+            if not allow:
+
+                # Just some debug logging.
+                if update_file and (key not in ["playing", "loaded", "initialised"]):
+                    self._log("Key: {},\nnew:{}\nold:{}, ".format(key, getattr(value, "__dict__", None), getattr(state_to_update[key], "__dict__", None)), DEBUG)
+                    self._log("Not updating state for key {} with value {} of type {}.".format(key, value, type(value)), DEBUG)
+
+                # We're trying to update the state with the same value.
+                # In this case, ignore the update
+                # This happens to reduce spam on file writes / callbacks fired when update_file is true.
+                return
 
         if index > -1 and key in state_to_update:
             if not isinstance(state_to_update[key], list):
+                self._log("Not updating state for key {} with value {} of type {} since index is set and key is not a list.".format(key, value, type(value)), DEBUG)
                 return
             list_items = state_to_update[key]
             if index >= len(list_items):
+                self._log("Not updating state for key {} with value {} of type {} because index {} is too large..".format(key, value, type(value), index), DEBUG)
                 return
             list_items[index] = value
             state_to_update[key] = list_items
@@ -169,6 +195,7 @@ class StateManager:
         self.state = state_to_update
 
         if update_file:
+            self._log("Writing change to key {} with value {} of type {} to disk.".format(key, value, type(value)), DEBUG)
             # Either a routine write, or state has changed.
             # Update the file
             self.write_to_file(state_to_update)
