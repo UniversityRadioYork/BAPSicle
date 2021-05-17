@@ -340,6 +340,12 @@ class Player:
         plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
         found: Optional[PlanItem ] = None
 
+        before = []
+        for item in plan_copy:
+            before += (item.weight, item.name)
+
+        self.logger.log.debug("Weights before removing weight{}:\n{}".format(weight, before))
+
         for i in plan_copy:
             if i.weight == weight:
                 found = i
