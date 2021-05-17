@@ -141,11 +141,18 @@ def ui_logs_list(request):
 
 @app.route("/logs/<path:path>")
 def ui_logs_render(request, path):
+    page = request.args.get("page")
+    if not page:
+        return redirect(f"/logs/{path}?page=1")
+    page = int(page)
+    assert page >= 1
+
     log_file = open("logs/{}.log".format(path))
     data = {
-        "logs": log_file.read().splitlines(),
+        "logs": log_file.read().splitlines()[-300*page:(-300*(page-1) if page > 1 else None)][::-1],
         "ui_page": "logs",
         "ui_title": "Logs - {}".format(path),
+        "page": page
     }
     log_file.close()
     return render_template("log.html", data=data)
@@ -306,7 +313,8 @@ async def audio_file(request, type: str, id: int):
 # Static Files
 app.static("/favicon.ico", resolve_local_file_path("ui-static/favicon.ico"), name="ui-favicon")
 app.static("/static", resolve_local_file_path("ui-static"), name="ui-static")
-app.static("/presenter/", resolve_local_file_path("presenter-build/index.html"), strict_slashes=True, name="presenter-index")
+app.static("/presenter/", resolve_local_file_path("presenter-build/index.html"),
+           strict_slashes=True, name="presenter-index")
 app.static("/presenter/", resolve_local_file_path("presenter-build"))
 
 

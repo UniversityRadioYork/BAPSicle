@@ -1,11 +1,34 @@
 {% extends 'base.html' %}
 {% block content_inner %}
   {% if data %}
-      {% for log in data.logs %}
-        <code>
-          {{log}}
-        </code>
-        <br>
-      {% endfor %}
+    <div>
+    {% if data.page != 1 %}
+      <a href="?page={{data.page-1}}" class="float-left">
+        <<< Previous Page
+      </a>
+    {% endif %}
+    <a href="?page={{data.page+1}}" class="float-right">
+      Next Page >>>
+    </a>
+    </div>
+    <br>
+    {% for log in data.logs %}
+      <code>
+        {{log}}
+      </code>
+      <br>
+    {% endfor %}
+    <br>
+    <div>
+      {% if data.page != 1 %}
+        <a href="?page={{data.page-1}}" class="float-left">
+          <<< Previous Page
+        </a>
+      {% endif %}
+      <a href="?page={{data.page+1}}" class="float-right">
+        Next Page >>>
+      </a>
+    </div>
+    <br>
   {% endif %}
 {% endblock %}
