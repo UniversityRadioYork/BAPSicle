@@ -163,10 +163,6 @@ class StateManager:
                 if value.__dict__ != state_to_update[key].__dict__:
                     allow = True
 
-
-
-
-
             if not allow:
 
                 # Just some debug logging.
