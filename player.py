@@ -310,29 +310,34 @@ class Player:
 
         plan_copy += [new_item_obj]  # Add the new item.
 
-        plan_copy = self._fix_weights(plan_copy)
-
-        self.state.update("show_plan", plan_copy)
-
+        self._fix_and_update_weights(plan_copy)
 
 
         loaded_item = self.state.get()["loaded_item"]
         if loaded_item:
 
-            # If we added the loaded item back into this channel, update it's weight
-            # So we know how/not to autoadvance.
+            # Right. So this may be confusing.
+            # So... If the user has just moved the loaded item in the channel (by removing above and readding)
+            # Then we want to re-associate the loaded_item object reference with the new one.
+            # The loaded item object before this change is now an ophan, which was kept around while the loaded item was potentially moved to another channel.
             if loaded_item.timeslotitemid == new_item_obj.timeslotitemid:
-                loaded_item.weight = new_item_obj.weight
+                self.state.update("loaded_item", new_item_obj)
+
+            # NOPE NOPE NOPE
+            # THIS IS AN EXAMPLE OF WHAT NOT TO DO!
+            # ONCE AGAIN, THE LOADED ITEM IS THE SAME OBJECT INSTANCE AS THE ONE IN THE SHOW PLAN (AS LONG AS IT HASN'T BEEN RE/MOVED)
+
+            ##    loaded_item.weight = new_item_obj.weight
 
             # Bump the loaded_item's weight if we just added a new item above it.
-            elif loaded_item.weight >= new_item_obj.weight:
-                loaded_item.weight += 1
+            ##elif loaded_item.weight >= new_item_obj.weight:
+            ##    loaded_item.weight += 1
 
             # Else, new weight stays the same.
-            else:
-                return True
+            ##else:
+            ##    return True
 
-            self.state.update("loaded_item", loaded_item)
+            ##self.state.update("loaded_item", loaded_item)
 
         return True
 
@@ -344,7 +349,7 @@ class Player:
         for item in plan_copy:
             before += (item.weight, item.name)
 
-        self.logger.log.debug("Weights before removing weight{}:\n{}".format(weight, before))
+        self.logger.log.debug("Weights before removing weight {}:\n{}".format(weight, before))
 
         for i in plan_copy:
             if i.weight == weight:
@@ -352,8 +357,7 @@ class Player:
                 plan_copy.remove(i)
 
         if found:
-            plan_copy = self._fix_weights(plan_copy)
-            self.state.update("show_plan", plan_copy)
+            self._fix_and_update_weights(plan_copy)
 
             # If we removed the loaded item from this channel, update it's weight
             # So we know how/not to autoadvance.
@@ -805,7 +809,7 @@ class Player:
         self._retMsg(str(self.status), okay_str=True,
                      custom_prefix="ALL:STATUS:")
 
-    def _fix_weights(self, plan):
+    def _fix_and_update_weights(self, plan):
         def _sort_weight(e: PlanItem):
             return e.weight
 
@@ -832,7 +836,7 @@ class Player:
             fixed += (item.weight, item.name)
 
         self.logger.log.debug("Weights after sorting:\n{}".format(fixed))
-        return plan
+        self.state.update("show_plan", plan)
 
     def __init__(
         self, channel: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue, server_state: StateManager
@@ -863,8 +867,7 @@ class Player:
 
         # Just in case there's any weights somehow messed up, let's fix them.
         plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
-        plan_copy = self._fix_weights(plan_copy)
-        self.state.update("show_plan", plan_copy)
+        self._fix_and_update_weights(plan_copy)
 
         loaded_state = copy.copy(self.state.state)
 
