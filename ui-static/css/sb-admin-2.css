@@ -10910,7 +10910,8 @@ form.user .btn-user {
   box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.5);
 }
 
-.error {
+
+.error-big {
   color: #5a5c69;
   font-size: 7rem;
   position: relative;
@@ -11221,3 +11222,13 @@ footer.sticky-footer .copyright {
 body.sidebar-toggled footer.sticky-footer {
   width: 100%;
 }
+
+pre.language-log {
+  padding: 5px;
+}
+pre .language-log {
+  font-size: 12px;
+  display: block;
+  line-height: 11px;
+}
+

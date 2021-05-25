@@ -18,7 +18,7 @@ from time import sleep
 import json
 import os
 
-from helpers.os_environment import isBundelled, resolve_local_file_path
+from helpers.os_environment import isBundelled, resolve_external_file_path, resolve_local_file_path
 from helpers.logging_manager import LoggingManager
 from helpers.device_manager import DeviceManager
 from helpers.state_manager import StateManager
@@ -130,11 +130,17 @@ def ui_config_server_update(request):
 
 @app.route("/logs")
 def ui_logs_list(request):
+    files = os.listdir(resolve_external_file_path("/logs"))
+    log_files = []
+    for file in files:
+        if file.endswith(".log"):
+            log_files.append(file.rstrip(".log"))
+
+    log_files.sort()
     data = {
         "ui_page": "logs",
         "ui_title": "Logs",
-        "logs": ["BAPSicleServer"]
-        + ["Player{}".format(x) for x in range(server_state.get()["num_channels"])],
+        "logs": log_files
     }
     return render_template("loglist.html", data=data)
 
@@ -147,7 +153,7 @@ def ui_logs_render(request, path):
     page = int(page)
     assert page >= 1
 
-    log_file = open("logs/{}.log".format(path))
+    log_file = open(resolve_external_file_path("/logs/{}.log").format(path))
     data = {
         "logs": log_file.read().splitlines()[-300*page:(-300*(page-1) if page > 1 else None)][::-1],
         "ui_page": "logs",

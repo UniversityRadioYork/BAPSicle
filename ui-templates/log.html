@@ -1,4 +1,7 @@
 {% extends 'base.html' %}
+{% block head %}
+  <link href="/static/vendor/prism/prism.css" rel="stylesheet">
+{% endblock %}
 {% block content_inner %}
   {% if data %}
     <div>
@@ -12,12 +15,13 @@
     </a>
     </div>
     <br>
-    {% for log in data.logs %}
-      <code>
-        {{log}}
+    <pre>
+      <code class="language-log">
+{%- for log in data.logs %}
+{{log}}
+{% endfor -%}
       </code>
-      <br>
-    {% endfor %}
+    </pre>
     <br>
     <div>
       {% if data.page != 1 %}
@@ -31,4 +35,6 @@
     </div>
     <br>
   {% endif %}
+  <script src="/static/vendor/prism/prism.js"></script>
+
 {% endblock %}
