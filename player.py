@@ -40,6 +40,7 @@ from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
 from baps_types.plan import PlanItem
 from baps_types.marker import Marker
+import package
 
 # TODO ENUM
 VALID_MESSAGE_SOURCES = ["WEBSOCKET", "UI", "CONTROLLER", "TEST", "ALL"]
@@ -849,7 +850,7 @@ class Player:
         self.running = True
         self.out_q = out_q
 
-        self.logger = LoggingManager("Player" + str(channel), True)
+        self.logger = LoggingManager("Player" + str(channel), debug=package.build_beta)
 
         self.api = MyRadioAPI(self.logger, server_state)
 
