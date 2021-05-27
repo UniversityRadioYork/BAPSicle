@@ -47,7 +47,7 @@ On MacOS:
 
 ### Running
 
-To just run the server standaline without installing, run `python ./launch.py`.
+To just run the server standalone without installing, run `python ./launch.py`.
 
 ## Building
 
