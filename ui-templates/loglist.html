@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content_inner %}
+  {% if data %}
+      {% for log in data.logs %}
+        <a href="/logs/{{log}}">{{log}}</a>
+        <br>
+      {% endfor %}
+  {% endif %}
+{% endblock %}

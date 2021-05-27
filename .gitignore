@@ -1,24 +1,27 @@
 
-
+.vscode/settings.json
 
 __pycache__/
-
-state/
-
 *.egg-info/
+*.pyo
+venv/
 
 build/build-exe-config.json
-
-install/*.exe
-
-*.pyo
-
+build/build-exe-pyinstaller-command.bat
+build/build-exe-pyinstaller-command.sh
+build/BAPSicle.platypus
+build/build/BAPSicle/
+build/output/
 *.spec
 
-build/build-exe-pyinstaller-command.bat
+install/*.exe
+install/nssm
 
-build/build/BAPSicle/
+build.py
 
-build/output/
+dev/welcome.mp3
 
-build/build-exe-pyinstaller-command.sh
+music-tmp/
+
+
+presenter-build

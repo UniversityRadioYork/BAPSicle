@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+
+  <div class="card-body p-0">
+    <!-- Nested Row within Card Body -->
+    <div class="row">
+      <div class="col-lg-6 d-none d-lg-block bg-index-image"></div>
+      <div class="col-lg-6">
+        <div class="p-5">
+          <div class="text-center">
+            <h2 class="h1 text-gray-900 mb-4"><small>Welcome to</small><br>BAPSicle!</h2>
+            <p class="h4">The next gen Broadcast and Presenting Suite server!</p>
+          </div>
+          <hr>
+          <p>Wanted the actual playout controller?</p>
+          <a href="/presenter/" class="btn btn-primary btn-user btn-block">
+            Open BAPS Presenter
+          </a>
+          <hr>
+          <p>Version: {{data.server_version}} - Build: {{data.server_build}} - Branch: {{data.server_branch}}</p>
+          <p>Server Name: {{data.server_name}}</p>
+          <hr>
+          <small>
+            <a href="https://www.vecteezy.com/free-vector/island">Island Vectors by Vecteezy</a>, <a href="https://www.flaticon.com/free-icon/recording_3172492">Recording Vector from Flaticon</a>
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

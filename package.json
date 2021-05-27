@@ -1,0 +1,27 @@
+{
+  "name": "bapsicle",
+  "nice_name": "BAPSicle",
+  "version": "3.0.0",
+  "description": "BAPS3, the third generation of University Radio York's Broadcast and Presenting Suite. This package includes the Server (BAPSicle) and Presenter (WebStudio)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "presenter-install": "cd presenter && git submodule update --init && yarn --network-timeout 100000",
+    "presenter-make": "npm run presenter-install && (rm -r presenter-build || true) && cd presenter && yarn build && cp -r build ../presenter-build && cd ../ && npm install",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "presenter-start": "cd presenter && yarn start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/universityradioyork/bapsicle.git"
+  },
+  "author": "University Radio York",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/universityradioyork/bapsicle/issues"
+  },
+  "homepage": "https://github.com/universityradioyork/bapsicle#readme"
+}

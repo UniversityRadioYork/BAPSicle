@@ -1,14 +1,15 @@
-name: Python package
-
+name: Package
 on: [push]
 
 jobs:
-  build:
+  build-macos:
 
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
+    timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [3.7, 3.8]
+        python-version: [3.9]
 
     steps:
     - uses: actions/checkout@v2
@@ -16,20 +17,67 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+    - name: Build .app
       run: |
-        python -m pip install --upgrade pip
-        pip install flake8
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Install bapsicle as module
+        npm run presenter-make
+        build/build-macos.sh
+        zip -r build/output/BAPSicle.zip build/output/BAPSicle.app
+    - name: Archive Build
+      uses: actions/upload-artifact@v2
+      with:
+        name: Package - MacOS
+        path: |
+          build/output/BAPSicle.zip
+
+  build-ubuntu:
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.9]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Build executable
       run: |
-        pip install -e .
-    - name: Lint with flake8
+        npm run presenter-make
+        build/build-linux.sh
+    - name: Archive Build
+      uses: actions/upload-artifact@v2
+      with:
+        name: Package - Ubuntu
+        path: |
+          build/output/BAPSicle
+
+  build-windows:
+
+    runs-on: windows-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.9]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Build .exe
       run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with unittest
-      run: |
-        python -m unittest
+        npm run presenter-make
+        build/build-windows.bat no-venv
+    - name: Archive Build
+      uses: actions/upload-artifact@v2
+      with:
+        name: Package - Windows
+        path: |
+          build/output/BAPSicle.exe
+          install/

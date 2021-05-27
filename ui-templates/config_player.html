@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block content_inner %}
+<h3 class="h5">Audio Outputs</h3>
+<p>
+  <strong>Please note:</strong> Currently BAPSicle does not support choosing which Host API is used. Only supported options can be selected.
+  <br>
+  <strong>On MacOS:</strong> The available inputs will not update automatically, the server must be restarted.
+</p>
+<h4 class="h5">Currently Selected</h4>
+<p>
+{% for channel in data.channels %}
+  <strong>Channel {{channel.channel}}:</strong> {% if channel.output %}{{channel.output}}{% else %}Default Audio Device{% endif %}<br>
+{% endfor %}
+</p>
+{% for host_api in data.outputs %}
+  {{host_api.name}}
+  <br>
+  <code>
+  {% for output in host_api.output_devices %}
+  {% if host_api.usable %}
+  Set for:
+    {% for channel in data.channels %}
+      {% if channel.output == output.name %}
+      <strong>Channel {{channel.channel}}</strong>
+      {% else %}
+      <a href="/player/{{channel.channel}}/output/{{output.name}}">Channel {{channel.channel}}</a>
+      {% endif %}
+    {% endfor %}
+    -
+  {% endif %}{% if output.name %}{{output.name}}{% else %}System Default Output{% endif %}<br>
+  {% endfor %}
+  </code>
+{% endfor %}
+{% endblock %}

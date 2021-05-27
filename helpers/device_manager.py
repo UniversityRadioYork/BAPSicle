@@ -1,26 +1,80 @@
+from typing import Any, Dict, List, Optional, Tuple
 import sounddevice as sd
-import importlib
-from helpers.os_environment import isMacOS
+from helpers.os_environment import isLinux, isMacOS, isWindows
+import glob
+if isWindows():
+    from serial.tools.list_ports_windows import comports
+
+# TODO: https://wiki.libsdl.org/FAQUsingSDL maybe try setting some of these env variables for choosing different host APIs?
+WINDOWS_APIS = ["Windows DirectSound"]
 
 
-class DeviceManager():
-
+class DeviceManager:
     @classmethod
-    def _isOutput(self, device):
+    def _isOutput(cls, device: Dict[str, Any]) -> bool:
         return device["max_output_channels"] > 0
 
     @classmethod
-    def _getDevices(self):
+    def _isHostAPI(cls, host_api) -> bool:
+        return host_api
+
+    @classmethod
+    def _getAudioDevices(cls) -> sd.DeviceList:
         # To update the list of devices
         # Sadly this doesn't work on MacOS.
         if not isMacOS():
             sd._terminate()
             sd._initialize()
-        devices = sd.query_devices()
+        devices: sd.DeviceList = sd.query_devices()
         return devices
 
     @classmethod
-    def getOutputs(self):
-        outputs = filter(self._isOutput, self._getDevices())
+    def getAudioOutputs(cls) -> Tuple[List[Dict]]:
+        host_apis = sd.query_hostapis()
+        devices: sd.DeviceList = cls._getAudioDevices()
 
-        return outputs
+        for host_api_id in range(len(host_apis)):
+            if isWindows() and host_apis[host_api_id]["name"] not in WINDOWS_APIS:
+                host_apis[host_api_id]["usable"] = False
+            else:
+                host_apis[host_api_id]["usable"] = True
+
+            host_api_devices = (device for device in devices if device["hostapi"] == host_api_id)
+
+            outputs: List[Dict] = list(filter(cls._isOutput, host_api_devices))
+            outputs = sorted(outputs, key=lambda k: k["name"])
+
+            host_apis[host_api_id]["output_devices"] = outputs
+
+        return host_apis
+
+    @classmethod
+    def getSerialPorts(cls) -> List[Optional[str]]:
+        """Lists serial port names
+
+        :raises EnvironmentError:
+            On unsupported or unknown platforms
+        :returns:
+            A list of the serial ports available on the system
+        """
+        if isWindows():
+            ports = [port.device for port in comports()]
+        elif isLinux():
+            # this excludes your current terminal "/dev/tty"
+            ports = glob.glob("/dev/tty[A-Za-z]*")
+        elif isMacOS():
+            ports = glob.glob("/dev/tty.*")
+        else:
+            raise EnvironmentError("Unsupported platform")
+
+        valid: List[str] = ports
+
+        result: List[Optional[str]] = []
+
+        if len(valid) > 0:
+            valid.sort()
+
+        result.append(None)  # Add the None option
+        result.extend(valid)
+
+        return result

@@ -2,17 +2,17 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Launch Player Standalone",
+            "name": "Python: Launch Server",
             "type": "python",
             "request": "launch",
-            "program": "./player.py",
+            "program": "./launch.py",
             "console": "integratedTerminal"
         },
         {
-            "name": "Python: Launch Server Standalone",
+            "name": "Python: Launch Tests: Player",
             "type": "python",
             "request": "launch",
-            "program": "./launch_standalone.py",
+            "module": "tests.test_player",
             "console": "integratedTerminal"
         }
     ]

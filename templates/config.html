@@ -1,8 +1,0 @@
-{% extends 'base.html' %}
-{% block content_inner %}
-<code>
-  {% for output in data.outputs %}
-    <a href="/player/0/output/{{output.name}}">Set Channel 0</a> <a href="/player/1/output/{{output.name}}">Set Channel 1</a> <a href="/player/2/output/{{output.name}}">Set Channel 2</a> - {{output.name}}<br>
-  {% endfor %}
-</code>
-{% endblock %}

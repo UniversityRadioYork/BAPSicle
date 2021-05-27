@@ -7,7 +7,7 @@
   },
   {
    "optionDest": "filenames",
-   "value": "/launch_standalone.py"
+   "value": "/launch.py"
   },
   {
    "optionDest": "onefile",
@@ -67,11 +67,19 @@
   },
   {
    "optionDest": "datas",
-   "value": "/templates;templates/"
+   "value": "/ui-templates;ui-templates/"
   },
   {
    "optionDest": "datas",
    "value": "/ui-static;ui-static/"
+  },
+  {
+   "optionDest": "datas",
+   "value": "/presenter-build;presenter-build/"
+  },
+  {
+    "optionDest": "datas",
+    "value": "/package.json;./"
   }
  ],
  "nonPyinstallerOptions": {

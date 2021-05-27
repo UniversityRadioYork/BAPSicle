@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block head %}
+  <link href="/static/vendor/prism/prism.css" rel="stylesheet">
+{% endblock %}
+{% block content_inner %}
+  {% if data %}
+    <div>
+    {% if data.page != 1 %}
+      <a href="?page={{data.page-1}}" class="float-left">
+        <<< Previous Page
+      </a>
+    {% endif %}
+    <a href="?page={{data.page+1}}" class="float-right">
+      Next Page >>>
+    </a>
+    </div>
+    <br>
+    <pre>
+      <code class="language-log">
+{%- for log in data.logs %}
+{{log}}
+{% endfor -%}
+      </code>
+    </pre>
+    <br>
+    <div>
+      {% if data.page != 1 %}
+        <a href="?page={{data.page-1}}" class="float-left">
+          <<< Previous Page
+        </a>
+      {% endif %}
+      <a href="?page={{data.page+1}}" class="float-right">
+        Next Page >>>
+      </a>
+    </div>
+    <br>
+  {% endif %}
+  <script src="/static/vendor/prism/prism.js"></script>
+
+{% endblock %}
