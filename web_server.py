@@ -100,7 +100,7 @@ def ui_config_server(request):
         "ui_title": "Server Config",
         "state": server_state.get(),
         "ser_ports": DeviceManager.getSerialPorts(),
-        "tracklist_modes": ["off", "on", "delayed"]
+        "tracklist_modes": ["off", "on", "delayed", "fader-live"]
     }
     return render_template("config_server.html", data=data)
 

@@ -81,6 +81,7 @@ class Player:
         "play_on_load": False,
         "output": None,
         "show_plan": [],
+        "live": True,
         "tracklist_mode": "off",
         "tracklist_id": None,
     }
@@ -597,6 +598,16 @@ class Player:
             return False
         return True
 
+    # Tells the player that the fader is live on-air, so it can tell tracklisting from PFL
+    def set_live(self, live: bool):
+        live = bool(live)
+        self.state.update("live", live)
+
+        # If we're going to live (potentially from not live/PFL), potentially tracklist if it's playing.
+        if (live):
+            self._potentially_tracklist()
+        return True
+
 
     # Helper functions
 
@@ -605,7 +616,7 @@ class Player:
         mode = self.state.get()["tracklist_mode"]
 
         time: int = -1
-        if mode == "on":
+        if mode in ["on","fader-live"]:
             time = 1  # Let's do it pretty quickly.
         elif mode == "delayed":
             # Let's do it in a bit, once we're sure it's been playing. (Useful if we've got no idea if it's live or cueing.)
@@ -652,20 +663,28 @@ class Player:
             self.logger.log.warning("Failed to potentially end tracklist, no tracklist started.")
 
     def _tracklist_start(self):
-        loaded_item = self.state.get()["loaded_item"]
+        state = self.state.get()
+        loaded_item = state["loaded_item"]
         if not loaded_item:
             self.logger.log.error("Tried to call _tracklist_start() with no loaded item!")
             return
 
-        tracklist_id = self.state.get()["tracklist_id"]
+        if not self.isPlaying:
+            self.logger.log.info("Not tracklisting since not playing.")
+            return
+
+        tracklist_id = state["tracklist_id"]
         if (not tracklist_id):
-            self.logger.log.info("Tracklisting item: {}".format(loaded_item.name))
-            tracklist_id = self.api.post_tracklist_start(loaded_item)
-            if not tracklist_id:
-                self.logger.log.warning("Failed to tracklist {}".format(loaded_item.name))
+            if (state["tracklist_mode"] == "fader-live" and not state["live"]):
+                self.logger.log.info("Not tracklisting since fader is not live.")
             else:
-                self.logger.log.info("Tracklist id: {}".format(tracklist_id))
-                self.state.update("tracklist_id", tracklist_id)
+                self.logger.log.info("Tracklisting item: {}".format(loaded_item.name))
+                tracklist_id = self.api.post_tracklist_start(loaded_item)
+                if not tracklist_id:
+                    self.logger.log.warning("Failed to tracklist {}".format(loaded_item.name))
+                else:
+                    self.logger.log.info("Tracklist id: {}".format(tracklist_id))
+                    self.state.update("tracklist_id", tracklist_id)
         else:
             self.logger.log.info("Not tracklisting item {}, already got tracklistid: {}".format(
                 loaded_item.name, tracklist_id))
@@ -865,6 +884,7 @@ class Player:
 
         self.state.update("channel", channel)
         self.state.update("tracklist_mode", server_state.get()["tracklist_mode"])
+        self.state.update("live", True) # Channel is live until controller says it isn't.
 
         # Just in case there's any weights somehow messed up, let's fix them.
         plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
@@ -986,7 +1006,8 @@ class Player:
                             ),
                             "CLEAR": lambda: self._retMsg(self.clear_channel_plan()),
                             "SETMARKER": lambda: self._retMsg(self.set_marker(self.last_msg.split(":")[1], self.last_msg.split(":", 2)[2])),
-                            "RESETPLAYED": lambda: self._retMsg(self.reset_played(int(self.last_msg.split(":")[1])))
+                            "RESETPLAYED": lambda: self._retMsg(self.reset_played(int(self.last_msg.split(":")[1]))),
+                            "SETLIVE": lambda: self._retMsg(self.set_live(self.last_msg.split(":")[1])),
                         }
 
                         message_type: str = self.last_msg.split(":")[0]
