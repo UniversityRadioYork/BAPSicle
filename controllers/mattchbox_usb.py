@@ -58,6 +58,10 @@ class MattchBox(Controller):
             self.next_port = new_port
 
     def connect(self, port: Optional[str]):
+        # If we loose the controller, make sure to set channels live, so we tracklist.
+        for i in range(len(self.server_from_q)):
+            self.sendToPlayer(i, "SETLIVE:True")
+
         if port:
             # connect to serial port
             self.ser = serial.serial_for_url(port, do_not_open=True)
@@ -85,7 +89,13 @@ class MattchBox(Controller):
                     )  # Endianness doesn't matter for 1 byte.
                     self.logger.log.info("Received from controller: " + str(line))
                     if line == 255:
-                        self.ser.write(b"\xff")  # Send 255 back.
+                        self.ser.write(b"\xff")  # Send 255 back
+                    elif line in [51,52,53]:
+                        # We've received a status update about fader live status, fader is down.
+                        self.sendToPlayer(line-51, "SETLIVE:False")
+                    elif line in [61,62,63]:
+                        # We've received a status update about fader live status, fader is up.
+                        self.sendToPlayer(line-61, "SETLIVE:True")
                     elif line in [1, 3, 5]:
                         self.sendToPlayer(int(line / 2), "PLAYPAUSE")
                     elif line in [2, 4, 6]:
@@ -121,5 +131,5 @@ class MattchBox(Controller):
         self.connect(None)
 
     def sendToPlayer(self, channel: int, msg: str):
-        self.logger.log.info("Sending message to server: " + msg)
+        self.logger.log.info("Sending message to player channel {}: {}".format(channel, msg))
         self.server_to_q[channel].put("CONTROLLER:" + msg)

@@ -600,7 +600,7 @@ class Player:
 
     # Tells the player that the fader is live on-air, so it can tell tracklisting from PFL
     def set_live(self, live: bool):
-        live = bool(live)
+
         self.state.update("live", live)
 
         # If we're going to live (potentially from not live/PFL), potentially tracklist if it's playing.
@@ -1007,7 +1007,7 @@ class Player:
                             "CLEAR": lambda: self._retMsg(self.clear_channel_plan()),
                             "SETMARKER": lambda: self._retMsg(self.set_marker(self.last_msg.split(":")[1], self.last_msg.split(":", 2)[2])),
                             "RESETPLAYED": lambda: self._retMsg(self.reset_played(int(self.last_msg.split(":")[1]))),
-                            "SETLIVE": lambda: self._retMsg(self.set_live(self.last_msg.split(":")[1])),
+                            "SETLIVE": lambda: self._retMsg(self.set_live(self.last_msg.split(":")[1] == "True")),
                         }
 
                         message_type: str = self.last_msg.split(":")[0]
