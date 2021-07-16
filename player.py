@@ -34,6 +34,7 @@ from pygame import mixer
 from mutagen.mp3 import MP3
 from syncer import sync
 from threading import Timer
+from pydub import AudioSegment, effects # Audio leveling!
 
 from helpers.myradio_api import MyRadioAPI
 from helpers.state_manager import StateManager
@@ -436,12 +437,30 @@ class Player:
                 # TODO: Update the show plan filenames???
 
             load_attempt = 0
+
+            if not isinstance(loaded_item.filename, str):
+                return False
+
             while load_attempt < 5:
                 load_attempt += 1
                 try:
                     self.logger.log.info("Loading file: " +
                                         str(loaded_item.filename))
-                    mixer.music.load(loaded_item.filename)
+
+
+
+
+
+                    def match_target_amplitude(sound, target_dBFS):
+                        change_in_dBFS = target_dBFS - sound.dBFS
+                        return sound.apply_gain(change_in_dBFS)
+
+                    sound = AudioSegment.from_file(loaded_item.filename, "mp3")
+                    normalized_sound = effects.normalize(sound) #match_target_amplitude(sound, -10)
+                    normalized_sound.export("{}-normalised.mp3".format(loaded_item.filename), bitrate="320k", format="mp3")
+
+
+                    mixer.music.load("{}-normalised.mp3".format(loaded_item.filename))
                 except Exception:
                     # We couldn't load that file.
                     self.logger.log.exception(
@@ -456,10 +475,11 @@ class Player:
                     continue # Try loading again.
 
                 try:
-                    if ".mp3" in loaded_item.filename:
+                    if loaded_item.filename.endswith(".mp3"):
                         song = MP3(loaded_item.filename)
                         self.state.update("length", song.info.length)
                     else:
+                        # WARNING! Pygame / SDL can't seek .wav files :/
                         self.state.update(
                             "length", mixer.Sound(
                                 loaded_item.filename).get_length() / 1000
