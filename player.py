@@ -72,6 +72,7 @@ class Player:
         "playing": False,
         "paused": False,
         "loaded": False, # Is the file in memory, ready to play instantly?
+        "cued": False, # Is the player at a cue point?
         "pos_elapsed": 0, # Time elapsed (secs) since starting current playback. This is pygame's position. WARN: It resets to 0 ever seek.
         "pos_offset": 0, # The difference (secs) between the pos_elapsed and the actual position in the file being played.
         "pos": 0, # The real amount of secs through the file we actually are. (pos = pos_elapsed + pos_offset)
@@ -588,6 +589,7 @@ class Player:
 
             self.state.update("playing", self.isPlaying)
             self.state.update("loaded", self.isLoaded)
+            self.state.update("cued", self.isCued)
 
             self.state.update(
                 "pos",
