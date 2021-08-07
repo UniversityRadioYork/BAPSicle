@@ -78,7 +78,7 @@ class BAPSicleServer:
     ui_to_q: Queue
     websocket_to_q: List[Queue] = []
     controller_to_q: Queue
-    file_to_q: List[Queue] = []
+    file_to_q: Queue
     api_from_q: Queue
     api_to_q: Queue
 
@@ -129,9 +129,10 @@ class BAPSicleServer:
 
             if not self.file_manager or not self.file_manager.is_alive():
                 log_function("File Manager not running, (re)starting.")
+                # Use len(player_to_q) for channel count.
                 self.file_manager = multiprocessing.Process(
                     target=FileManager,
-                    args=(self.file_to_q, self.state),
+                    args=(len(self.channel_to_q), self.file_to_q, self.state),
                 )
                 self.file_manager.start()
 
@@ -192,13 +193,13 @@ class BAPSicleServer:
 
         self.ui_to_q=multiprocessing.Queue()
         self.controller_to_q = multiprocessing.Queue()
+        self.file_to_q = multiprocessing.Queue()
 
         for channel in range(self.state.get()["num_channels"]):
 
             self.channel_to_q.append(multiprocessing.Queue())
             self.channel_from_q.append(multiprocessing.Queue())
             self.websocket_to_q.append(multiprocessing.Queue())
-            self.file_to_q.append(multiprocessing.Queue())
 
         print("Welcome to BAPSicle Server version: {}, build: {}.".format(package.VERSION, package.BUILD))
         print("The Server UI is available at http://{}:{}".format(self.state.get()["host"], self.state.get()["port"]))

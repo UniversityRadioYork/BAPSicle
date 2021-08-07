@@ -1,5 +1,7 @@
+from queue import Empty
+from typing import List
 from setproctitle import setproctitle
-from multiprocessing import current_process
+from multiprocessing import current_process, Queue
 from time import sleep
 from os import _exit
 
@@ -10,7 +12,7 @@ from helpers.the_terminator import Terminator
 class ChannelHandler:
     logger: LoggingManager
 
-    def __init__(self, channel_from_q, websocket_to_q, ui_to_q, controller_to_q, file_to_q):
+    def __init__(self, channel_from_q: List[Queue], websocket_to_q: List[Queue], ui_to_q:Queue, controller_to_q:Queue, file_to_q: Queue):
 
         self.logger = LoggingManager("ChannelHandler")
         process_title = "Channel Handler"
@@ -29,7 +31,7 @@ class ChannelHandler:
 
                         # Let the file manager manage the files based on status and loading new show plan triggers.
                         if command == "GET_PLAN" or command == "STATUS":
-                            file_to_q[channel].put(message)
+                            file_to_q.put(str(channel)+":"+message)
 
 
                         # TODO ENUM
@@ -41,7 +43,7 @@ class ChannelHandler:
                                 ui_to_q.put(str(channel)+":"+message)
                         if source in ["ALL", "CONTROLLER"]:
                             controller_to_q.put(str(channel)+":"+message)
-                    except Exception:
+                    except Empty:
                         pass
 
                 sleep(0.02)
