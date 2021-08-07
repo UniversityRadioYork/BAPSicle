@@ -75,7 +75,7 @@ class BAPSicleServer:
 
     channel_to_q: List[Queue] = []
     channel_from_q: List[Queue] = []
-    ui_to_q: List[Queue] = []
+    ui_to_q: Queue
     websocket_to_q: List[Queue] = []
     controller_to_q: Queue
     file_to_q: List[Queue] = []
@@ -190,13 +190,14 @@ class BAPSicleServer:
         channel_count = self.state.get()["num_channels"]
         self.channel = [None] * channel_count
 
+        self.ui_to_q=multiprocessing.Queue()
+        self.controller_to_q = multiprocessing.Queue()
+
         for channel in range(self.state.get()["num_channels"]):
 
             self.channel_to_q.append(multiprocessing.Queue())
             self.channel_from_q.append(multiprocessing.Queue())
-            self.ui_to_q.append(multiprocessing.Queue())
             self.websocket_to_q.append(multiprocessing.Queue())
-            self.controller_to_q = multiprocessing.Queue()
             self.file_to_q.append(multiprocessing.Queue())
 
         print("Welcome to BAPSicle Server version: {}, build: {}.".format(package.VERSION, package.BUILD))

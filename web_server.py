@@ -39,7 +39,7 @@ server_state: StateManager
 api: MyRadioAPI
 
 player_to_q: List[Queue] = []
-player_from_q: List[Queue] = []
+player_from_q: Queue
 
 # General UI Endpoints
 
@@ -327,16 +327,16 @@ app.static("/presenter/", resolve_local_file_path("presenter-build"))
 # Helper Functions
 
 def status(channel: int):
-    while not player_from_q[channel].empty():
-        player_from_q[channel].get()  # Just waste any previous status responses.
+    while not player_from_q.empty():
+        player_from_q.get()  # Just waste any previous status responses.
 
     player_to_q[channel].put("UI:STATUS")
     retries = 0
     while retries < 40:
         try:
-            response = player_from_q[channel].get_nowait()
-            if response.startswith("UI:STATUS:"):
-                response = response.split(":", 2)[2]
+            response = player_from_q.get_nowait()
+            if response.startswith(str(channel)+":UI:STATUS:"):
+                response = response.split(":", 3)[3]
                 # TODO: Handle OKAY / FAIL
                 response = response[response.index(":") + 1:]
                 try:
@@ -386,7 +386,7 @@ def restart(request):
 
 
 # Don't use reloader, it causes Nested Processes!
-def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateManager):
+def WebServer(player_to: List[Queue], player_from: Queue, state: StateManager):
 
     global player_to_q, player_from_q, server_state, api, app
     player_to_q = player_to

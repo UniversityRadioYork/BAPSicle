@@ -38,7 +38,7 @@ class ChannelHandler:
                         if source in ["ALL", "UI"]:
                             if not message.split(":")[1] == "POS":
                                 # We don't care about position update spam
-                                ui_to_q[channel].put(message)
+                                ui_to_q.put(str(channel)+":"+message)
                         if source in ["ALL", "CONTROLLER"]:
                             controller_to_q.put(str(channel)+":"+message)
                     except Exception:
