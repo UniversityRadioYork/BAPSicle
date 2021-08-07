@@ -720,7 +720,7 @@ class Player:
 
         try:
             while self.running:
-                time.sleep(0.02)
+                time.sleep(0.03)
                 self._updateState()
                 self._ping_times()
                 try:

@@ -634,7 +634,6 @@ class Channel:
 
                 if msg["command"] == "STATUS":
                     if msg["status"] == True:
-                        print(msg["extra"])
                         player_states:dict = self.state.get()["player_states"]
 
                         state = msg["extra"]
@@ -643,6 +642,11 @@ class Channel:
 
                         player_states[str(player_id)] = state
                         self.state.update("player_states", player_states)
+                        # State update is somehow deciding it's not updating :/
+                        self._send_status()
+                elif msg["command"] == "POS":
+                    self._retAll("POS:"+str(msg["extra"]["pos"]))
+
 
 
 
