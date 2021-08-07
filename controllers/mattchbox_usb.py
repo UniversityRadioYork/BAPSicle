@@ -1,7 +1,9 @@
 
 from helpers.the_terminator import Terminator
 from typing import List, Optional
-from multiprocessing import Queue, current_process
+#from multiprocessing import Queue, current_process
+from threading import current_thread
+from queue import Queue
 import serial
 import time
 from setproctitle import setproctitle
@@ -24,7 +26,7 @@ class MattchBox(Controller):
 
         process_title = "ControllerHandler"
         setproctitle(process_title)
-        current_process().name = process_title
+        current_thread().name = process_title
 
         self.ser = None
         self.logger = LoggingManager("ControllerMattchBox")

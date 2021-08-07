@@ -44,7 +44,7 @@ class MyRadioAPI:
             func = session.get(url)
             status_code = -1
             if method == "GET":
-                #func = session.get(url)
+                func = session.get(url)
                 status_code = 200
             elif method == "POST":
                 func = session.post(url, data=data)
@@ -73,13 +73,18 @@ class MyRadioAPI:
         elif method == "PUT":
             r = requests.put(url, data, timeout=timeout)
             status_code = 200
+        else:
+            return None
 
         if r.status_code != status_code:
             self._logException(
-                "Failed to get API request. Status code: " + str(r.status_code)
+                "Failed to get API request. JSON? {} Status code: {}".format(json_payload,r.status_code)
             )
             self._logException(str(r.text))
-        return json.loads(r.text) if json_payload else r.text
+        if r.text:
+            return json.loads(r.text) if json_payload else r.text
+        else:
+            return None
 
     async def async_api_call(self, url, api_version="v2", method="GET", data=None, timeout=10):
         if api_version == "v2":
@@ -112,7 +117,7 @@ class MyRadioAPI:
 
         return request
 
-    def api_call(self, url, api_version="v2", method="GET", data=None, timeout=10):
+    def api_call(self, url, api_version="v2", method="GET", data=None, timeout:int = 10, json_payload:bool =True):
 
         if api_version == "v2":
             url = "{}/v2{}".format(self.config.get()["myradio_api_url"], url)
@@ -127,16 +132,16 @@ class MyRadioAPI:
         else:
             url += "?api_key={}".format(self.config.get()["myradio_api_key"])
 
-        self._log("Requesting API V2 URL with method {}: {}".format(method, url))
+        self._log("Requesting API V2 URL with JSON ({}) with method {}: {}".format(json_payload, method, url))
 
         request = None
         if method == "GET":
-            request = self.call(url, method="GET", timeout=timeout)
+            request = self.call(url, method="GET", timeout=timeout,json_payload=json_payload)
         elif method == "POST":
             self._log("POST data: {}".format(data))
-            request = self.call(url, data=data, method="POST", timeout=timeout)
+            request = self.call(url, data=data, method="POST", timeout=timeout, json_payload=json_payload)
         elif method == "PUT":
-            request = self.call(url, method="PUT", timeout=timeout)
+            request = self.call(url, method="PUT", timeout=timeout, json_payload=json_payload)
         else:
             self._logException("Invalid API method. Request not sent.")
             return None

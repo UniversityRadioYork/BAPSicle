@@ -326,23 +326,6 @@ class Channel:
                     "Failed to find weight: {}".format(weight))
                 return False
 
-            reload = False
-            if loaded_item.filename == "" or loaded_item.filename is None:
-                self.logger.log.info(
-                    "Filename is not specified, loading from API.")
-                reload = True
-            elif not os.path.exists(loaded_item.filename):
-                self.logger.log.warn(
-                    "Filename given doesn't exist. Re-loading from API."
-                )
-                reload = True
-
-            if reload:
-                loaded_item.filename = sync(self.api.get_filename(item=loaded_item))
-
-            if not loaded_item.filename:
-                return False
-
             self.state.update("loaded_item", loaded_item)
 
             for i in range(len(showplan)):

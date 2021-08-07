@@ -12,6 +12,7 @@ from urllib.parse import unquote
 from setproctitle import setproctitle
 import logging
 from typing import Any, Optional, List
+from multiprocessing import current_process, process
 from multiprocessing.queues import Queue
 from queue import Empty
 from time import sleep
@@ -398,6 +399,8 @@ def WebServer(player_to: List[Queue], player_from: Queue, state: StateManager):
 
     process_title = "Web Server"
     setproctitle(process_title)
+    current_process().name = process_title
+
     CORS(app, supports_credentials=True)  # Allow ALL CORS!!!
 
     terminate = Terminator()
@@ -416,5 +419,8 @@ def WebServer(player_to: List[Queue], player_from: Queue, state: StateManager):
     if loop:
         loop.close()
     if app:
-        app.stop()
+        try:
+            app.stop()
+        except:
+            pass
         del app

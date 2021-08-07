@@ -16,6 +16,8 @@ from file_manager import FileManager
 import multiprocessing
 from multiprocessing.queues import Queue
 import multiprocessing.managers as m
+import threading
+import queue
 import time
 from typing import Any, Optional
 import json
@@ -78,15 +80,15 @@ class BAPSicleServer:
     ui_to_q: Queue
     websocket_to_q: Queue
     controller_to_q: Queue
-    file_to_q: Queue
+    file_to_q: queue.Queue
     api_from_q: Queue
     api_to_q: Queue
 
     channel: List[multiprocessing.Process] = []
-    websockets_server: Optional[multiprocessing.Process] = None
-    controller_handler: Optional[multiprocessing.Process] = None
-    channel_handler: Optional[multiprocessing.Process] = None
-    file_manager: Optional[multiprocessing.Process] = None
+    websockets_server: Optional[threading.Thread] = None
+    controller_handler: Optional[threading.Thread] = None
+    channel_handler: Optional[threading.Thread] = None
+    file_manager: Optional[threading.Thread] = None
     webserver: Optional[multiprocessing.Process] = None
 
     def __init__(self):
@@ -112,38 +114,83 @@ class BAPSicleServer:
 
             for channel in range(self.state.get()["num_channels"]):
                 if not self.channel[channel] or not self.channel[channel].is_alive():
+
+                    try:
+                        self.channel[channel].kill()
+                    except:
+                        pass
+
+
                     log_function("Channel {} not running, (re)starting.".format(channel))
                     self.channel[channel] = multiprocessing.Process(
                         target=Channel,
                         args=(channel, self.channel_to_q[channel], self.channel_from_q[channel], self.state)
                     )
-                    self.channel[channel].start()
+                    if self.channel[channel]:
+                        self.channel[channel].start()
+
+
 
             if not self.channel_handler or not self.channel_handler.is_alive():
+
+                try:
+                    self.channel_handler.kill()
+                    del self.channel_handler
+                except:
+                    pass
+
+
                 log_function("Channel Handler not running, (re)starting.")
-                self.channel_handler = multiprocessing.Process(
+                self.channel_handler = threading.Thread(
                     target=ChannelHandler,
                     args=(self.channel_from_q, self.websocket_to_q, self.ui_to_q, self.controller_to_q, self.file_to_q),
                 )
                 self.channel_handler.start()
 
+
             if not self.file_manager or not self.file_manager.is_alive():
+
+                try:
+                    self.file_manager.kill()
+                    del self.file_manager
+                except:
+                    pass
+
+
                 log_function("File Manager not running, (re)starting.")
                 # Use len(player_to_q) for channel count.
-                self.file_manager = multiprocessing.Process(
+                self.file_manager = threading.Thread(
                     target=FileManager,
                     args=(len(self.channel_to_q), self.file_to_q, self.state),
                 )
                 self.file_manager.start()
 
             if not self.websockets_server or not self.websockets_server.is_alive():
+
+                try:
+                    self.websockets_server.kill()
+                    del self.websockets_server
+                except:
+                    pass
+
+
                 log_function("Websocket Server not running, (re)starting.")
-                self.websockets_server = multiprocessing.Process(
+                self.websockets_server = threading.Thread(
                     target=WebsocketServer, args=(self.channel_to_q, self.websocket_to_q, self.state)
                 )
                 self.websockets_server.start()
 
+
+            # Sanic has it's own asyncio handling, so give it it's own process.
             if not self.webserver or not self.webserver.is_alive():
+
+                try:
+                    self.webserver.kill()
+                    del self.webserver
+                except:
+                    pass
+
+
                 log_function("Webserver not running, (re)starting.")
                 self.webserver = multiprocessing.Process(
                     target=WebServer, args=(self.channel_to_q, self.ui_to_q, self.state)
@@ -151,8 +198,16 @@ class BAPSicleServer:
                 self.webserver.start()
 
             if not self.controller_handler or not self.controller_handler.is_alive():
+
+                try:
+                    self.controller_handler.kill()
+                    del self.controller_handler
+                except:
+                    pass
+
+
                 log_function("Controller Handler not running, (re)starting.")
-                self.controller_handler = multiprocessing.Process(
+                self.controller_handler = threading.Thread(
                     target=MattchBox, args=(self.channel_to_q, self.controller_to_q, self.state)
                 )
                 self.controller_handler.start()
@@ -162,12 +217,12 @@ class BAPSicleServer:
             time.sleep(1)
 
     def startServer(self):
-        if isMacOS():
-            multiprocessing.set_start_method("spawn", True)
+        #if isMacOS():
+        #    multiprocessing.set_start_method("spawn", True)
 
-        process_title = "startServer"
-        setproctitle(process_title)
-        multiprocessing.current_process().name = process_title
+        #process_title = "startServer"
+        #setproctitle(process_title)
+        #multiprocessing.current_process().name = process_title
 
         self.logger = LoggingManager("BAPSicleServer")
 
@@ -193,7 +248,7 @@ class BAPSicleServer:
 
         self.ui_to_q=multiprocessing.Queue()
         self.controller_to_q = multiprocessing.Queue()
-        self.file_to_q = multiprocessing.Queue()
+        self.file_to_q = queue.Queue()
         self.websocket_to_q = multiprocessing.Queue()
 
         for channel in range(self.state.get()["num_channels"]):
@@ -261,19 +316,19 @@ class BAPSicleServer:
 
         print("Stopping Channel Handler")
         if self.channel_handler:
-            self.channel_handler.terminate()
+            #self.channel_handler.terminate()
             self.channel_handler.join(timeout=PROCESS_KILL_TIMEOUT_S)
             del self.channel_handler
 
         print("Stopping File Manager")
         if self.file_manager:
-            self.file_manager.terminate()
+            #self.file_manager.terminate()
             self.file_manager.join(timeout=PROCESS_KILL_TIMEOUT_S)
             del self.file_manager
 
         print("Stopping Controllers")
         if self.controller_handler:
-            self.controller_handler.terminate()
+        #    self.controller_handler.terminate()
             self.controller_handler.join(timeout=PROCESS_KILL_TIMEOUT_S)
             del self.controller_handler
         print("Stopped all processes.")

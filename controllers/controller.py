@@ -1,4 +1,4 @@
-from multiprocessing import Queue
+from queue import Queue
 from typing import Callable, List
 
 

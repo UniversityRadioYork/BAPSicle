@@ -27,7 +27,7 @@ class StateManager:
         self,
         name,
         logger: LoggingManager,
-        default_state: Dict[str, Any] = None,
+        default_state: Dict[str, Any],
         rate_limit_params=[],
         rate_limit_period_s=5,
     ):

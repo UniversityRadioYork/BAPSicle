@@ -32,13 +32,15 @@ class WebsocketServer:
         self.channel_to_q = in_q
         self.webstudio_to_q = out_q
 
-        process_title = "Websockets Servr"
+        process_title = "WebSocket Server"
         setproctitle(process_title)
         current_process().name = process_title
 
         self.logger = LoggingManager("Websockets")
         self.server_name = state.get()["server_name"]
 
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         self.websocket_server = websockets.serve(
             self.websocket_handler, state.get()["host"], state.get()["ws_port"]
         )

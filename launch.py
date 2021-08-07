@@ -13,37 +13,24 @@ def startServer(notifications=False):
     # Only spend the time importing the Server if we want to start the server. Speeds up web browser opens.
     from server import BAPSicleServer
 
-    server = multiprocessing.Process(target=BAPSicleServer)
-    server.start()
+    #server = multiprocessing.Process(target=BAPSicleServer)
+    #server.start()
 
     sent_start_notif = False
 
     terminator = Terminator()
-    try:
-        while not terminator.terminate:
-            time.sleep(1)
-            if server and server.is_alive():
-                if notifications and not sent_start_notif:
-                    print("NOTIFICATION:Welcome to BAPSicle!")
-                    sent_start_notif = True
-                pass
-            else:
-                print("Server dead. Exiting.")
-                if notifications:
-                    print("NOTIFICATION:BAPSicle Server Stopped!")
-                sys.exit(0)
+    if notifications and not sent_start_notif:
+        print("NOTIFICATION:Welcome to BAPSicle!")
+        sent_start_notif = True
+    while not terminator.terminate:
+        server = BAPSicleServer()
 
-        if server and server.is_alive():
-            server.terminate()
-            server.join()
 
-    # Catch the handler being killed externally.
-    except Exception as e:
-        printer("Received Exception {} with args: {}".format(type(e).__name__, e.args))
-        if server and server.is_alive():
-            server.terminate()
-            server.join()
 
+    print("Server dead. Exiting.")
+    if notifications:
+        print("NOTIFICATION:BAPSicle Server Stopped!")
+        sys.exit(0)
 
 def printer(msg: Any):
     print("LAUNCHER:{}".format(msg))

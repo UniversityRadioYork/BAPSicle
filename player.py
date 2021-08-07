@@ -304,7 +304,9 @@ class Player:
 
             # TODO: Should we handle this here, or get channel, or some kind of handler to do this before hand? Normalisation etc?
             if reload:
-                loaded_item.filename = str(sync(self.api.get_filename(item=loaded_item)))
+                filename = str(sync(self.api.get_filename(item=loaded_item)))
+                if filename != "None":
+                    loaded_item.filename = filename
 
             if loaded_item.filename is None or loaded_item.filename in ["None",""]:
                 return False
