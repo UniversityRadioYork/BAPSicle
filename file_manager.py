@@ -36,83 +36,87 @@ class FileManager:
         try:
 
             while not terminator.terminate:
-                # If all channels have received the delete command, reset for the next one.
-                if (channel_received == None or channel_received == [True]*channel_count):
-                  channel_received = [False]*channel_count
+                # As soon as there's a empty, we'll break out
+                # and complete the extra stuff below.
+                while True:
 
-                try:
-                    message = channel_from_q.get_nowait()
-                except Empty:
-                  continue
+                    # If all channels have received the delete command, reset for the next one.
+                    if (channel_received == None or channel_received == [True]*channel_count):
+                        channel_received = [False]*channel_count
 
-                split = message.split(":",1)
-                channel = int(split[0])
-                message = split[1]
-                try:
-                    #source = message.split(":")[0]
-                    command = message.split(":",2)[1]
+                    try:
+                        message = channel_from_q.get_nowait()
+                    except Empty:
+                        break
 
-                    # If we have requested a new show plan, empty the music-tmp directory for the previous show.
-                    if command == "GET_PLAN":
+                    split = message.split(":",1)
+                    channel = int(split[0])
+                    message = split[1]
+                    try:
+                        #source = message.split(":")[0]
+                        command = message.split(":",2)[1]
 
-                      if channel_received != [False]*channel_count and channel_received[channel] != True:
-                        # We've already received a delete trigger on a channel, let's not delete the folder more than once.
-                        # If the channel was already in the process of being deleted, the user has requested it again, so allow it.
+                        # If we have requested a new show plan, empty the music-tmp directory for the previous show.
+                        if command == "GET_PLAN":
 
-                        channel_received[channel] = True
-                        continue
+                            if channel_received != [False]*channel_count and channel_received[channel] != True:
+                            # We've already received a delete trigger on a channel, let's not delete the folder more than once.
+                            # If the channel was already in the process of being deleted, the user has requested it again, so allow it.
 
-                      # Delete the previous show files!
-                      # Note: The players load into RAM. If something is playing over the load, the source file can still be deleted.
-                      path: str = resolve_external_file_path("/music-tmp/")
+                                channel_received[channel] = True
+                                continue
 
-                      if not os.path.isdir(path):
-                          self.logger.log.warning("Music-tmp folder is missing, not handling.")
-                          continue
+                            # Delete the previous show files!
+                            # Note: The players load into RAM. If something is playing over the load, the source file can still be deleted.
+                            path: str = resolve_external_file_path("/music-tmp/")
 
-                      files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
-                      for file in files:
-                        if isWindows():
-                          filepath = path+"\\"+file
-                        else:
-                          filepath = path+"/"+file
-                        self.logger.log.info("Removing file {} on new show load.".format(filepath))
-                        try:
-                          os.remove(filepath)
-                        except Exception:
-                          self.logger.log.warning("Failed to remove, skipping. Likely file is still in use.")
-                          continue
-                      channel_received[channel] = True
+                            if not os.path.isdir(path):
+                                self.logger.log.warning("Music-tmp folder is missing, not handling.")
+                                continue
 
-                    # If we receive a new status message, let's check for files which have not been pre-loaded.
-                    if command == "STATUS":
-                      extra = message.split(":",3)
-                      if extra[2] != "OKAY":
-                        continue
+                            files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+                            for file in files:
+                                if isWindows():
+                                    filepath = path+"\\"+file
+                                else:
+                                    filepath = path+"/"+file
+                                self.logger.log.info("Removing file {} on new show load.".format(filepath))
+                                try:
+                                    os.remove(filepath)
+                                except Exception:
+                                    self.logger.log.warning("Failed to remove, skipping. Likely file is still in use.")
+                                    continue
+                            channel_received[channel] = True
 
-                      status = json.loads(extra[3])
-                      show_plan = status["show_plan"]
-                      item_ids = []
-                      for item in show_plan:
-                        item_ids.append(item["timeslotitemid"])
+                        # If we receive a new status message, let's check for files which have not been pre-loaded.
+                        if command == "STATUS":
+                            extra = message.split(":",3)
+                            if extra[2] != "OKAY":
+                                continue
 
-                      # If the new status update has a different order / list of items, let's update the show plan we know about
-                      # This will trigger the chunk below to do the rounds again and preload any new files.
-                      if item_ids != last_known_item_ids[channel]:
-                        last_known_item_ids[channel] = item_ids
-                        last_known_show_plan[channel] = show_plan
+                            status = json.loads(extra[3])
+                            show_plan = status["show_plan"]
+                            item_ids = []
+                            for item in show_plan:
+                                item_ids.append(item["timeslotitemid"])
 
-                except Exception:
-                    self.logger.log.exception("Failed to handle message {} on channel {}.".format(message))
+                            # If the new status update has a different order / list of items, let's update the show plan we know about
+                            # This will trigger the chunk below to do the rounds again and preload any new files.
+                            if item_ids != last_known_item_ids[channel]:
+                                last_known_item_ids[channel] = item_ids
+                                last_known_show_plan[channel] = show_plan
+
+                    except Exception:
+                        self.logger.log.exception("Failed to handle message {} on channel {}.".format(message))
 
 
                 # Right, let's have a quick check in the status for shows without filenames, to preload them.
                 delay = True
                 for i in range(len(last_known_show_plan[next_channel_preload])):
 
-                  item_obj = PlanItem(last_known_show_plan[next_channel_preload][i])
-                  if not item_obj.filename:
-                    self.logger.log.info("Checking pre-load on channel {}, weight {}: {}".format(next_channel_preload, item_obj.weight, item_obj.name))
+                    item_obj = PlanItem(last_known_show_plan[next_channel_preload][i])
+                    if not item_obj.filename:
+                        self.logger.log.info("Checking pre-load on channel {}, weight {}: {}".format(next_channel_preload, item_obj.weight, item_obj.name))
 
                     # Getting the file name will only pull the new file if the file doesn't already exist, so this is not too inefficient.
                     item_obj.filename,did_download = sync(self.api.get_filename(item_obj, True))
@@ -122,19 +126,19 @@ class FileManager:
                     last_known_show_plan[next_channel_preload][i] = item_obj.__dict__
 
                     if did_download:
-                      # Given we probably took some time to download, let's not sleep in the loop.
-                      delay = False
-                      self.logger.log.info("File successfully preloaded: {}".format(item_obj.filename))
-                      break
+                        # Given we probably took some time to download, let's not sleep in the loop.
+                        delay = False
+                        self.logger.log.info("File successfully preloaded: {}".format(item_obj.filename))
+                        break
                     else:
-                      # We didn't download anything this time, file was already loaded.
-                      # Let's try the next one.
-                      continue
+                        # We didn't download anything this time, file was already loaded.
+                        # Let's try the next one.
+                        continue
                 next_channel_preload += 1
                 if next_channel_preload >= channel_count:
-                  next_channel_preload = 0
+                    next_channel_preload = 0
                 if delay:
-                  sleep(0.1)
+                    sleep(0.1)
         except Exception as e:
             self.logger.log.exception(
                 "Received unexpected exception: {}".format(e))
