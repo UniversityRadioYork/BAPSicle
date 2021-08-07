@@ -40,8 +40,8 @@ class MattchBox(Controller):
         self.next_port = self.server_state.get()["serial_port"]
 
         # Not currently used in this implementation.
+        # Channel Handler will prefix channel by ID:
         self.server_from_q = server_from_q
-
 
         self.server_to_q = server_to_q
 
