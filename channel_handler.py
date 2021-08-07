@@ -7,13 +7,13 @@ from helpers.logging_manager import LoggingManager
 from helpers.the_terminator import Terminator
 
 
-class PlayerHandler:
+class ChannelHandler:
     logger: LoggingManager
 
     def __init__(self, channel_from_q, websocket_to_q, ui_to_q, controller_to_q, file_to_q):
 
-        self.logger = LoggingManager("PlayerHandler")
-        process_title = "Player Handler"
+        self.logger = LoggingManager("ChannelHandler")
+        process_title = "Channel Handler"
         setproctitle(process_title)
         current_process().name = process_title
 

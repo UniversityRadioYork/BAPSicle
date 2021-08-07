@@ -406,7 +406,7 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
             sync(app.run(
                 host=server_state.get()["host"],
                 port=server_state.get()["port"],
-                debug=(not isBundelled()),
+                debug=False, #(not isBundelled()),
                 auto_reload=False,
                 access_log=(not isBundelled())
             ))

@@ -19,6 +19,10 @@ import os
 
 from baps_types.marker import Marker
 
+from json import JSONEncoder
+class PlanItemEncoder(JSONEncoder):
+        def default(self, o):
+            return o.__dict__
 class PlanItem:
     _timeslotitemid: str = "0"
     _weight: int = 0

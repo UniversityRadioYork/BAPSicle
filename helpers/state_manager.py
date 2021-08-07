@@ -5,6 +5,9 @@ import time
 from datetime import datetime
 from copy import copy
 from typing import Any, Dict, List
+from setproctitle import setproctitle
+from multiprocessing import current_process
+
 
 from baps_types.plan import PlanItem
 from helpers.logging_manager import LoggingManager
@@ -28,6 +31,9 @@ class StateManager:
         rate_limit_params=[],
         rate_limit_period_s=5,
     ):
+        process_title = "StateHandler-" + name
+        setproctitle(process_title)
+        current_process().name = process_title
         self.logger = logger
 
         path_dir: str = resolve_external_file_path("/state")
@@ -63,12 +69,13 @@ class StateManager:
                 file_state: Dict[str, Any] = json.loads(file_raw)
 
                 # Turn from JSON -> PlanItem
-                if "channel" in file_state:
+                if "loaded_item" in file_state:
                     file_state["loaded_item"] = (
                         PlanItem(file_state["loaded_item"])
                         if file_state["loaded_item"]
                         else None
                     )
+                if "show_plan" in file_state:
                     file_state["show_plan"] = [
                         PlanItem(obj) for obj in file_state["show_plan"]
                     ]
@@ -119,12 +126,13 @@ class StateManager:
         state_to_json["last_updated"] = current_time
 
         # Not the biggest fan of this, but maybe I'll get a better solution for this later
-        if "channel" in state_to_json:  # If its a channel object
+        if "loaded_item" in state_to_json:  # If its a channel object
             state_to_json["loaded_item"] = (
                 state_to_json["loaded_item"].__dict__
                 if state_to_json["loaded_item"]
                 else None
             )
+        if "show_plan" in state_to_json:
             state_to_json["show_plan"] = [
                 repr.__dict__ for repr in state_to_json["show_plan"]
             ]

@@ -29,7 +29,7 @@ import setproctitle
 import copy
 import json
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 from pygame import mixer
 from mutagen.mp3 import MP3
 from syncer import sync
@@ -38,6 +38,7 @@ from threading import Timer
 from helpers.myradio_api import MyRadioAPI
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
+from helpers.messages import encode_msg_dict, encode_msg_new, decode_msg
 from baps_types.plan import PlanItem
 from baps_types.marker import Marker
 import package
@@ -49,8 +50,7 @@ TRACKLISTING_DELAYED_S = 20
 
 class Player:
     out_q: multiprocessing.Queue
-    last_msg: str
-    last_msg_source: str
+    last_msg: dict
     last_time_update = None
 
     state: StateManager
@@ -81,6 +81,8 @@ class Player:
         "repeat": False, # Should the player play again by itself if it reaches the end?
         "play_on_load": False, # Should the player play as soon as it is loaded?
         "output": None, # Name of the audio device to output on (str) or None for default system output.
+        "tracklist_mode": "off",
+        "tracklist_id": None,
     }
 
     __rate_limited_params = ["pos_elapsed", "pos_offset", "pos", "remaining"]
@@ -147,18 +149,21 @@ class Player:
             return False
         return (self.state.get()["pos"] == self.state.get()["loaded_item"].cue and not self.isPlaying)
 
-    @property
-    def status(self):
+
+    def _status(self, as_dict: Optional[bool] = False):
         state = copy.copy(self.state.state)
 
         # Not the biggest fan of this, but maybe I'll get a better solution for this later
         state["loaded_item"] = (
             state["loaded_item"].__dict__ if state["loaded_item"] else None
         )
+        if not as_dict:
+            return json.dumps(state)
+        return state
 
-        res = json.dumps(state)
-        return res
-
+    @property
+    def status(self):
+        return self._status(as_dict = False)
 
 
     # Transport Controls
@@ -269,7 +274,7 @@ class Player:
         self.state.update("play_on_load", bool(enabled))
 
 
-    def load(self, new_item: Optional[Dict[str,Any]]):
+    def load(self, new_item: Optional[Union[PlanItem,Dict[str,Any]]]):
         if not self.isPlaying:
             self.unload()
 
@@ -277,11 +282,14 @@ class Player:
                 self.logger.log.info("No PlanItem given, unloaded")
                 return False
 
-            try:
-                loaded_item = PlanItem(new_item)
-            except Exception:
-                self.logger.log.error("Failed to parse PlanItem to load.")
-                return False
+            if isinstance(new_item, PlanItem):
+                loaded_item = new_item # typically when reloading from inside the player.
+            else:
+                try:
+                    loaded_item = PlanItem(new_item)
+                except Exception:
+                    self.logger.log.error("Failed to parse PlanItem to load.")
+                    return False
 
             reload = False
             if loaded_item.filename == "" or loaded_item.filename is None:
@@ -411,6 +419,8 @@ class Player:
 
     # Timeslotitemid can be a ghost (un-submitted item), so may be "IXXX"
     def set_marker(self, timeslotitemid: str, marker_str: str):
+        return
+
         set_loaded = False
         success = True
         try:
@@ -564,7 +574,9 @@ class Player:
 
         # No automations, just stop playing.
         self.stop()
-        self._retAll("STOPPED")  # Tell clients that we've stopped playing.
+        # Tell clients that we've stopped playing.
+        custom_msg = encode_msg_new(src = "ALL", command = "STOPPED")
+        self._send_to_channel(custom_msg)
 
     def _updateState(self, pos: Optional[float] = None):
 
@@ -613,42 +625,39 @@ class Player:
             or self.last_time_update + UPDATES_FREQ_SECS < time.time()
         ):
             self.last_time_update = time.time()
-            self._retAll("POS:" + str(self.state.get()["pos"]))
+            # POS is not requested, it's just spammed out, so need a custom response.
+            extra = {
+                "pos": self.state.get()["pos"]
+            }
 
-    def _retAll(self, msg):
+            custom_msg = encode_msg_new(src = "ALL", command = "POS", extra = extra)
+            self._send_to_channel(custom_msg)
+
+
+    def _ret_msg(self, okay: bool = True, reason:str = None):
+        self._send_to_channel(
+            encode_msg_dict(self.last_msg, okay)
+        )
+
+
+    def _send_to_channel(self, msg: str):
         if self.out_q:
-            self.out_q.put("ALL:" + msg)
-
-    def _retMsg(
-        self, msg: Any, okay_str: bool = False, custom_prefix: Optional[str] = None
-    ):
-        # Make sure to add the message source back, so that it can be sent to the correct destination in the main server.
-        if custom_prefix:
-            response = custom_prefix
-        else:
-            response = "{}:{}:".format(self.last_msg_source, self.last_msg)
-        if msg is True:
-            response += "OKAY"
-        elif isinstance(msg, str):
-            if okay_str:
-                response += "OKAY:" + msg
-            else:
-                response += "FAIL:" + msg
-        else:
-            response += "FAIL"
-
-        if self.out_q:
-            if ("STATUS:" not in response):
-                # Don't fill logs with status pushes, it's a mess.
-                self.logger.log.debug(("Sending: {}".format(response)))
-            self.out_q.put(response)
+            if "STATUS" not in msg and "POS" not in msg:
+                # Don't fill logs with pos/status pushes, it's a mess.
+                self.logger.log.debug(("Sending: {}".format(msg)))
+            self.out_q.put(msg)
         else:
             self.logger.log.exception("Message return Queue is missing!!!! Can't send message.")
 
     def _send_status(self):
-        # TODO This is hacky
-        self._retMsg(str(self.status), okay_str=True,
-                     custom_prefix="ALL:STATUS:")
+        self._send_to_channel(
+            encode_msg_new(
+                src="ALL",
+                command="STATUS",
+                status=self.isInit,
+                extra=self._status(as_dict=True) # Need dict so it's not double json.dumps'd.
+            )
+        )
 
     def __init__(
         self, channel: int, id: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue, server_state: StateManager
@@ -663,7 +672,7 @@ class Player:
         self.out_q = out_q
 
 
-        self.logger = LoggingManager(player_name, debug=package.build_beta)
+        self.logger = LoggingManager(player_name, debug=False)#package.build_beta)
 
         self.api = MyRadioAPI(self.logger, server_state)
 
@@ -674,10 +683,11 @@ class Player:
             self.__rate_limited_params,
         )
 
-        self.state.add_callback(self._send_status)
-
         self.state.update("channel", channel)
+        self.state.update("id", id)
         self.state.update("tracklist_mode", server_state.get()["tracklist_mode"])
+
+        self.state.add_callback(self._send_status)
 
         loaded_state = copy.copy(self.state.state)
 
@@ -698,7 +708,7 @@ class Player:
             # If we were at a different state before, we have to override it now.
             if loaded_state["pos"] != 0:
                 self.logger.log.info(
-                    "Seeking to pos_true: " + str(loaded_state["pos"])
+                    "Seeking to pos: " + str(loaded_state["pos"])
                 )
                 self.seek(loaded_state["pos"])
 
@@ -715,22 +725,21 @@ class Player:
                 self._ping_times()
                 try:
                     message = in_q.get_nowait()
-                    source = message.split(":")[0]
+                    # TODO: Validate this
+                    self.last_msg = decode_msg(message)
+
+                    source = self.last_msg["src"]
                     if source not in VALID_MESSAGE_SOURCES:
-                        self.last_msg_source = ""
-                        self.last_msg = ""
+                        self.last_msg = {}
                         self.logger.log.warn(
                             "Message from unknown sender source: {}".format(
                                 source)
                         )
                         continue
 
-                    self.last_msg_source = source
-                    self.last_msg = message.split(":", 1)[1]
-
                     self.logger.log.debug(
                         "Recieved message from source {}: {}".format(
-                            self.last_msg_source, self.last_msg
+                            source, self.last_msg
                         )
                     )
                 except Empty:
@@ -740,61 +749,68 @@ class Player:
                 else:
 
                     # We got a message.
-                    split = self.last_msg.split(":")
+                    extra = self.last_msg["extra"] if self.last_msg["extra"] else {}
 
                     # Output re-inits the mixer, so we can do this any time.
-                    if self.last_msg.startswith("OUTPUT"):
-                        self._retMsg(self.set_output(split[1]))
+                    if self.last_msg["command"] == "OUTPUT":
+                        self._ret_msg(self.set_output(self.last_msg["extra"]["name"]))
 
                     elif self.isInit:
-                        message_types: Dict[
+
+
+
+
+
+                        commands: Dict[
                             str, Callable[..., Any]
                         ] = {  # TODO Check Types
-                            "STATUS": lambda: self._retMsg(self.status, True),
+                            "STATUS": lambda: self._send_status(),
+
                             # Audio Playout
                             # Unpause, so we don't jump to 0, we play from the current pos.
-                            "PLAY": lambda: self._retMsg(self.unpause()),
-                            "PAUSE": lambda: self._retMsg(self.pause()),
-                            "PLAYPAUSE": lambda: self._retMsg(self.unpause() if not self.isPlaying else self.pause()), # For the hardware controller.
-                            "UNPAUSE": lambda: self._retMsg(self.unpause()),
-                            "STOP": lambda: self._retMsg(self.stop(user_initiated=True)),
-                            "SEEK": lambda: self._retMsg(
-                                self.seek(float(split[1]))
-                            ),
-                            "REPEAT": lambda: self._retMsg(
-                                self.set_repeat(split[1] == "True")
-                            ),
-                            "PLAYONLOAD": lambda: self._retMsg(
+                            "PLAY": lambda: self.unpause(),
+                            "PAUSE": lambda: self.pause(),
+                            "PLAYPAUSE": lambda: self.unpause() if not self.isPlaying else self.pause(), # For the hardware controller.
+                            "UNPAUSE": lambda: self.unpause(),
+                            "STOP": lambda: self.stop(user_initiated=True),
+                            "SEEK": lambda:
+                                self.seek(float(extra["pos"]))
+                            ,
+                            "REPEAT": lambda:
+                                self.set_repeat(bool(extra["enabled"]))
+                            ,
+                            "PLAYONLOAD": lambda:
                                 self.set_play_on_load(
-                                    (split[1] == "True")
+                                    (bool(extra["enabled"]))
                                 )
-                            ),
-                            "LOAD": lambda: self._retMsg(
-                                self.load(json.loads(self.last_msg.split(":", 2)[2]))
-                            ),
-                            "LOADED?": lambda: self._retMsg(self.isLoaded),
-                            "UNLOAD": lambda: self._retMsg(self.unload()),
-                            "SETMARKER": lambda: self._retMsg(self.set_marker(split[1], self.last_msg.split(":", 2)[2])),
+                            ,
+                            "LOAD": lambda:
+                                self.load(extra)
+                            ,
+                            "LOADED?": lambda: self.isLoaded,
+                            "UNLOAD": lambda: self.unload(),
+                            "SETMARKER": lambda: self.set_marker(extra["timeslotitemid"],extra["marker"]),
                         }
 
-                        message_type: str = split[0]
+                        command: str = self.last_msg["command"]
 
-                        if message_type in message_types.keys():
-                            message_types[message_type]()
+                        if command in commands.keys():
+                            self._ret_msg(okay=commands[command]()) # Each func in the dict returns a success bool.
 
                         elif self.last_msg == "QUIT":
-                            self._retMsg(True)
+                            self._ret_msg(True)
                             self.running = False
                             continue
 
                         else:
-                            self._retMsg("Unknown Command")
+                            self._ret_msg(okay=False, reason="Unknown Command")
                     else:
 
                         if self.last_msg == "STATUS":
-                            self._retMsg(self.status)
+                            self._send_status()
+                            self._ret_msg(okay=True)
                         else:
-                            self._retMsg(False)
+                            self._ret_msg(okay=False, reason="Player is not initialised.")
 
         # Catch the player being killed externally.
         except KeyboardInterrupt:
@@ -807,7 +823,8 @@ class Player:
 
         self.logger.log.info("Quiting " + player_name)
         self.quit()
-        self._retAll("QUIT")
+        custom_msg = encode_msg_new(src = "ALL", command = "QUIT")
+        self._send_to_channel(custom_msg)
         del self.logger
         os._exit(0)
 

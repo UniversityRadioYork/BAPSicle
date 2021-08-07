@@ -19,6 +19,7 @@ class RepeatMode(Enum):
     all = 2
 
 
+# TODO: Use this.
 class PlayerState(TypedDict):
     initialised: bool
     loaded_item: Optional[PlanItem]

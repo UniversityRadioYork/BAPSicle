@@ -35,10 +35,10 @@ from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
 from websocket_server import WebsocketServer
 from web_server import WebServer
-from player_handler import PlayerHandler
+from channel_handler import ChannelHandler
 from controllers.mattchbox_usb import MattchBox
 from helpers.the_terminator import Terminator
-import player
+from channel import Channel
 
 PROCESS_KILL_TIMEOUT_S = 5
 
@@ -73,8 +73,8 @@ class BAPSicleServer:
         "tracklist_mode": "off",
     }
 
-    player_to_q: List[Queue] = []
-    player_from_q: List[Queue] = []
+    channel_to_q: List[Queue] = []
+    channel_from_q: List[Queue] = []
     ui_to_q: List[Queue] = []
     websocket_to_q: List[Queue] = []
     controller_to_q: List[Queue] = []
@@ -82,10 +82,10 @@ class BAPSicleServer:
     api_from_q: Queue
     api_to_q: Queue
 
-    player: List[multiprocessing.Process] = []
+    channel: List[multiprocessing.Process] = []
     websockets_server: Optional[multiprocessing.Process] = None
     controller_handler: Optional[multiprocessing.Process] = None
-    player_handler: Optional[multiprocessing.Process] = None
+    channel_handler: Optional[multiprocessing.Process] = None
     file_manager: Optional[multiprocessing.Process] = None
     webserver: Optional[multiprocessing.Process] = None
 
@@ -111,21 +111,21 @@ class BAPSicleServer:
         while not terminator.terminate and self.state.get()["running_state"] == "running":
 
             for channel in range(self.state.get()["num_channels"]):
-                if not self.player[channel] or not self.player[channel].is_alive():
-                    log_function("Player {} not running, (re)starting.".format(channel))
-                    self.player[channel] = multiprocessing.Process(
-                        target=player.Player,
-                        args=(channel, self.player_to_q[channel], self.player_from_q[channel], self.state)
+                if not self.channel[channel] or not self.channel[channel].is_alive():
+                    log_function("Channel {} not running, (re)starting.".format(channel))
+                    self.channel[channel] = multiprocessing.Process(
+                        target=Channel,
+                        args=(channel, self.channel_to_q[channel], self.channel_from_q[channel], self.state)
                     )
-                    self.player[channel].start()
+                    self.channel[channel].start()
 
-            if not self.player_handler or not self.player_handler.is_alive():
-                log_function("Player Handler not running, (re)starting.")
-                self.player_handler = multiprocessing.Process(
-                    target=PlayerHandler,
-                    args=(self.player_from_q, self.websocket_to_q, self.ui_to_q, self.controller_to_q, self.file_to_q),
+            if not self.channel_handler or not self.channel_handler.is_alive():
+                log_function("Channel Handler not running, (re)starting.")
+                self.channel_handler = multiprocessing.Process(
+                    target=ChannelHandler,
+                    args=(self.channel_from_q, self.websocket_to_q, self.ui_to_q, self.controller_to_q, self.file_to_q),
                 )
-                self.player_handler.start()
+                self.channel_handler.start()
 
             if not self.file_manager or not self.file_manager.is_alive():
                 log_function("File Manager not running, (re)starting.")
@@ -138,21 +138,21 @@ class BAPSicleServer:
             if not self.websockets_server or not self.websockets_server.is_alive():
                 log_function("Websocket Server not running, (re)starting.")
                 self.websockets_server = multiprocessing.Process(
-                    target=WebsocketServer, args=(self.player_to_q, self.websocket_to_q, self.state)
+                    target=WebsocketServer, args=(self.channel_to_q, self.websocket_to_q, self.state)
                 )
                 self.websockets_server.start()
 
             if not self.webserver or not self.webserver.is_alive():
                 log_function("Webserver not running, (re)starting.")
                 self.webserver = multiprocessing.Process(
-                    target=WebServer, args=(self.player_to_q, self.ui_to_q, self.state)
+                    target=WebServer, args=(self.channel_to_q, self.ui_to_q, self.state)
                 )
                 self.webserver.start()
 
             if not self.controller_handler or not self.controller_handler.is_alive():
                 log_function("Controller Handler not running, (re)starting.")
                 self.controller_handler = multiprocessing.Process(
-                    target=MattchBox, args=(self.player_to_q, self.controller_to_q, self.state)
+                    target=MattchBox, args=(self.channel_to_q, self.controller_to_q, self.state)
                 )
                 self.controller_handler.start()
 
@@ -188,12 +188,12 @@ class BAPSicleServer:
         self.state.update("server_beta", package.BETA)
 
         channel_count = self.state.get()["num_channels"]
-        self.player = [None] * channel_count
+        self.channel = [None] * channel_count
 
         for channel in range(self.state.get()["num_channels"]):
 
-            self.player_to_q.append(multiprocessing.Queue())
-            self.player_from_q.append(multiprocessing.Queue())
+            self.channel_to_q.append(multiprocessing.Queue())
+            self.channel_from_q.append(multiprocessing.Queue())
             self.ui_to_q.append(multiprocessing.Queue())
             self.websocket_to_q.append(multiprocessing.Queue())
             self.controller_to_q.append(multiprocessing.Queue())
@@ -202,7 +202,7 @@ class BAPSicleServer:
         print("Welcome to BAPSicle Server version: {}, build: {}.".format(package.VERSION, package.BUILD))
         print("The Server UI is available at http://{}:{}".format(self.state.get()["host"], self.state.get()["port"]))
 
-        # TODO Move this to player or installer.
+        # TODO Move this to channel or installer.
         if False:
             if not isMacOS():
 
@@ -229,9 +229,9 @@ class BAPSicleServer:
                     "artist": "University Radio York",
                 }
 
-                self.player_to_q[0].put("ADD:" + json.dumps(new_item))
-                self.player_to_q[0].put("LOAD:0")
-                self.player_to_q[0].put("PLAY")
+                self.channel_to_q[0].put("ADD:" + json.dumps(new_item))
+                self.channel_to_q[0].put("LOAD:0")
+                self.channel_to_q[0].put("PLAY")
 
     def stopServer(self):
         print("Stopping BASPicle Server.")
@@ -242,14 +242,14 @@ class BAPSicleServer:
             self.websockets_server.join(timeout=PROCESS_KILL_TIMEOUT_S)
         del self.websockets_server
 
-        print("Stopping Players")
-        for q in self.player_to_q:
+        print("Stopping Channels")
+        for q in self.channel_to_q:
             q.put("ALL:QUIT")
 
-        for player in self.player:
-            player.join(timeout=PROCESS_KILL_TIMEOUT_S)
+        for channel in self.channel:
+            channel.join(timeout=PROCESS_KILL_TIMEOUT_S)
 
-        del self.player
+        del self.channel
 
         print("Stopping Web Server")
         if self.webserver:
@@ -257,11 +257,11 @@ class BAPSicleServer:
             self.webserver.join(timeout=PROCESS_KILL_TIMEOUT_S)
             del self.webserver
 
-        print("Stopping Player Handler")
-        if self.player_handler:
-            self.player_handler.terminate()
-            self.player_handler.join(timeout=PROCESS_KILL_TIMEOUT_S)
-            del self.player_handler
+        print("Stopping Channel Handler")
+        if self.channel_handler:
+            self.channel_handler.terminate()
+            self.channel_handler.join(timeout=PROCESS_KILL_TIMEOUT_S)
+            del self.channel_handler
 
         print("Stopping File Manager")
         if self.file_manager:
