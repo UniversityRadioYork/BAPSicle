@@ -5,10 +5,10 @@ from typing import Callable, List
 class Controller:
     # Main controller class. All implementations of controller support should inherit this.
     callbacks: List[Callable] = []
-    player_to_q: List[Queue]
-    player_from_q: List[Queue]
+    server_to_q: List[Queue]
+    server_from_q: Queue
 
-    def __init__(self, player_to_q: List[Queue], player_from_q: List[Queue]):
+    def __init__(self, server_to_q: List[Queue], server_from_q: Queue):
         self.handler()
         return
 

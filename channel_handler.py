@@ -40,7 +40,7 @@ class ChannelHandler:
                                 # We don't care about position update spam
                                 ui_to_q[channel].put(message)
                         if source in ["ALL", "CONTROLLER"]:
-                            controller_to_q[channel].put(message)
+                            controller_to_q.put(str(channel)+":"+message)
                     except Exception:
                         pass
 

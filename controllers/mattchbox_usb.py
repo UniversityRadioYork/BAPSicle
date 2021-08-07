@@ -19,7 +19,7 @@ class MattchBox(Controller):
     logger: LoggingManager
 
     def __init__(
-        self, server_to_q: List[Queue], server_from_q: List[Queue], state: StateManager
+        self, server_to_q: List[Queue], server_from_q: Queue, state: StateManager
     ):
 
         process_title = "ControllerHandler"
@@ -39,7 +39,10 @@ class MattchBox(Controller):
         self.port = None
         self.next_port = self.server_state.get()["serial_port"]
 
+        # Not currently used in this implementation.
         self.server_from_q = server_from_q
+
+
         self.server_to_q = server_to_q
 
         self.handler()
