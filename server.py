@@ -76,7 +76,7 @@ class BAPSicleServer:
     channel_to_q: List[Queue] = []
     channel_from_q: List[Queue] = []
     ui_to_q: Queue
-    websocket_to_q: List[Queue] = []
+    websocket_to_q: Queue
     controller_to_q: Queue
     file_to_q: Queue
     api_from_q: Queue
@@ -194,12 +194,12 @@ class BAPSicleServer:
         self.ui_to_q=multiprocessing.Queue()
         self.controller_to_q = multiprocessing.Queue()
         self.file_to_q = multiprocessing.Queue()
+        self.websocket_to_q = multiprocessing.Queue()
 
         for channel in range(self.state.get()["num_channels"]):
 
             self.channel_to_q.append(multiprocessing.Queue())
             self.channel_from_q.append(multiprocessing.Queue())
-            self.websocket_to_q.append(multiprocessing.Queue())
 
         print("Welcome to BAPSicle Server version: {}, build: {}.".format(package.VERSION, package.BUILD))
         print("The Server UI is available at http://{}:{}".format(self.state.get()["host"], self.state.get()["port"]))
@@ -239,7 +239,7 @@ class BAPSicleServer:
         print("Stopping BASPicle Server.")
 
         print("Stopping Websocket Server")
-        self.websocket_to_q[0].put("WEBSOCKET:QUIT")
+        self.websocket_to_q.put("0:WEBSOCKET:QUIT")
         if self.websockets_server:
             self.websockets_server.join(timeout=PROCESS_KILL_TIMEOUT_S)
         del self.websockets_server

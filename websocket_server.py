@@ -20,7 +20,7 @@ class WebsocketServer:
     threads = Future
     baps_clients = set()
     channel_to_q: List[multiprocessing.Queue]
-    webstudio_to_q: List[multiprocessing.Queue]
+    webstudio_to_q: multiprocessing.Queue
     server_name: str
     logger: LoggingManager
     to_webstudio: Task
@@ -208,54 +208,56 @@ class WebsocketServer:
 
         terminator = Terminator()
         while not terminator.terminate:
-
-            for channel in range(len(self.webstudio_to_q)):
-                try:
-                    message = self.webstudio_to_q[channel].get_nowait()
-                    source = message.split(":")[0]
-                    # TODO ENUM
-                    if source not in ["WEBSOCKET", "ALL"]:
-                        self.logger.log.error(
-                            "ERROR: Message received from invalid source to websocket_handler. Ignored.",
-                            source,
-                            message,
-                        )
-                        continue
-
-                    command = message.split(":")[1]
-                    # print("Websocket Out:", command)
-                    if command == "STATUS":
-                        try:
-                            message = message.split("OKAY:")[1]
-                            message = json.loads(message)
-                        except Exception:
-                            continue  # TODO more logging
-                    elif command == "POS":
-                        try:
-                            message = message.split(":", 2)[2]
-                        except Exception:
-                            continue
-                    elif command == "QUIT":
-                        self.quit()
-                    else:
-                        continue
-
-                    data = json.dumps(
-                        {"command": command, "data": message, "channel": channel}
-                    )
-                    await asyncio.wait(
-                        [conn.send(data) for conn in self.baps_clients]
-                    )
-                except queue.Empty:
-                    continue
-                except ValueError:
-                    # Typically a "Set of coroutines/Futures is empty." when sending to a dead client.
-                    continue
-                except Exception as e:
-                    self.logger.log.exception(
-                        "Exception trying to send to websocket:", e
-                    )
             await asyncio.sleep(0.02)
+
+            try:
+                msg = self.webstudio_to_q.get_nowait()
+                split = msg.split(":",1)
+                channel = int(split[0])
+                message = split[1]
+                source = message.split(":")[0]
+                # TODO ENUM
+                if source not in ["WEBSOCKET", "ALL"]:
+                    self.logger.log.error(
+                        "ERROR: Message received from invalid source to websocket_handler. Ignored.",
+                        source,
+                        message,
+                    )
+                    continue
+
+                command = message.split(":")[1]
+                # print("Websocket Out:", command)
+                if command == "STATUS":
+                    try:
+                        message = message.split("OKAY:")[1]
+                        message = json.loads(message)
+                    except Exception:
+                        continue  # TODO more logging
+                elif command == "POS":
+                    try:
+                        message = message.split(":", 2)[2]
+                    except Exception:
+                        continue
+                elif command == "QUIT":
+                    self.quit()
+                else:
+                    continue
+
+                data = json.dumps(
+                    {"command": command, "data": message, "channel": channel}
+                )
+                await asyncio.wait(
+                    [conn.send(data) for conn in self.baps_clients]
+                )
+            except queue.Empty:
+                continue
+            except ValueError:
+                # Typically a "Set of coroutines/Futures is empty." when sending to a dead client.
+                continue
+            except Exception as e:
+                self.logger.log.exception(
+                    "Exception trying to send to websocket:", e
+                )
 
         self.quit()
 

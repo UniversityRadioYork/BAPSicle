@@ -12,7 +12,7 @@ from helpers.the_terminator import Terminator
 class ChannelHandler:
     logger: LoggingManager
 
-    def __init__(self, channel_from_q: List[Queue], websocket_to_q: List[Queue], ui_to_q:Queue, controller_to_q:Queue, file_to_q: Queue):
+    def __init__(self, channel_from_q: List[Queue], websocket_to_q: Queue, ui_to_q:Queue, controller_to_q:Queue, file_to_q: Queue):
 
         self.logger = LoggingManager("ChannelHandler")
         process_title = "Channel Handler"
@@ -29,20 +29,20 @@ class ChannelHandler:
                         source = message.split(":")[0]
                         command = message.split(":")[1]
 
+                        # Append the channel number to save on multiple output queues.
+                        message = str(channel) + ":" + message
+
                         # Let the file manager manage the files based on status and loading new show plan triggers.
                         if command == "GET_PLAN" or command == "STATUS":
-                            file_to_q.put(str(channel)+":"+message)
-
-
-                        # TODO ENUM
+                            file_to_q.put(message)
                         if source in ["ALL", "WEBSOCKET"]:
-                            websocket_to_q[channel].put(message)
+                            websocket_to_q.put(message)
                         if source in ["ALL", "UI"]:
-                            if not message.split(":")[1] == "POS":
+                            if not command == "POS":
                                 # We don't care about position update spam
-                                ui_to_q.put(str(channel)+":"+message)
+                                ui_to_q.put(message)
                         if source in ["ALL", "CONTROLLER"]:
-                            controller_to_q.put(str(channel)+":"+message)
+                            controller_to_q.put(message)
                     except Empty:
                         pass
 
