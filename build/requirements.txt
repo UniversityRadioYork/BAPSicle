@@ -8,7 +8,7 @@ mutagen==1.45.1
 sounddevice==0.4.2
 setproctitle==1.2.2
 pyttsx3==2.90
-websockets==8.1
+websockets==9.1
 typing_extensions==3.10.0.0
 pyserial==3.5
 requests==2.26.0
