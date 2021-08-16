@@ -11,6 +11,7 @@ from syncer import sync
 from helpers.logging_manager import LoggingManager
 from helpers.the_terminator import Terminator
 from helpers.myradio_api import MyRadioAPI
+from helpers.normalisation import generate_normalised_file
 from baps_types.plan import PlanItem
 
 
@@ -28,19 +29,20 @@ class FileManager:
         current_process().name = process_title
 
         terminator = Terminator()
-        channel_count = len(channel_from_q)
-        channel_received = None
-        last_known_show_plan = [[]]*channel_count
-        next_channel_preload = 0
-        last_known_item_ids = [[]]*channel_count
+        self.channel_count = len(channel_from_q)
+        self.channel_received = None
+        self.last_known_show_plan = [[]]*self.channel_count
+        self.next_channel_preload = 0
+        self.known_channels_preloaded = [False]*self.channel_count
+        self.last_known_item_ids = [[]]*self.channel_count
         try:
 
             while not terminator.terminate:
                 # If all channels have received the delete command, reset for the next one.
-                if (channel_received == None or channel_received == [True]*channel_count):
-                  channel_received = [False]*channel_count
+                if (self.channel_received == None or self.channel_received == [True]*self.channel_count):
+                  self.channel_received = [False]*self.channel_count
 
-                for channel in range(channel_count):
+                for channel in range(self.channel_count):
                     try:
                         message = channel_from_q[channel].get_nowait()
                     except Exception:
@@ -53,11 +55,11 @@ class FileManager:
                         # If we have requested a new show plan, empty the music-tmp directory for the previous show.
                         if command == "GET_PLAN":
 
-                          if channel_received != [False]*channel_count and channel_received[channel] != True:
+                          if self.channel_received != [False]*self.channel_count and self.channel_received[channel] != True:
                             # We've already received a delete trigger on a channel, let's not delete the folder more than once.
                             # If the channel was already in the process of being deleted, the user has requested it again, so allow it.
 
-                            channel_received[channel] = True
+                            self.channel_received[channel] = True
                             continue
 
                           # Delete the previous show files!
@@ -80,7 +82,7 @@ class FileManager:
                             except Exception:
                               self.logger.log.warning("Failed to remove, skipping. Likely file is still in use.")
                               continue
-                          channel_received[channel] = True
+                          self.channel_received[channel] = True
 
                         # If we receive a new status message, let's check for files which have not been pre-loaded.
                         if command == "STATUS":
@@ -96,44 +98,114 @@ class FileManager:
 
                           # If the new status update has a different order / list of items, let's update the show plan we know about
                           # This will trigger the chunk below to do the rounds again and preload any new files.
-                          if item_ids != last_known_item_ids[channel]:
-                            last_known_item_ids[channel] = item_ids
-                            last_known_show_plan[channel] = show_plan
+                          if item_ids != self.last_known_item_ids[channel]:
+                            self.last_known_item_ids[channel] = item_ids
+                            self.last_known_show_plan[channel] = show_plan
+                            self.known_channels_preloaded[channel] = False
 
                     except Exception:
                         self.logger.log.exception("Failed to handle message {} on channel {}.".format(message, channel))
 
+                # Let's try preload / normalise some files now we're free of messages.
+                preloaded = self.do_preload()
+                normalised = self.do_normalise()
 
-                # Right, let's have a quick check in the status for shows without filenames, to preload them.
-                delay = True
-                for i in range(len(last_known_show_plan[next_channel_preload])):
+                if (not preloaded and not normalised):
+                  # We didn't do any hard work, let's sleep.
+                  sleep(0.5)
 
-                  item_obj = PlanItem(last_known_show_plan[next_channel_preload][i])
-                  if not item_obj.filename:
-                    self.logger.log.info("Checking pre-load on channel {}, weight {}: {}".format(next_channel_preload, item_obj.weight, item_obj.name))
-
-                    # Getting the file name will only pull the new file if the file doesn't already exist, so this is not too inefficient.
-                    item_obj.filename,did_download = sync(self.api.get_filename(item_obj, True))
-                    # Alright, we've done one, now let's give back control to process new statuses etc.
-
-                    # Save back the resulting item back in regular dict form
-                    last_known_show_plan[next_channel_preload][i] = item_obj.__dict__
-
-                    if did_download:
-                      # Given we probably took some time to download, let's not sleep in the loop.
-                      delay = False
-                      self.logger.log.info("File successfully preloaded: {}".format(item_obj.filename))
-                      break
-                    else:
-                      # We didn't download anything this time, file was already loaded.
-                      # Let's try the next one.
-                      continue
-                next_channel_preload += 1
-                if next_channel_preload >= channel_count:
-                  next_channel_preload = 0
-                if delay:
-                  sleep(0.1)
         except Exception as e:
             self.logger.log.exception(
                 "Received unexpected exception: {}".format(e))
         del self.logger
+
+
+    # Attempt to preload a file onto disk.
+    def do_preload(self):
+      channel = self.next_channel_preload
+      # Right, let's have a quick check in the status for shows without filenames, to preload them.
+      # Keep an eye on if we downloaded anything.
+      # If we didn't, we know that all items in this channel have been downloaded.
+      downloaded_something = False
+      for i in range(len(self.last_known_show_plan[channel])):
+
+        item_obj = PlanItem(self.last_known_show_plan[channel][i])
+
+        # We've not downloaded this file yet, let's do that.
+        if not item_obj.filename:
+          self.logger.log.info("Checking pre-load on channel {}, weight {}: {}".format(channel, item_obj.weight, item_obj.name))
+
+          # Getting the file name will only pull the new file if the file doesn't already exist, so this is not too inefficient.
+          item_obj.filename,did_download = sync(self.api.get_filename(item_obj, True))
+          # Alright, we've done one, now let's give back control to process new statuses etc.
+
+          # Save back the resulting item back in regular dict form
+          self.last_known_show_plan[channel][i] = item_obj.__dict__
+
+          if did_download:
+            downloaded_something = True
+            self.logger.log.info("File successfully preloaded: {}".format(item_obj.filename))
+            break
+          else:
+            # We didn't download anything this time, file was already loaded.
+            # Let's try the next one.
+            continue
+      # Given we probably took some time to download, let's not sleep in the loop.
+      if not downloaded_something:
+        # Tell the file manager that this channel is fully downloaded, this is so it can consider normalising once all channels have files.
+        self.known_channels_preloaded[channel] = True
+
+      self.next_channel_preload += 1
+      if self.next_channel_preload >= self.channel_count:
+        self.next_channel_preload = 0
+
+      return downloaded_something
+
+
+    # If we've preloaded everything, get to work normalising tracks before playback.
+    def do_normalise(self):
+      # Some channels still have files to preload, do nothing.
+      if (self.known_channels_preloaded != [True]*self.channel_count):
+        return False # Didn't normalise
+      # TODO: quit early if all channels are normalised already.
+
+      channel = self.next_channel_preload
+
+      normalised_something = False
+      # Look through all the show plan files
+      for i in range(len(self.last_known_show_plan[channel])):
+
+        item_obj = PlanItem(self.last_known_show_plan[channel][i])
+
+        filename = item_obj.filename
+        if not filename:
+          self.logger.log.exception("Somehow got empty filename when all channels are preloaded.")
+          continue # Try next song.
+
+        if "normalised" in filename:
+          continue
+        # Sweet, we now need to try generating a normalised version.
+        try:
+          self.logger.log.info("Normalising on channel {}: {}".format(channel,filename))
+          # This will return immediately if we already have a normalised file.
+          item_obj.filename = generate_normalised_file(filename)
+          # TODO Hacky
+          self.last_known_show_plan[channel][i] = item_obj.__dict__
+          normalised_something = True
+          break # Now go let another channel have a go.
+        except Exception as e:
+          self.logger.log.exception("Failed to generate normalised file.", str(e))
+          continue
+
+
+
+      self.next_channel_preload += 1
+      if self.next_channel_preload >= self.channel_count:
+        self.next_channel_preload = 0
+
+      return normalised_something
+
+
+
+
+

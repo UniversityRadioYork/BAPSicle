@@ -34,8 +34,8 @@ from pygame import mixer
 from mutagen.mp3 import MP3
 from syncer import sync
 from threading import Timer
-from pydub import AudioSegment, effects # Audio leveling!
 
+from helpers.normalisation import get_normalised_filename_if_available
 from helpers.myradio_api import MyRadioAPI
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
@@ -428,6 +428,9 @@ class Player:
             if not loaded_item.filename:
                 return False
 
+            # Swap with a normalised version if it's ready, else returns original.
+            loaded_item.filename = get_normalised_filename_if_available(loaded_item.filename)
+
             self.state.update("loaded_item", loaded_item)
 
             for i in range(len(showplan)):
@@ -446,21 +449,7 @@ class Player:
                 try:
                     self.logger.log.info("Loading file: " +
                                         str(loaded_item.filename))
-
-
-
-
-
-                    def match_target_amplitude(sound, target_dBFS):
-                        change_in_dBFS = target_dBFS - sound.dBFS
-                        return sound.apply_gain(change_in_dBFS)
-
-                    sound = AudioSegment.from_file(loaded_item.filename, "mp3")
-                    normalized_sound = effects.normalize(sound) #match_target_amplitude(sound, -10)
-                    normalized_sound.export("{}-normalised.mp3".format(loaded_item.filename), bitrate="320k", format="mp3")
-
-
-                    mixer.music.load("{}-normalised.mp3".format(loaded_item.filename))
+                    mixer.music.load(loaded_item.filename)
                 except Exception:
                     # We couldn't load that file.
                     self.logger.log.exception(
