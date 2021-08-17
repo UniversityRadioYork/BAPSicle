@@ -34,6 +34,7 @@ class FileManager:
         self.last_known_show_plan = [[]]*self.channel_count
         self.next_channel_preload = 0
         self.known_channels_preloaded = [False]*self.channel_count
+        self.known_channels_normalised = [False]*self.channel_count
         self.last_known_item_ids = [[]]*self.channel_count
         try:
 
@@ -84,6 +85,7 @@ class FileManager:
                               continue
                           self.channel_received[channel] = True
                           self.known_channels_preloaded = [False]*self.channel_count
+                          self.known_channels_normalised = [False]*self.channel_count
 
                         # If we receive a new status message, let's check for files which have not been pre-loaded.
                         if command == "STATUS":
@@ -124,6 +126,11 @@ class FileManager:
     # Attempt to preload a file onto disk.
     def do_preload(self):
       channel = self.next_channel_preload
+
+      # All channels have preloaded all files, do nothing.
+      if (self.known_channels_preloaded == [True]*self.channel_count):
+        return False # Didn't preload anything
+
       # Right, let's have a quick check in the status for shows without filenames, to preload them.
       # Keep an eye on if we downloaded anything.
       # If we didn't, we know that all items in this channel have been downloaded.
@@ -151,10 +158,9 @@ class FileManager:
             # We didn't download anything this time, file was already loaded.
             # Let's try the next one.
             continue
-      # Given we probably took some time to download, let's not sleep in the loop.
-      if not downloaded_something:
-        # Tell the file manager that this channel is fully downloaded, this is so it can consider normalising once all channels have files.
-        self.known_channels_preloaded[channel] = True
+
+      # Tell the file manager that this channel is fully downloaded, this is so it can consider normalising once all channels have files.
+      self.known_channels_preloaded[channel] = not downloaded_something
 
       self.next_channel_preload += 1
       if self.next_channel_preload >= self.channel_count:
@@ -168,7 +174,10 @@ class FileManager:
       # Some channels still have files to preload, do nothing.
       if (self.known_channels_preloaded != [True]*self.channel_count):
         return False # Didn't normalise
-      # TODO: quit early if all channels are normalised already.
+
+      # Quit early if all channels are normalised already.
+      if (self.known_channels_normalised == [True]*self.channel_count):
+        return False
 
       channel = self.next_channel_preload
 
@@ -200,7 +209,7 @@ class FileManager:
           self.logger.log.exception("Failed to generate normalised file.", str(e))
           continue
 
-
+      self.known_channels_normalised[channel] = not normalised_something
 
       self.next_channel_preload += 1
       if self.next_channel_preload >= self.channel_count:
