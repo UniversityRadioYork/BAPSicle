@@ -7,7 +7,7 @@ def match_target_amplitude(sound, target_dBFS):
   change_in_dBFS = target_dBFS - sound.dBFS
   return sound.apply_gain(change_in_dBFS)
 
-# Takes
+# Takes filename in, normalialises it and returns a normalised file path.
 def generate_normalised_file(filename: str):
   if (not (isinstance(filename, str) and filename.endswith(".mp3"))):
     raise ValueError("Invalid filename given.")
