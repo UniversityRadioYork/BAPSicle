@@ -1,8 +1,8 @@
 from helpers.normalisation import get_normalised_filename_if_available
 from helpers.myradio_api import MyRadioAPI
-from sanic import Sanic
+from sanic import Sanic, log
 from sanic.exceptions import NotFound, abort
-from sanic.response import html, text, file, redirect
+from sanic.response import html, file, redirect
 from sanic.response import json as resp_json
 from sanic_cors import CORS
 from syncer import sync
@@ -11,7 +11,6 @@ import asyncio
 from jinja2 import Environment, FileSystemLoader
 from urllib.parse import unquote
 from setproctitle import setproctitle
-import logging
 from typing import Any, Optional, List
 from multiprocessing.queues import Queue
 from queue import Empty
@@ -26,7 +25,57 @@ from helpers.state_manager import StateManager
 from helpers.the_terminator import Terminator
 
 env = Environment(loader=FileSystemLoader('%s/ui-templates/' % os.path.dirname(__file__)))
-app = Sanic("BAPSicle Web Server")
+
+# From Sanic's default, but set to log to file.
+LOGGING_CONFIG = dict(
+    version=1,
+    disable_existing_loggers=False,
+    loggers={
+        "sanic.root": {"level": "INFO", "handlers": ["file"]},
+        "sanic.error": {
+            "level": "INFO",
+            "handlers": ["error_file"],
+            "propagate": True,
+            "qualname": "sanic.error",
+        },
+        "sanic.access": {
+            "level": "INFO",
+            "handlers": ["access_file"],
+            "propagate": True,
+            "qualname": "sanic.access",
+        },
+    },
+    handlers={
+        "file": {
+            "class": "logging.FileHandler",
+            "formatter": "generic",
+            "filename": "logs/WebServer.log"
+        },
+        "error_file": {
+            "class": "logging.FileHandler",
+            "formatter": "generic",
+            "filename": "logs/WebServer.log"
+        },
+        "access_file": {
+            "class": "logging.FileHandler",
+            "formatter": "access",
+            "filename": "logs/WebServer.log"
+        },
+    },
+    formatters={
+        "generic": {
+            "format": "%(asctime)s  | [%(process)d] [%(levelname)s] %(message)s",
+            "class": "logging.Formatter",
+        },
+        "access": {
+            "format": "%(asctime)s  | (%(name)s)[%(levelname)s][%(host)s]: "
+            + "%(request)s %(message)s %(status)d %(byte)d",
+            "class": "logging.Formatter",
+        },
+    },
+)
+
+app = Sanic("BAPSicle Web Server", log_config=LOGGING_CONFIG)
 
 
 def render_template(file, data, status=200):
