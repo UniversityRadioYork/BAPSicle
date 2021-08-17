@@ -1,3 +1,4 @@
+from helpers.normalisation import get_normalised_filename_if_available
 from helpers.myradio_api import MyRadioAPI
 from sanic import Sanic
 from sanic.exceptions import NotFound, abort
@@ -313,15 +314,24 @@ def json_status(request):
 async def audio_file(request, type: str, id: int):
     if type not in ["managed", "track"]:
         abort(404)
-    return await file("music-tmp/" + type + "-" + str(id) + ".mp3")
+    filename = resolve_external_file_path("music-tmp/{}-{}.mp3".format(type,id))
+
+    # Swap with a normalised version if it's ready, else returns original.
+    filename = get_normalised_filename_if_available(filename)
+
+    # Send file or 404
+    return await file(filename)
 
 
 # Static Files
 app.static("/favicon.ico", resolve_local_file_path("ui-static/favicon.ico"), name="ui-favicon")
 app.static("/static", resolve_local_file_path("ui-static"), name="ui-static")
+
+
+dist_directory = resolve_local_file_path("presenter-build")
+app.static('/presenter', dist_directory)
 app.static("/presenter/", resolve_local_file_path("presenter-build/index.html"),
            strict_slashes=True, name="presenter-index")
-app.static("/presenter/", resolve_local_file_path("presenter-build"))
 
 
 # Helper Functions
