@@ -83,6 +83,7 @@ class FileManager:
                               self.logger.log.warning("Failed to remove, skipping. Likely file is still in use.")
                               continue
                           self.channel_received[channel] = True
+                          self.known_channels_preloaded = [False]*self.channel_count
 
                         # If we receive a new status message, let's check for files which have not been pre-loaded.
                         if command == "STATUS":
@@ -112,7 +113,7 @@ class FileManager:
 
                 if (not preloaded and not normalised):
                   # We didn't do any hard work, let's sleep.
-                  sleep(0.5)
+                  sleep(0.2)
 
         except Exception as e:
             self.logger.log.exception(
@@ -181,8 +182,10 @@ class FileManager:
         if not filename:
           self.logger.log.exception("Somehow got empty filename when all channels are preloaded.")
           continue # Try next song.
-
-        if "normalised" in filename:
+        elif (not os.path.isfile(filename)):
+          self.logger.log.exception("Filename for normalisation does not exist. This is bad.")
+          continue
+        elif "normalised" in filename:
           continue
         # Sweet, we now need to try generating a normalised version.
         try:

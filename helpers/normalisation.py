@@ -16,7 +16,7 @@ def generate_normalised_file(filename: str):
   if filename.endswith("-normalised.mp3"):
     return filename
 
-  normalised_filename = "{}-normalised.mp3".format(filename.rstrip(".mp3"))
+  normalised_filename = "{}-normalised.mp3".format(filename.rsplit(".",1)[0])
 
   # The file already exists, short circuit.
   if (os.path.exists(normalised_filename)):
