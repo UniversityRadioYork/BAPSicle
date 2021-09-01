@@ -346,7 +346,7 @@ class MyRadioAPI:
             self._log("Not tracklisting, {} is not a track.".format(item.name))
             return False
 
-        self._log("Tracklisting item: {}".format(item.name))
+        self._log("Tracklisting item: '{}'".format(item.name))
 
         source: str = self.config.get()["myradio_api_tracklist_source"]
         data = {

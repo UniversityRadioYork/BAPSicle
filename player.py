@@ -659,9 +659,9 @@ class Player:
             self.logger.log.info("No tracklist to end.")
             return
 
-        self.logger.log.info("Setting timer for ending tracklist_id {}".format(tracklist_id))
+        self.logger.log.info("Setting timer for ending tracklist_id '{}'".format(tracklist_id))
         if tracklist_id:
-            self.logger.log.info("Attempting to end tracklist_id {}".format(tracklist_id))
+            self.logger.log.info("Attempting to end tracklist_id '{}'".format(tracklist_id))
             if self.tracklist_end_timer:
                 self.logger.log.error("Failed to potentially end tracklist, timer already busy.")
                 return
@@ -688,15 +688,15 @@ class Player:
                 if (state["tracklist_mode"] == "fader-live" and not state["live"]):
                     self.logger.log.info("Not tracklisting since fader is not live.")
                 else:
-                    self.logger.log.info("Tracklisting item: {}".format(loaded_item.name))
+                    self.logger.log.info("Tracklisting item: '{}'".format(loaded_item.name))
                     tracklist_id = self.api.post_tracklist_start(loaded_item)
                     if not tracklist_id:
-                        self.logger.log.warning("Failed to tracklist {}".format(loaded_item.name))
+                        self.logger.log.warning("Failed to tracklist '{}'".format(loaded_item.name))
                     else:
-                        self.logger.log.info("Tracklist id: {}".format(tracklist_id))
+                        self.logger.log.info("Tracklist id: '{}'".format(tracklist_id))
                         self.state.update("tracklist_id", tracklist_id)
             else:
-                self.logger.log.info("Not tracklisting item {}, already got tracklistid: {}".format(
+                self.logger.log.info("Not tracklisting item '{}', already got tracklistid: '{}'".format(
                     loaded_item.name, tracklist_id))
 
         # No matter what we end up doing, we need to kill this timer so future ones can run.
@@ -705,7 +705,7 @@ class Player:
     def _tracklist_end(self, tracklist_id):
 
         if tracklist_id:
-            self.logger.log.info("Attempting to end tracklist_id {}".format(tracklist_id))
+            self.logger.log.info("Attempting to end tracklist_id '{}'".format(tracklist_id))
             self.api.post_tracklist_end(tracklist_id)
         else:
             self.logger.log.error("Tracklist_id to _tracklist_end() missing. Failed to end tracklist.")

@@ -166,8 +166,7 @@ class StateManager:
             if not allow:
 
                 # Just some debug logging.
-                if update_file and (key not in ["playing", "loaded", "initialised"]):
-                    self._log("Key: {},\nnew:{}\nold:{}, ".format(key, getattr(value, "__dict__", None), getattr(state_to_update[key], "__dict__", None)), DEBUG)
+                if update_file and (key not in ["playing", "loaded", "initialised", "remaining", "pos_true"]):
                     self._log("Not updating state for key '{}' with value '{}' of type '{}'.".format(key, value, type(value)), DEBUG)
 
                 # We're trying to update the state with the same value.
