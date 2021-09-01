@@ -665,6 +665,7 @@ class Player:
             if self.tracklist_end_timer:
                 self.logger.log.error("Failed to potentially end tracklist, timer already busy.")
                 return
+            self.state.update("tracklist_id", None)
             # This threads it, so it won't hang track loading if it fails.
             self.tracklist_end_timer = Timer(1, self._tracklist_end, [tracklist_id])
             self.tracklist_end_timer.start()
@@ -676,28 +677,29 @@ class Player:
         loaded_item = state["loaded_item"]
         if not loaded_item:
             self.logger.log.error("Tried to call _tracklist_start() with no loaded item!")
-            return
 
-        if not self.isPlaying:
+        elif not self.isPlaying:
             self.logger.log.info("Not tracklisting since not playing.")
-            return
 
-        tracklist_id = state["tracklist_id"]
-        if (not tracklist_id):
-            if (state["tracklist_mode"] == "fader-live" and not state["live"]):
-                self.logger.log.info("Not tracklisting since fader is not live.")
-            else:
-                self.logger.log.info("Tracklisting item: {}".format(loaded_item.name))
-                tracklist_id = self.api.post_tracklist_start(loaded_item)
-                if not tracklist_id:
-                    self.logger.log.warning("Failed to tracklist {}".format(loaded_item.name))
-                else:
-                    self.logger.log.info("Tracklist id: {}".format(tracklist_id))
-                    self.state.update("tracklist_id", tracklist_id)
         else:
-            self.logger.log.info("Not tracklisting item {}, already got tracklistid: {}".format(
-                loaded_item.name, tracklist_id))
 
+            tracklist_id = state["tracklist_id"]
+            if (not tracklist_id):
+                if (state["tracklist_mode"] == "fader-live" and not state["live"]):
+                    self.logger.log.info("Not tracklisting since fader is not live.")
+                else:
+                    self.logger.log.info("Tracklisting item: {}".format(loaded_item.name))
+                    tracklist_id = self.api.post_tracklist_start(loaded_item)
+                    if not tracklist_id:
+                        self.logger.log.warning("Failed to tracklist {}".format(loaded_item.name))
+                    else:
+                        self.logger.log.info("Tracklist id: {}".format(tracklist_id))
+                        self.state.update("tracklist_id", tracklist_id)
+            else:
+                self.logger.log.info("Not tracklisting item {}, already got tracklistid: {}".format(
+                    loaded_item.name, tracklist_id))
+
+        # No matter what we end up doing, we need to kill this timer so future ones can run.
         self.tracklist_start_timer = None
 
     def _tracklist_end(self, tracklist_id):
