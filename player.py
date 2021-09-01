@@ -396,9 +396,13 @@ class Player:
 
     def load(self, weight: int):
         if not self.isPlaying:
+            loaded_state = self.state.get()
             self.unload()
 
-            showplan = self.state.get()["show_plan"]
+            self.logger.log.info("Resetting output (in case of sound output gone silent somehow) to " + str(loaded_state["output"]))
+            self.output(loaded_state["output"])
+
+            showplan = loaded_state["show_plan"]
 
             loaded_item: Optional[PlanItem] = None
 
