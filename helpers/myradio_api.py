@@ -41,9 +41,8 @@ class MyRadioAPI:
     async def async_call(self, url, method="GET", data=None, timeout=10):
 
         async with aiohttp.ClientSession(read_timeout=timeout) as session:
-            func = session.get(url)
-            status_code = -1
             if method == "GET":
+                func = session.get(url)
                 status_code = 200
             elif method == "POST":
                 func = session.post(url, data=data)
@@ -51,6 +50,8 @@ class MyRadioAPI:
             elif method == "PUT":
                 func = session.put(url)
                 status_code = 201
+            else:
+                return
 
             async with func as response:
                 if response.status != status_code:
@@ -61,8 +62,6 @@ class MyRadioAPI:
                 return await response.read()
 
     def call(self, url, method="GET", data=None, timeout=10, json_payload=True):
-        r = None
-        status_code = -1
         if method == "GET":
             r = requests.get(url, timeout=timeout)
             status_code = 200
@@ -72,6 +71,8 @@ class MyRadioAPI:
         elif method == "PUT":
             r = requests.put(url, data, timeout=timeout)
             status_code = 200
+        else:
+            return
 
         if r.status_code != status_code:
             self._logException(
