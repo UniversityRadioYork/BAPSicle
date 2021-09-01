@@ -44,7 +44,10 @@
           <option value="{{mode}}" {% if mode == data.state.tracklist_mode %}selected{% endif %}>{{ mode.capitalize() }}</option>
         {% endfor %}
       </select>
-      <p><small>Delayed tracklisting is 20s, to account for cueing with fader down.</small></p>
+      <p><small>
+        Delayed tracklisting is 20s, to account for cueing with fader down.<br>
+        Fader Live means if a BAPS Controller is present with support, tracklists will trigger only if fader is up.
+      </small></p>
       <hr>
       <input type="submit" class="btn btn-primary" value="Save & Restart Server">
     </form>

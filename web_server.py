@@ -1,5 +1,3 @@
-from helpers.normalisation import get_normalised_filename_if_available
-from helpers.myradio_api import MyRadioAPI
 from sanic import Sanic, log
 from sanic.exceptions import NotFound, abort
 from sanic.response import html, file, redirect
@@ -7,8 +5,8 @@ from sanic.response import json as resp_json
 from sanic_cors import CORS
 from syncer import sync
 import asyncio
-
 from jinja2 import Environment, FileSystemLoader
+from jinja2.utils import select_autoescape
 from urllib.parse import unquote
 from setproctitle import setproctitle
 from typing import Any, Optional, List
@@ -23,8 +21,10 @@ from helpers.logging_manager import LoggingManager
 from helpers.device_manager import DeviceManager
 from helpers.state_manager import StateManager
 from helpers.the_terminator import Terminator
+from helpers.normalisation import get_normalised_filename_if_available
+from helpers.myradio_api import MyRadioAPI
 
-env = Environment(loader=FileSystemLoader('%s/ui-templates/' % os.path.dirname(__file__)))
+env = Environment(loader=FileSystemLoader('%s/ui-templates/' % os.path.dirname(__file__)), autoescape=select_autoescape())
 
 # From Sanic's default, but set to log to file.
 LOGGING_CONFIG = dict(
@@ -150,7 +150,7 @@ def ui_config_server(request):
         "ui_title": "Server Config",
         "state": server_state.get(),
         "ser_ports": DeviceManager.getSerialPorts(),
-        "tracklist_modes": ["off", "on", "delayed"]
+        "tracklist_modes": ["off", "on", "delayed", "fader-live"]
     }
     return render_template("config_server.html", data=data)
 
@@ -164,7 +164,9 @@ def ui_config_server_update(request):
     server_state.update("port", int(request.form.get("port")))
     server_state.update("num_channels", int(request.form.get("channels")))
     server_state.update("ws_port", int(request.form.get("ws_port")))
-    server_state.update("serial_port", request.form.get("serial_port"))
+
+    serial_port = request.form.get("serial_port")
+    server_state.update("serial_port", None if serial_port == "None" else serial_port)
 
     # Because we're not showing the api key once it's set.
     if "myradio_api_key" in request.form and request.form.get("myradio_api_key") != "":

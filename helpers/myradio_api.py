@@ -19,7 +19,7 @@
 from typing import Optional
 import aiohttp
 import json
-from logging import INFO, ERROR, WARNING
+from logging import INFO, ERROR, WARNING, DEBUG
 import os
 import requests
 import time
@@ -44,7 +44,6 @@ class MyRadioAPI:
             func = session.get(url)
             status_code = -1
             if method == "GET":
-                #func = session.get(url)
                 status_code = 200
             elif method == "POST":
                 func = session.post(url, data=data)
@@ -234,13 +233,13 @@ class MyRadioAPI:
         )
         # Check if we already downloaded the file. If we did, give that.
         if os.path.isfile(filename):
-            self.logger.log.debug("Already got file. " + filename)
+            self._log("Already got file: " + filename, DEBUG)
             return (filename, False) if did_download else filename
 
         # If something else (another channel, the preloader etc) is downloading the track, wait for it.
         if os.path.isfile(filename + dl_suffix):
             time_waiting_s = 0
-            self.logger.log.debug("Waiting for download to complete from another worker. " + filename)
+            self._log("Waiting for download to complete from another worker. " + filename, DEBUG)
             while time_waiting_s < 20:
                 # TODO: Make something better here.
                 # If the connectivity is super poor or we're loading reeaaaalllly long files, this may be annoying, but this is just in case somehow the other api download gives up.
@@ -248,7 +247,7 @@ class MyRadioAPI:
                     # Now the file is downloaded successfully
                     return (filename, False) if did_download else filename
                 time_waiting_s +=1
-                self.logger.log.debug("Still waiting")
+                self._log("Still waiting",DEBUG)
                 time.sleep(1)
 
         # File doesn't exist, download it.
@@ -346,7 +345,7 @@ class MyRadioAPI:
             self._log("Not tracklisting, {} is not a track.".format(item.name))
             return False
 
-        self._log("Tracklisting item: {}".format(item.name))
+        self._log("Tracklisting item: '{}'".format(item.name))
 
         source: str = self.config.get()["myradio_api_tracklist_source"]
         data = {
