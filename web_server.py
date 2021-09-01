@@ -164,7 +164,9 @@ def ui_config_server_update(request):
     server_state.update("port", int(request.form.get("port")))
     server_state.update("num_channels", int(request.form.get("channels")))
     server_state.update("ws_port", int(request.form.get("ws_port")))
-    server_state.update("serial_port", request.form.get("serial_port"))
+
+    serial_port = request.form.get("serial_port")
+    server_state.update("serial_port", None if serial_port == "None" else serial_port)
 
     # Because we're not showing the api key once it's set.
     if "myradio_api_key" in request.form and request.form.get("myradio_api_key") != "":
