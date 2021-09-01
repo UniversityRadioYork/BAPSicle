@@ -44,7 +44,6 @@ class MyRadioAPI:
             func = session.get(url)
             status_code = -1
             if method == "GET":
-                func = session.get(url)
                 status_code = 200
             elif method == "POST":
                 func = session.post(url, data=data)
