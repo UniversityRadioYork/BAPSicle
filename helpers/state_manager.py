@@ -168,7 +168,7 @@ class StateManager:
                 # Just some debug logging.
                 if update_file and (key not in ["playing", "loaded", "initialised"]):
                     self._log("Key: {},\nnew:{}\nold:{}, ".format(key, getattr(value, "__dict__", None), getattr(state_to_update[key], "__dict__", None)), DEBUG)
-                    self._log("Not updating state for key {} with value {} of type {}.".format(key, value, type(value)), DEBUG)
+                    self._log("Not updating state for key '{}' with value '{}' of type '{}'.".format(key, value, type(value)), DEBUG)
 
                 # We're trying to update the state with the same value.
                 # In this case, ignore the update
@@ -177,11 +177,11 @@ class StateManager:
 
         if index > -1 and key in state_to_update:
             if not isinstance(state_to_update[key], list):
-                self._log("Not updating state for key {} with value {} of type {} since index is set and key is not a list.".format(key, value, type(value)), DEBUG)
+                self._log("Not updating state for key '{}' with value '{}' of type '{}' since index is set and key is not a list.".format(key, value, type(value)), DEBUG)
                 return
             list_items = state_to_update[key]
             if index >= len(list_items):
-                self._log("Not updating state for key {} with value {} of type {} because index {} is too large..".format(key, value, type(value), index), DEBUG)
+                self._log("Not updating state for key '{}' with value '{}' of type '{}' because index '{}' is too large..".format(key, value, type(value), index), DEBUG)
                 return
             list_items[index] = value
             state_to_update[key] = list_items
@@ -191,7 +191,7 @@ class StateManager:
         self.state = state_to_update
 
         if update_file:
-            self._log("Writing change to key {} with value {} of type {} to disk.".format(key, value, type(value)), DEBUG)
+            self._log("Writing change to key '{}' with value '{}' of type '{}' to disk.".format(key, value, type(value)), DEBUG)
             # Either a routine write, or state has changed.
             # Update the file
             self.write_to_file(state_to_update)
