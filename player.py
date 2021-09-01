@@ -35,6 +35,7 @@ from mutagen.mp3 import MP3
 from syncer import sync
 from threading import Timer
 
+from helpers.normalisation import get_normalised_filename_if_available
 from helpers.myradio_api import MyRadioAPI
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
@@ -428,6 +429,9 @@ class Player:
             if not loaded_item.filename:
                 return False
 
+            # Swap with a normalised version if it's ready, else returns original.
+            loaded_item.filename = get_normalised_filename_if_available(loaded_item.filename)
+
             self.state.update("loaded_item", loaded_item)
 
             for i in range(len(showplan)):
@@ -437,6 +441,10 @@ class Player:
                 # TODO: Update the show plan filenames???
 
             load_attempt = 0
+
+            if not isinstance(loaded_item.filename, str):
+                return False
+
             while load_attempt < 5:
                 load_attempt += 1
                 try:
@@ -457,10 +465,11 @@ class Player:
                     continue # Try loading again.
 
                 try:
-                    if ".mp3" in loaded_item.filename:
+                    if loaded_item.filename.endswith(".mp3"):
                         song = MP3(loaded_item.filename)
                         self.state.update("length", song.info.length)
                     else:
+                        # WARNING! Pygame / SDL can't seek .wav files :/
                         self.state.update(
                             "length", mixer.Sound(
                                 loaded_item.filename).get_length() / 1000

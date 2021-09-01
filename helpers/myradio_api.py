@@ -156,23 +156,22 @@ class MyRadioAPI:
 
         payload = json.loads(await request)["payload"]
 
+        shows = []
         if not payload["current"]:
             self._logException("API did not return a current show.")
+        else:
+            shows.append(payload["current"])
 
         if not payload["next"]:
             self._logException("API did not return a list of next shows.")
+        else:
+            shows.extend(payload["next"])
 
-        shows = []
-        shows.append(payload["current"])
-        shows.extend(payload["next"])
-
-        timeslots = []
         # Remove jukebox etc
         for show in shows:
             if not "timeslot_id" in show:
                 shows.remove(show)
 
-        # TODO filter out jukebox
         return shows
 
     async def get_showplan(self, timeslotid: int):
