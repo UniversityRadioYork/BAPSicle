@@ -242,15 +242,19 @@ class BAPSicleServer:
             self.websockets_server.join(timeout=PROCESS_KILL_TIMEOUT_S)
         del self.websockets_server
 
-        print("Stopping Players")
-        for q in self.player_to_q:
-            q.put("ALL:QUIT")
+        print("Stopping File Manager")
+        if self.file_manager:
+            self.file_manager.terminate()
+            self.file_manager.join(timeout=PROCESS_KILL_TIMEOUT_S)
+            del self.file_manager
 
-        for player in self.player:
-            player.join(timeout=PROCESS_KILL_TIMEOUT_S)
+        print("Stopping Controllers")
+        if self.controller_handler:
+            self.controller_handler.terminate()
+            self.controller_handler.join(timeout=PROCESS_KILL_TIMEOUT_S)
+            del self.controller_handler
 
-        del self.player
-
+        # Stop the Webserver late as we can to allow Presenter to pull images for the disconnection page if it needs to.
         print("Stopping Web Server")
         if self.webserver:
             self.webserver.terminate()
@@ -263,17 +267,16 @@ class BAPSicleServer:
             self.player_handler.join(timeout=PROCESS_KILL_TIMEOUT_S)
             del self.player_handler
 
-        print("Stopping File Manager")
-        if self.file_manager:
-            self.file_manager.terminate()
-            self.file_manager.join(timeout=PROCESS_KILL_TIMEOUT_S)
-            del self.file_manager
+        # Now we've stopped everything else, now is the time to stop the players. This is to keep playing for as long as possible during a restart.
+        print("Stopping Players")
+        for q in self.player_to_q:
+            q.put("ALL:QUIT")
 
-        print("Stopping Controllers")
-        if self.controller_handler:
-            self.controller_handler.terminate()
-            self.controller_handler.join(timeout=PROCESS_KILL_TIMEOUT_S)
-            del self.controller_handler
+        for player in self.player:
+            player.join(timeout=PROCESS_KILL_TIMEOUT_S)
+
+        del self.player
+
         print("Stopped all processes.")
 
 
