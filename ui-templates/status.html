@@ -12,7 +12,8 @@
           <h3 class="h5">Player {{player.channel}}</h3>
           <p>
             Initialised: {{player.initialised}}<br/>
-            Fader Live: {{player.live}}
+            Fader Live: {{player.live}}<br/>
+            Current Tracklist: {{player.tracklist_id}}
           </p>
           <a href="/player/{{player.channel}}/play">Play</a>
           {% if player.paused %}
