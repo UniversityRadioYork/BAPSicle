@@ -73,10 +73,9 @@ class MattchBox(Controller):
             try:
                 self.ser.open()
                 self.logger.log.info("Connected to serial port {}".format(port))
-            except serial.SerialException as e:
+            except (FileNotFoundError, serial.SerialException) as e:
                 self.logger.log.error(
-                    "Could not open serial port" + str(port),
-                    e
+                    "Could not open serial port {}:\n{}".format(port, e)
                 )
                 self._disconnected()
                 self.ser = None
