@@ -9,7 +9,16 @@
 <h4 class="h5">Currently Selected</h4>
 <p>
 {% for channel in data.channels %}
-  <strong>Player {{channel.channel}}:</strong> {% if channel.output %}{{channel.output}}{% else %}Default Audio Device{% endif %}<br>
+  <strong>Player {{channel.channel}}:</strong>
+  {% if channel.output %}
+    {{channel.output}}
+  {% else %}
+    Default Audio Device
+  {% endif %}
+  {% if not channel.initialised %}
+    <code> - <strong>ERROR:</strong> Player did not start, potentially missing sound output?</code>
+  {% endif %}
+  <br>
 {% endfor %}
 <br/>
 <code>
