@@ -598,14 +598,14 @@ class Player:
 
         return success
 
-    def reset_played(self, weight: int):
+    def set_played(self, weight: int, played: bool):
         plan: List[PlanItem] = self.state.get()["show_plan"]
         if weight == -1:
             for item in plan:
-                item.play_count_reset()
+                item.play_count_increment() if played else item.play_count_reset()
             self.state.update("show_plan", plan)
         elif len(plan) > weight:
-            plan[weight].play_count_reset()
+            plan[weight].play_count_increment() if played else plan[weight].play_count_reset()
             self.state.update("show_plan", plan[weight], weight)
         else:
             return False
@@ -1001,7 +1001,7 @@ class Player:
                                 )
                             ),
                             # Show Plan Items
-                            "GET_PLAN": lambda: self._retMsg(
+                            "GETPLAN": lambda: self._retMsg(
                                 self.get_plan(int(self.last_msg.split(":")[1]))
                             ),
                             "LOAD": lambda: self._retMsg(
@@ -1021,7 +1021,8 @@ class Player:
                             ),
                             "CLEAR": lambda: self._retMsg(self.clear_channel_plan()),
                             "SETMARKER": lambda: self._retMsg(self.set_marker(self.last_msg.split(":")[1], self.last_msg.split(":", 2)[2])),
-                            "RESETPLAYED": lambda: self._retMsg(self.reset_played(int(self.last_msg.split(":")[1]))),
+                            "RESETPLAYED": lambda: self._retMsg(self.set_played(weight=int(self.last_msg.split(":")[1]), played = False)),
+                            "SETPLAYED": lambda: self._retMsg(self.set_played(weight=int(self.last_msg.split(":")[1]), played = True)),
                             "SETLIVE": lambda: self._retMsg(self.set_live(self.last_msg.split(":")[1] == "True")),
                         }
 

@@ -146,7 +146,9 @@ class WebsocketServer:
                     extra += str(data["weight"])
                 elif command == "RESETPLAYED":
                     extra += str(data["weight"])
-                elif command == "GET_PLAN":
+                elif command == "SETPLAYED":
+                    extra += str(data["weight"])
+                elif command == "GETPLAN":
                     extra += str(data["timeslotId"])
                 elif command == "SETMARKER":
                     extra += "{}:{}".format(
