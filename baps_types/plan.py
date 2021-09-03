@@ -16,9 +16,12 @@
 import json
 from typing import Any, Dict, List, Optional, Union
 import os
+from time import time
 
 from baps_types.marker import Marker
 
+def _time_ms():
+    return round(time() * 1000)
 class PlanItem:
     _timeslotitemid: str = "0"
     _weight: int = 0
@@ -29,6 +32,7 @@ class PlanItem:
     _managedid: Optional[int]
     _markers: List[Marker] = []
     _play_count: int
+    _played_at: int
     _clean: bool
 
     @property
@@ -59,14 +63,22 @@ class PlanItem:
     def play_count(self) -> int:
         return self._play_count
 
+    @property
+    def played_at(self) -> int:
+        return self._played_at
+
     def play_count_increment(self):
         self._play_count += 1
+        self._played_at = _time_ms()
 
     def play_count_decrement(self):
         self._play_count = max(0,self._play_count - 1)
+        if self._play_count == 0:
+            self._played_at = 0
 
     def play_count_reset(self):
         self._play_count = 0
+        self._played_at = 0
 
     @property
     def name(self) -> str:
@@ -150,6 +162,7 @@ class PlanItem:
             "outro": self.outro,
             "markers": self.markers,
             "played": self.play_count > 0,
+            "played_at": self.played_at,
             "play_count": self.play_count,
             "clean": self.clean
         }
@@ -173,6 +186,7 @@ class PlanItem:
             [Marker(marker) for marker in new_item["markers"]] if "markers" in new_item else []
         )
         self._play_count = new_item["play_count"] if "play_count" in new_item else 0
+        self._played_at = new_item["played_at"] if "played_at" in new_item else 0
         self._clean = new_item["clean"] if "clean" in new_item else True
 
         # TODO: Edit this to handle markers when MyRadio supports them
