@@ -297,7 +297,7 @@ def player_all_stop(request):
 def plan_load(request, timeslotid: int):
 
     for channel in player_to_q:
-        channel.put("UI:GET_PLAN:" + str(timeslotid))
+        channel.put("UI:GETPLAN:" + str(timeslotid))
 
     return redirect("/status")
 

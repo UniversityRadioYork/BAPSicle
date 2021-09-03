@@ -54,7 +54,7 @@ class FileManager:
                         command = message.split(":",2)[1]
 
                         # If we have requested a new show plan, empty the music-tmp directory for the previous show.
-                        if command == "GET_PLAN":
+                        if command == "GETPLAN":
 
                           if self.channel_received != [False]*self.channel_count and self.channel_received[channel] != True:
                             # We've already received a delete trigger on a channel, let's not delete the folder more than once.
