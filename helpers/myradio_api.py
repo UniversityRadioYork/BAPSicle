@@ -58,7 +58,7 @@ class MyRadioAPI:
                     self._logException(
                         "Failed to get API request. Status code: " + str(response.status)
                     )
-                    self._logException(str(response.text()))
+                    self._logException(str(await response.text()))
                 return await response.read()
 
     def call(self, url, method="GET", data=None, timeout=10, json_payload=True):
