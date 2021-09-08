@@ -36,7 +36,7 @@ class StateManager:
                 # Try creating the directory.
                 os.mkdir(path_dir)
             except Exception:
-                print("Failed to create state directory.")
+                self._logException("Failed to create state directory.")
                 return
 
         self.filepath = resolve_external_file_path("/state/" + name + ".json")
@@ -48,7 +48,7 @@ class StateManager:
                 # Try creating the file.
                 open(self.filepath, "x")
             except Exception:
-                self._log("Failed to create state file.", CRITICAL)
+                self._logException("Failed to create state file.")
                 return
 
         file_raw: str

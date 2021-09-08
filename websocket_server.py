@@ -59,7 +59,7 @@ class WebsocketServer:
         _exit(0)
 
     def __del__(self):
-        print("Deleting websocket server")
+        self.logger.log.info("Deleting websocket server")
         self.quit()
 
     async def websocket_handler(self, websocket, path):
@@ -225,7 +225,6 @@ class WebsocketServer:
                         continue
 
                     command = message.split(":")[1]
-                    # print("Websocket Out:", command)
                     if command == "STATUS":
                         try:
                             message = message.split("OKAY:")[1]
@@ -263,4 +262,4 @@ class WebsocketServer:
 
 
 if __name__ == "__main__":
-    print("Don't do this")
+    raise Exception("Don't run this file standalone.")

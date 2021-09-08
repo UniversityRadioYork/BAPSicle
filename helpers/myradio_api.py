@@ -375,8 +375,7 @@ class MyRadioAPI:
 
         self._log("Ending tracklistitemid {}".format(tracklistitemid))
 
-        result = self.api_call("/tracklistItem/{}/endtime".format(tracklistitemid), method="PUT")
-        print(result)
+        self.api_call("/tracklistItem/{}/endtime".format(tracklistitemid), method="PUT")
 
     def _log(self, text: str, level: int = INFO):
         self.logger.log.log(level, "MyRadio API: " + text)
