@@ -29,5 +29,6 @@ cd build
 brew install platypus
 
 platypus --load-profile ./BAPSicle.platypus --overwrite ./output/BAPSicle.app
+chmod +x output/BAPSicle.app/Contents/Resources/BAPSicle
 
 rm ../build.py

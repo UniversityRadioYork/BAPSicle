@@ -26,7 +26,10 @@ from helpers.myradio_api import MyRadioAPI
 
 env = Environment(loader=FileSystemLoader('%s/ui-templates/' % os.path.dirname(__file__)), autoescape=select_autoescape())
 
+LOG_FILEPATH = resolve_external_file_path("logs")
+LOG_FILENAME = LOG_FILEPATH + "/WebServer.log"
 # From Sanic's default, but set to log to file.
+os.makedirs(LOG_FILEPATH, exist_ok=True)
 LOGGING_CONFIG = dict(
     version=1,
     disable_existing_loggers=False,
@@ -49,17 +52,17 @@ LOGGING_CONFIG = dict(
         "file": {
             "class": "logging.FileHandler",
             "formatter": "generic",
-            "filename": "logs/WebServer.log"
+            "filename": LOG_FILENAME
         },
         "error_file": {
             "class": "logging.FileHandler",
             "formatter": "generic",
-            "filename": "logs/WebServer.log"
+            "filename": LOG_FILENAME
         },
         "access_file": {
             "class": "logging.FileHandler",
             "formatter": "access",
-            "filename": "logs/WebServer.log"
+            "filename": LOG_FILENAME
         },
     },
     formatters={
