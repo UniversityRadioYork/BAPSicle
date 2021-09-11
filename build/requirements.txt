@@ -1,4 +1,4 @@
-autopep8
+wheel
 pygame==2.0.1
 sanic==21.3.4
 sanic-Cors==1.0.0
@@ -13,3 +13,5 @@ typing_extensions==3.10.0.0
 pyserial==3.5
 requests==2.26.0
 Jinja2==3.0.1
+pydub==0.25.1
+psutil

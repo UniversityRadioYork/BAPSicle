@@ -7,4 +7,5 @@ setup(
     description=package.DESCRIPTION,
     author=package.AUTHOR,
     license=package.LICENSE,
-    packages=find_packages())
+    packages=find_packages(),
+)

@@ -1,4 +1,3 @@
-
 from helpers.the_terminator import Terminator
 from typing import List, Optional
 from multiprocessing import Queue, current_process
@@ -73,10 +72,9 @@ class MattchBox(Controller):
             try:
                 self.ser.open()
                 self.logger.log.info("Connected to serial port {}".format(port))
-            except serial.SerialException as e:
+            except (FileNotFoundError, serial.SerialException) as e:
                 self.logger.log.error(
-                    "Could not open serial port" + str(port),
-                    e
+                    "Could not open serial port {}:\n{}".format(port, e)
                 )
                 self._disconnected()
                 self.ser = None
@@ -96,12 +94,12 @@ class MattchBox(Controller):
                     self.logger.log.info("Received from controller: " + str(line))
                     if line == 255:
                         self.ser.write(b"\xff")  # Send 255 back, this is a keepalive.
-                    elif line in [51,52,53]:
+                    elif line in [51, 52, 53]:
                         # We've received a status update about fader live status, fader is down.
-                        self.sendToPlayer(line-51, "SETLIVE:False")
-                    elif line in [61,62,63]:
+                        self.sendToPlayer(line - 51, "SETLIVE:False")
+                    elif line in [61, 62, 63]:
                         # We've received a status update about fader live status, fader is up.
-                        self.sendToPlayer(line-61, "SETLIVE:True")
+                        self.sendToPlayer(line - 61, "SETLIVE:True")
                     elif line in [1, 3, 5]:
                         self.sendToPlayer(int(line / 2), "PLAYPAUSE")
                     elif line in [2, 4, 6]:
@@ -137,5 +135,7 @@ class MattchBox(Controller):
         self.connect(None)
 
     def sendToPlayer(self, channel: int, msg: str):
-        self.logger.log.info("Sending message to player channel {}: {}".format(channel, msg))
+        self.logger.log.info(
+            "Sending message to player channel {}: {}".format(channel, msg)
+        )
         self.server_to_q[channel].put("CONTROLLER:" + msg)

@@ -10,7 +10,9 @@ from helpers.the_terminator import Terminator
 class PlayerHandler:
     logger: LoggingManager
 
-    def __init__(self, channel_from_q, websocket_to_q, ui_to_q, controller_to_q, file_to_q):
+    def __init__(
+        self, channel_from_q, websocket_to_q, ui_to_q, controller_to_q, file_to_q
+    ):
 
         self.logger = LoggingManager("PlayerHandler")
         process_title = "Player Handler"
@@ -30,7 +32,6 @@ class PlayerHandler:
                         # Let the file manager manage the files based on status and loading new show plan triggers.
                         if command == "GET_PLAN" or command == "STATUS":
                             file_to_q[channel].put(message)
-
 
                         # TODO ENUM
                         if source in ["ALL", "WEBSOCKET"]:

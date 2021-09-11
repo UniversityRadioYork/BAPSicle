@@ -10,6 +10,7 @@ echo "BRANCH: str = \"$build_branch\"" >> ../build.py
 python3 -m venv ../venv
 source ../venv/bin/activate
 
+pip3 install wheel
 pip3 install -r requirements.txt
 pip3 install -r requirements-macos.txt
 pip3 install -e ..\
@@ -29,5 +30,6 @@ cd build
 brew install platypus
 
 platypus --load-profile ./BAPSicle.platypus --overwrite ./output/BAPSicle.app
+chmod +x output/BAPSicle.app/Contents/Resources/BAPSicle
 
 rm ../build.py
