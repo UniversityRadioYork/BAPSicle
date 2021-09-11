@@ -1,4 +1,4 @@
 [submodule "presenter"]
 	path = presenter
 	url = https://github.com/UniversityRadioYork/WebStudio.git
-	branch = mstratford/bapsicle-news
+	branch = master
