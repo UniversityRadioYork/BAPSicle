@@ -113,7 +113,8 @@ class BAPSicleServer:
         ):
 
             for channel in range(self.state.get()["num_channels"]):
-                # Use pid_exists to confirm process is actually still running. Python may not report is_alive() correctly (especially over system sleeps etc.)
+                # Use pid_exists to confirm process is actually still running.
+                # Python may not report is_alive() correctly (especially over system sleeps etc.)
                 # https://medium.com/pipedrive-engineering/encountering-some-python-trickery-683bd5f66750
                 if (
                     not self.player[channel]

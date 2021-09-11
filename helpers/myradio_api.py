@@ -172,7 +172,7 @@ class MyRadioAPI:
 
         # Remove jukebox etc
         for show in shows:
-            if not "timeslot_id" in show:
+            if "timeslot_id" not in show:
                 shows.remove(show)
 
         return shows
@@ -248,7 +248,8 @@ class MyRadioAPI:
             )
             while time_waiting_s < 20:
                 # TODO: Make something better here.
-                # If the connectivity is super poor or we're loading reeaaaalllly long files, this may be annoying, but this is just in case somehow the other api download gives up.
+                # If the connectivity is super poor or we're loading reeaaaalllly long files,
+                # this may be annoying, but this is just in case somehow the other api download gives up.
                 if os.path.isfile(filename):
                     # Now the file is downloaded successfully
                     return (filename, False) if did_download else filename
@@ -305,7 +306,7 @@ class MyRadioAPI:
     async def get_playlist_aux_items(self, library_id: str):
         # Sometimes they have "aux-<ID>", we only need the index.
         if library_id.index("-") > -1:
-            library_id = library_id[library_id.index("-") + 1 :]
+            library_id = library_id[library_id.index("-") + 1:]
 
         url = "/nipswebPlaylist/{}/items".format(library_id)
         request = await self.async_api_call(url)

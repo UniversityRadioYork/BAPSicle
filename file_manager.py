@@ -62,9 +62,10 @@ class FileManager:
                             if (
                                 self.channel_received != [
                                     False] * self.channel_count
-                                and self.channel_received[channel] != True
+                                and self.channel_received[channel] is False
                             ):
-                                # We've already received a delete trigger on a channel, let's not delete the folder more than once.
+                                # We've already received a delete trigger on a channel,
+                                # let's not delete the folder more than once.
                                 # If the channel was already in the process of being deleted, the user has
                                 # requested it again, so allow it.
 
@@ -124,7 +125,8 @@ class FileManager:
                             for item in show_plan:
                                 item_ids += item["timeslotitemid"]
 
-                            # If the new status update has a different order / list of items, let's update the show plan we know about
+                            # If the new status update has a different order / list of items,
+                            # let's update the show plan we know about
                             # This will trigger the chunk below to do the rounds again and preload any new files.
                             if item_ids != self.last_known_item_ids[channel]:
                                 self.last_known_item_ids[channel] = item_ids

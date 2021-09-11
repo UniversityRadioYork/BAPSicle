@@ -78,9 +78,10 @@ class StateManager:
 
                 # If there are any new config options in the default state, save them.
                 # Uses update() to save them to file too.
-                for key in default_state.keys():
-                    if key not in file_state.keys():
-                        self.update(key, default_state[key])
+                if default_state:
+                    for key in default_state.keys():
+                        if key not in file_state.keys():
+                            self.update(key, default_state[key])
 
             except Exception:
                 self._logException(
@@ -186,7 +187,8 @@ class StateManager:
         if index > -1 and key in state_to_update:
             if not isinstance(state_to_update[key], list):
                 self._log(
-                    "Not updating state for key '{}' with value '{}' of type '{}' since index is set and key is not a list.".format(
+                    "Not updating state for key '{}' with value '{}' of type '{}' since index is set and key is not a list."
+                    .format(
                         key, value, type(value)
                     ),
                     DEBUG,

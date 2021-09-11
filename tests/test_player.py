@@ -128,7 +128,7 @@ class TestPlayer(unittest.TestCase):
                     source = response[: response.index(":")]
                     if source in sources_filter:
                         return response[
-                            len(source + ":" + msg) + 1 :
+                            len(source + ":" + msg) + 1:
                         ]  # +1 to remove trailing : on source.
             except Empty:
                 pass
@@ -316,7 +316,8 @@ class TestPlayer(unittest.TestCase):
         self._send_msg_wait_OKAY("LOAD:2")  # To test currently loaded marker sets.
 
         markers = [
-            # Markers are stored as float, to compare against later, these must all be floats, despite int being supported.
+            # Markers are stored as float, to compare against later,
+            # these must all be floats, despite int being supported.
             getMarkerJSON("Intro Name", 2.0, "start", None),
             getMarkerJSON("Cue Name", 3.14, "mid", None),
             getMarkerJSON("Outro Name", 4.0, "end", None),
@@ -358,7 +359,8 @@ class TestPlayer(unittest.TestCase):
         # In this case, we want to make sure both the current and loaded items are updated
         for item in [json_obj["show_plan"][2], json_obj["loaded_item"]]:
             self.assertEqual(item["weight"], 2)
-            # This is a loop marker. It should not appear as a standard intro, outro or cue. Default of 0.0 should apply to all.
+            # This is a loop marker. It should not appear as a standard intro, outro or cue.
+            # Default of 0.0 should apply to all.
             self.assertEqual(item["intro"], 0.0)
             self.assertEqual(item["outro"], 0.0)
             self.assertEqual(item["cue"], 0.0)

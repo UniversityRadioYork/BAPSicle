@@ -20,28 +20,29 @@
 # that we respond with something, FAIL or OKAY. The server doesn't like to be kept waiting.
 
 # Stop the Pygame Hello message.
-import package
-from baps_types.marker import Marker
-from baps_types.plan import PlanItem
-from helpers.logging_manager import LoggingManager
-from helpers.state_manager import StateManager
-from helpers.myradio_api import MyRadioAPI
-from helpers.normalisation import get_normalised_filename_if_available
-from threading import Timer
-from syncer import sync
-from mutagen.mp3 import MP3
-from pygame import mixer
-from typing import Any, Callable, Dict, List, Optional
-import time
-import json
-import copy
-import setproctitle
-import multiprocessing
-from queue import Empty
 import os
 
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 
+from queue import Empty
+import multiprocessing
+import setproctitle
+import copy
+import json
+import time
+from typing import Any, Callable, Dict, List, Optional
+from pygame import mixer
+from mutagen.mp3 import MP3
+from syncer import sync
+from threading import Timer
+
+from helpers.normalisation import get_normalised_filename_if_available
+from helpers.myradio_api import MyRadioAPI
+from helpers.state_manager import StateManager
+from helpers.logging_manager import LoggingManager
+from baps_types.plan import PlanItem
+from baps_types.marker import Marker
+import package
 
 # TODO ENUM
 VALID_MESSAGE_SOURCES = ["WEBSOCKET", "UI", "CONTROLLER", "TEST", "ALL"]
@@ -300,8 +301,10 @@ class Player:
 
     def _check_ghosts(self, item: PlanItem):
         if isinstance(item.timeslotitemid, str) and item.timeslotitemid.startswith("I"):
-            # Kinda a bodge for the moment, each "Ghost" (item which is not saved in the database showplan yet) needs to have a unique temporary item.
-            # To do this, we'll start with the channel number the item was originally added to (to stop items somehow simultaneously added to different channels from having the same id)
+            # Kinda a bodge for the moment, each "Ghost" (item which is not saved in the database showplan yet)
+            # needs to have a unique temporary item.
+            # To do this, we'll start with the channel number the item was originally added to
+            # (to stop items somehow simultaneously added to different channels from having the same id)
             # And chuck in the unix epoch in ns for good measure.
             item.timeslotitemid = "GHOST-{}-{}".format(
                 self.state.get()["channel"], time.time_ns()

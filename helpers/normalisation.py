@@ -4,6 +4,8 @@ from pydub import AudioSegment, effects  # Audio leveling!
 # Stuff to help make BAPSicle play out leveled audio.
 
 # Takes filename in, normalialises it and returns a normalised file path.
+
+
 def generate_normalised_file(filename: str):
     if not (isinstance(filename, str) and filename.endswith(".mp3")):
         raise ValueError("Invalid filename given.")
