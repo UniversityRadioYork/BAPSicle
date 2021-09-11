@@ -56,7 +56,8 @@ class MyRadioAPI:
             async with func as response:
                 if response.status != status_code:
                     self._logException(
-                        "Failed to get API request. Status code: " + str(response.status)
+                        "Failed to get API request. Status code: "
+                        + str(response.status)
                     )
                     self._logException(str(await response.text()))
                 return await response.read()
@@ -81,7 +82,9 @@ class MyRadioAPI:
             self._logException(str(r.text))
         return json.loads(r.text) if json_payload else r.text
 
-    async def async_api_call(self, url, api_version="v2", method="GET", data=None, timeout=10):
+    async def async_api_call(
+        self, url, api_version="v2", method="GET", data=None, timeout=10
+    ):
         if api_version == "v2":
             url = "{}/v2{}".format(self.config.get()["myradio_api_url"], url)
         elif api_version == "non":
@@ -198,7 +201,6 @@ class MyRadioAPI:
         self.logger.log.error("Show plan in unknown format.")
         return None
 
-
     # Audio Library
 
     async def get_filename(self, item: PlanItem, did_download: bool = False):
@@ -240,15 +242,18 @@ class MyRadioAPI:
         # If something else (another channel, the preloader etc) is downloading the track, wait for it.
         if os.path.isfile(filename + dl_suffix):
             time_waiting_s = 0
-            self._log("Waiting for download to complete from another worker. " + filename, DEBUG)
+            self._log(
+                "Waiting for download to complete from another worker. " + filename,
+                DEBUG,
+            )
             while time_waiting_s < 20:
                 # TODO: Make something better here.
                 # If the connectivity is super poor or we're loading reeaaaalllly long files, this may be annoying, but this is just in case somehow the other api download gives up.
                 if os.path.isfile(filename):
                     # Now the file is downloaded successfully
                     return (filename, False) if did_download else filename
-                time_waiting_s +=1
-                self._log("Still waiting",DEBUG)
+                time_waiting_s += 1
+                self._log("Still waiting", DEBUG)
                 time.sleep(1)
 
         # File doesn't exist, download it.
@@ -300,7 +305,7 @@ class MyRadioAPI:
     async def get_playlist_aux_items(self, library_id: str):
         # Sometimes they have "aux-<ID>", we only need the index.
         if library_id.index("-") > -1:
-            library_id = library_id[library_id.index("-") + 1:]
+            library_id = library_id[library_id.index("-") + 1 :]
 
         url = "/nipswebPlaylist/{}/items".format(library_id)
         request = await self.async_api_call(url)
@@ -351,12 +356,14 @@ class MyRadioAPI:
         source: str = self.config.get()["myradio_api_tracklist_source"]
         data = {
             "trackid": item.trackid,
-            "sourceid": int(source) if source.isnumeric() else source
+            "sourceid": int(source) if source.isnumeric() else source,
         }
         # Starttime and timeslotid are default in the API to current time/show.
         tracklist_id = None
         try:
-            tracklist_id = self.api_call("/tracklistItem/", method="POST", data=data)["payload"]["audiologid"]
+            tracklist_id = self.api_call("/tracklistItem/", method="POST", data=data)[
+                "payload"
+            ]["audiologid"]
         except Exception as e:
             self._logException("Failed to get tracklistid. {}".format(e))
 
@@ -370,7 +377,9 @@ class MyRadioAPI:
             self._log("Tracklistitemid is None, can't end tracklist.", WARNING)
             return False
         if not isinstance(tracklistitemid, int):
-            self._logException("Tracklistitemid '{}' is not an integer!".format(tracklistitemid))
+            self._logException(
+                "Tracklistitemid '{}' is not an integer!".format(tracklistitemid)
+            )
             return False
 
         self._log("Ending tracklistitemid {}".format(tracklistitemid))

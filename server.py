@@ -110,28 +110,53 @@ class BAPSicleServer:
         terminator = Terminator()
         log_function = self.logger.log.info
 
-        while not terminator.terminate and self.state.get()["running_state"] == "running":
+        while (
+            not terminator.terminate and self.state.get()["running_state"] == "running"
+        ):
 
             for channel in range(self.state.get()["num_channels"]):
                 # Use pid_exists to confirm process is actually still running. Python may not report is_alive() correctly (especially over system sleeps etc.)
                 # https://medium.com/pipedrive-engineering/encountering-some-python-trickery-683bd5f66750
-                if not self.player[channel] or not self.player[channel].is_alive() or not psutil.pid_exists(self.player[channel].pid):
+                if (
+                    not self.player[channel]
+                    or not self.player[channel].is_alive()
+                    or not psutil.pid_exists(self.player[channel].pid)
+                ):
                     log_function("Player {} not running, (re)starting.".format(channel))
                     self.player[channel] = multiprocessing.Process(
                         target=player.Player,
-                        args=(channel, self.player_to_q[channel], self.player_from_q[channel], self.state)
+                        args=(
+                            channel,
+                            self.player_to_q[channel],
+                            self.player_from_q[channel],
+                            self.state,
+                        ),
                     )
                     self.player[channel].start()
 
-            if not self.player_handler or not self.player_handler.is_alive() or not psutil.pid_exists(self.player_handler.pid):
+            if (
+                not self.player_handler
+                or not self.player_handler.is_alive()
+                or not psutil.pid_exists(self.player_handler.pid)
+            ):
                 log_function("Player Handler not running, (re)starting.")
                 self.player_handler = multiprocessing.Process(
                     target=PlayerHandler,
-                    args=(self.player_from_q, self.websocket_to_q, self.ui_to_q, self.controller_to_q, self.file_to_q),
+                    args=(
+                        self.player_from_q,
+                        self.websocket_to_q,
+                        self.ui_to_q,
+                        self.controller_to_q,
+                        self.file_to_q,
+                    ),
                 )
                 self.player_handler.start()
 
-            if not self.file_manager or not self.file_manager.is_alive() or not psutil.pid_exists(self.file_manager.pid):
+            if (
+                not self.file_manager
+                or not self.file_manager.is_alive()
+                or not psutil.pid_exists(self.file_manager.pid)
+            ):
                 log_function("File Manager not running, (re)starting.")
                 self.file_manager = multiprocessing.Process(
                     target=FileManager,
@@ -139,24 +164,38 @@ class BAPSicleServer:
                 )
                 self.file_manager.start()
 
-            if not self.websockets_server or not self.websockets_server.is_alive() or not psutil.pid_exists(self.websockets_server.pid):
+            if (
+                not self.websockets_server
+                or not self.websockets_server.is_alive()
+                or not psutil.pid_exists(self.websockets_server.pid)
+            ):
                 log_function("Websocket Server not running, (re)starting.")
                 self.websockets_server = multiprocessing.Process(
-                    target=WebsocketServer, args=(self.player_to_q, self.websocket_to_q, self.state)
+                    target=WebsocketServer,
+                    args=(self.player_to_q, self.websocket_to_q, self.state),
                 )
                 self.websockets_server.start()
 
-            if not self.webserver or not self.webserver.is_alive() or not psutil.pid_exists(self.webserver.pid):
+            if (
+                not self.webserver
+                or not self.webserver.is_alive()
+                or not psutil.pid_exists(self.webserver.pid)
+            ):
                 log_function("Webserver not running, (re)starting.")
                 self.webserver = multiprocessing.Process(
                     target=WebServer, args=(self.player_to_q, self.ui_to_q, self.state)
                 )
                 self.webserver.start()
 
-            if not self.controller_handler or not self.controller_handler.is_alive() or not psutil.pid_exists(self.controller_handler.pid):
+            if (
+                not self.controller_handler
+                or not self.controller_handler.is_alive()
+                or not psutil.pid_exists(self.controller_handler.pid)
+            ):
                 log_function("Controller Handler not running, (re)starting.")
                 self.controller_handler = multiprocessing.Process(
-                    target=MattchBox, args=(self.player_to_q, self.controller_to_q, self.state)
+                    target=MattchBox,
+                    args=(self.player_to_q, self.controller_to_q, self.state),
                 )
                 self.controller_handler.start()
 
@@ -179,7 +218,9 @@ class BAPSicleServer:
         ProxyManager.register("StateManager", StateManager)
         manager = ProxyManager()
         manager.start()
-        self.state: StateManager = manager.StateManager("BAPSicleServer", self.logger, self.default_state)
+        self.state: StateManager = manager.StateManager(
+            "BAPSicleServer", self.logger, self.default_state
+        )
 
         self.state.update("running_state", "running")
 
@@ -203,8 +244,16 @@ class BAPSicleServer:
             self.controller_to_q.append(multiprocessing.Queue())
             self.file_to_q.append(multiprocessing.Queue())
 
-        print("Welcome to BAPSicle Server version: {}, build: {}.".format(package.VERSION, package.BUILD))
-        print("The Server UI is available at http://{}:{}".format(self.state.get()["host"], self.state.get()["port"]))
+        print(
+            "Welcome to BAPSicle Server version: {}, build: {}.".format(
+                package.VERSION, package.BUILD
+            )
+        )
+        print(
+            "The Server UI is available at http://{}:{}".format(
+                self.state.get()["host"], self.state.get()["port"]
+            )
+        )
 
         # TODO Move this to player or installer.
         if False:

@@ -74,9 +74,7 @@ class WebsocketServer:
         self.from_webstudio = asyncio.create_task(self.handle_from_webstudio(websocket))
 
         try:
-            self.threads = await shield(
-                asyncio.gather(self.from_webstudio)
-            )
+            self.threads = await shield(asyncio.gather(self.from_webstudio))
         finally:
             self.from_webstudio.cancel()
 
@@ -92,13 +90,10 @@ class WebsocketServer:
                     channel = int(data["channel"])
                     self.sendCommand(channel, data)
 
-                await asyncio.wait(
-                    [conn.send(message) for conn in self.baps_clients]
-                )
+                await asyncio.wait([conn.send(message) for conn in self.baps_clients])
 
         except websockets.exceptions.ConnectionClosedError as e:
-            self.logger.log.error(
-                "Client Disconncted {}, {}".format(websocket, e))
+            self.logger.log.error("Client Disconncted {}, {}".format(websocket, e))
 
         except Exception as e:
             self.logger.log.exception(
@@ -152,8 +147,7 @@ class WebsocketServer:
                     extra += str(data["timeslotId"])
                 elif command == "SETMARKER":
                     extra += "{}:{}".format(
-                        data["timeslotitemid"],
-                        json.dumps(data["marker"])
+                        data["timeslotitemid"], json.dumps(data["marker"])
                     )
 
                 # TODO: Move this to player handler.
@@ -174,21 +168,22 @@ class WebsocketServer:
 
                     # Now send the special case.
                     self.channel_to_q[new_channel].put(
-                        "WEBSOCKET:ADD:" + json.dumps(item))
+                        "WEBSOCKET:ADD:" + json.dumps(item)
+                    )
 
                     # Don't bother, we should be done.
                     return
 
             except ValueError as e:
                 self.logger.log.exception(
-                    "Error decoding extra data {} for command {} ".format(
-                        e, command
-                    )
+                    "Error decoding extra data {} for command {} ".format(e, command)
                 )
                 pass
 
             # Stick the message together and send!
-            message += command # Put the command in at the end, in case MOVE etc changed it.
+            message += (
+                command  # Put the command in at the end, in case MOVE etc changed it.
+            )
             if extra != "":
                 message += ":" + extra
 
@@ -202,9 +197,7 @@ class WebsocketServer:
                 )
 
         else:
-            self.logger.log.error(
-                "Command missing from message. Data: {}".format(data)
-            )
+            self.logger.log.error("Command missing from message. Data: {}".format(data))
 
     async def handle_to_webstudio(self):
 
@@ -244,9 +237,7 @@ class WebsocketServer:
                     data = json.dumps(
                         {"command": command, "data": message, "channel": channel}
                     )
-                    await asyncio.wait(
-                        [conn.send(data) for conn in self.baps_clients]
-                    )
+                    await asyncio.wait([conn.send(data) for conn in self.baps_clients])
                 except queue.Empty:
                     continue
                 except ValueError:

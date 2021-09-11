@@ -68,7 +68,9 @@ class TestPlayer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.logger = LoggingManager("Test_Player")
-        cls.server_state = StateManager("BAPSicleServer", cls.logger, default_state={"tracklist_mode": "off"})  # Mostly dummy here.
+        cls.server_state = StateManager(
+            "BAPSicleServer", cls.logger, default_state={"tracklist_mode": "off"}
+        )  # Mostly dummy here.
 
     # clean up logic for the test suite declared in the test module
     # code that is executed after all tests in one test run
@@ -82,7 +84,8 @@ class TestPlayer(unittest.TestCase):
         self.player_from_q = multiprocessing.Queue()
         self.player_to_q = multiprocessing.Queue()
         self.player = multiprocessing.Process(
-            target=Player, args=(-1, self.player_to_q, self.player_from_q, self.server_state)
+            target=Player,
+            args=(-1, self.player_to_q, self.player_from_q, self.server_state),
         )
         self.player.start()
         self._send_msg_wait_OKAY("CLEAR")  # Empty any previous track items.
@@ -125,7 +128,7 @@ class TestPlayer(unittest.TestCase):
                     source = response[: response.index(":")]
                     if source in sources_filter:
                         return response[
-                            len(source + ":" + msg) + 1:
+                            len(source + ":" + msg) + 1 :
                         ]  # +1 to remove trailing : on source.
             except Empty:
                 pass
@@ -339,9 +342,13 @@ class TestPlayer(unittest.TestCase):
         # Now test that all the markers we setup are present.
         item = json_obj["show_plan"][0]
         self.assertEqual(item["weight"], 0)
-        self.assertEqual(item["intro"], 2.0)  # Backwards compat with basic Webstudio intro/cue/outro
+        self.assertEqual(
+            item["intro"], 2.0
+        )  # Backwards compat with basic Webstudio intro/cue/outro
         self.assertEqual(item["cue"], 3.14)
-        self.assertEqual([json.dumps(item) for item in item["markers"]], markers[0:2])  # Check the full marker configs match
+        self.assertEqual(
+            [json.dumps(item) for item in item["markers"]], markers[0:2]
+        )  # Check the full marker configs match
 
         item = json_obj["show_plan"][1]
         self.assertEqual(item["weight"], 1)
@@ -355,7 +362,9 @@ class TestPlayer(unittest.TestCase):
             self.assertEqual(item["intro"], 0.0)
             self.assertEqual(item["outro"], 0.0)
             self.assertEqual(item["cue"], 0.0)
-            self.assertEqual([json.dumps(item) for item in item["markers"]], markers[3:])
+            self.assertEqual(
+                [json.dumps(item) for item in item["markers"]], markers[3:]
+            )
 
         # TODO: Now test editing/deleting them
 

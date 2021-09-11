@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import sounddevice as sd
 from helpers.os_environment import isLinux, isMacOS, isWindows
 import glob
+
 if isWindows():
     from serial.tools.list_ports_windows import comports
 
@@ -39,7 +40,9 @@ class DeviceManager:
             else:
                 host_apis[host_api_id]["usable"] = True
 
-            host_api_devices = (device for device in devices if device["hostapi"] == host_api_id)
+            host_api_devices = (
+                device for device in devices if device["hostapi"] == host_api_id
+            )
 
             outputs: List[Dict] = list(filter(cls._isOutput, host_api_devices))
             outputs = sorted(outputs, key=lambda k: k["name"])

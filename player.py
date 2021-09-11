@@ -21,6 +21,7 @@
 
 # Stop the Pygame Hello message.
 import os
+
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 
 from queue import Empty
@@ -148,7 +149,10 @@ class Player:
         # Don't mess with playback, we only care about if it's supposed to be loaded.
         if not self._isLoaded(short_test=True):
             return False
-        return (self.state.get()["pos_true"] == self.state.get()["loaded_item"].cue and not self.isPlaying)
+        return (
+            self.state.get()["pos_true"] == self.state.get()["loaded_item"].cue
+            and not self.isPlaying
+        )
 
     @property
     def status(self):
@@ -251,7 +255,9 @@ class Player:
                 return False
             return True
         else:
-            self.logger.log.debug("Not playing during seek, setting pos state for next play.")
+            self.logger.log.debug(
+                "Not playing during seek, setting pos state for next play."
+            )
             self.stopped_manually = True  # Don't trigger _ended() on seeking.
             if pos > 0:
                 self.state.update("paused", True)
@@ -298,7 +304,9 @@ class Player:
             # Kinda a bodge for the moment, each "Ghost" (item which is not saved in the database showplan yet) needs to have a unique temporary item.
             # To do this, we'll start with the channel number the item was originally added to (to stop items somehow simultaneously added to different channels from having the same id)
             # And chuck in the unix epoch in ns for good measure.
-            item.timeslotitemid = "GHOST-{}-{}".format(self.state.get()["channel"], time.time_ns())
+            item.timeslotitemid = "GHOST-{}-{}".format(
+                self.state.get()["channel"], time.time_ns()
+            )
         return item
 
     # TODO Allow just moving an item inside the channel instead of removing and adding.
@@ -314,7 +322,6 @@ class Player:
         plan_copy += [new_item_obj]  # Add the new item.
 
         self._fix_and_update_weights(plan_copy)
-
 
         loaded_item = self.state.get()["loaded_item"]
         if loaded_item:
@@ -346,13 +353,15 @@ class Player:
 
     def remove_from_plan(self, weight: int) -> bool:
         plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
-        found: Optional[PlanItem ] = None
+        found: Optional[PlanItem] = None
 
         before = []
         for item in plan_copy:
             before += (item.weight, item.name)
 
-        self.logger.log.debug("Weights before removing weight {}:\n{}".format(weight, before))
+        self.logger.log.debug(
+            "Weights before removing weight {}:\n{}".format(weight, before)
+        )
 
         for i in plan_copy:
             if i.weight == weight:
@@ -372,21 +381,19 @@ class Player:
                 # So we'll want to update the weight.
 
                 # We're removing the loaded item from the channel.
-                #if loaded_item.weight == weight:
-                    loaded_item.weight = -1
-
-
+                # if loaded_item.weight == weight:
+                loaded_item.weight = -1
 
                 # If loaded_item wasn't the same instance, we'd want to do the below.
 
                 # We removed an item above it. Shift it up.
-                #elif loaded_item.weight > weight:
+                # elif loaded_item.weight > weight:
                 #    loaded_item.weight -= 1
                 # Else, new weight stays the same.
-                #else:
+                # else:
                 #    return True
 
-                    self.state.update("loaded_item", loaded_item)
+                self.state.update("loaded_item", loaded_item)
             return True
         return False
 
@@ -399,7 +406,10 @@ class Player:
             loaded_state = self.state.get()
             self.unload()
 
-            self.logger.log.info("Resetting output (in case of sound output gone silent somehow) to " + str(loaded_state["output"]))
+            self.logger.log.info(
+                "Resetting output (in case of sound output gone silent somehow) to "
+                + str(loaded_state["output"])
+            )
             self.output(loaded_state["output"])
 
             showplan = loaded_state["show_plan"]
@@ -412,14 +422,12 @@ class Player:
                     break
 
             if loaded_item is None:
-                self.logger.log.error(
-                    "Failed to find weight: {}".format(weight))
+                self.logger.log.error("Failed to find weight: {}".format(weight))
                 return False
 
             reload = False
             if loaded_item.filename == "" or loaded_item.filename is None:
-                self.logger.log.info(
-                    "Filename is not specified, loading from API.")
+                self.logger.log.info("Filename is not specified, loading from API.")
                 reload = True
             elif not os.path.exists(loaded_item.filename):
                 self.logger.log.warn(
@@ -434,7 +442,9 @@ class Player:
                 return False
 
             # Swap with a normalised version if it's ready, else returns original.
-            loaded_item.filename = get_normalised_filename_if_available(loaded_item.filename)
+            loaded_item.filename = get_normalised_filename_if_available(
+                loaded_item.filename
+            )
 
             self.state.update("loaded_item", loaded_item)
 
@@ -452,8 +462,7 @@ class Player:
             while load_attempt < 5:
                 load_attempt += 1
                 try:
-                    self.logger.log.info("Loading file: " +
-                                        str(loaded_item.filename))
+                    self.logger.log.info("Loading file: " + str(loaded_item.filename))
                     mixer.music.load(loaded_item.filename)
                 except Exception:
                     # We couldn't load that file.
@@ -461,12 +470,14 @@ class Player:
                         "Couldn't load file: " + str(loaded_item.filename)
                     )
                     time.sleep(1)
-                    continue # Try loading again.
+                    continue  # Try loading again.
 
                 if not self.isLoaded:
-                    self.logger.log.error("Pygame loaded file without error, but never actually loaded.")
+                    self.logger.log.error(
+                        "Pygame loaded file without error, but never actually loaded."
+                    )
                     time.sleep(1)
-                    continue # Try loading again.
+                    continue  # Try loading again.
 
                 try:
                     if loaded_item.filename.endswith(".mp3"):
@@ -475,14 +486,13 @@ class Player:
                     else:
                         # WARNING! Pygame / SDL can't seek .wav files :/
                         self.state.update(
-                            "length", mixer.Sound(
-                                loaded_item.filename).get_length() / 1000
+                            "length",
+                            mixer.Sound(loaded_item.filename).get_length() / 1000,
                         )
                 except Exception:
-                    self.logger.log.exception(
-                        "Failed to update the length of item.")
+                    self.logger.log.exception("Failed to update the length of item.")
                     time.sleep(1)
-                    continue # Try loading again.
+                    continue  # Try loading again.
 
                 # Everything worked, we made it!
                 if loaded_item.cue > 0:
@@ -561,7 +571,11 @@ class Player:
         try:
             marker = Marker(marker_str)
         except Exception as e:
-            self.logger.log.error("Failed to create Marker instance with {} {}: {}".format(timeslotitemid, marker_str, e))
+            self.logger.log.error(
+                "Failed to create Marker instance with {} {}: {}".format(
+                    timeslotitemid, marker_str, e
+                )
+            )
             return False
 
         if timeslotitemid == "-1":
@@ -569,9 +583,11 @@ class Player:
             if not self.isLoaded:
                 return False
             timeslotitemid = self.state.get()["loaded_item"].timeslotitemid
-        elif self.isLoaded and self.state.get()["loaded_item"].timeslotitemid == timeslotitemid:
+        elif (
+            self.isLoaded
+            and self.state.get()["loaded_item"].timeslotitemid == timeslotitemid
+        ):
             set_loaded = True
-
 
         plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
         for i in range(len(self.state.get()["show_plan"])):
@@ -585,15 +601,23 @@ class Player:
 
                 except Exception as e:
                     self.logger.log.error(
-                        "Failed to set marker on item {}: {} with marker \n{}".format(timeslotitemid, e, marker))
+                        "Failed to set marker on item {}: {} with marker \n{}".format(
+                            timeslotitemid, e, marker
+                        )
+                    )
                     success = False
 
         if set_loaded:
             try:
-                self.state.update("loaded_item", self.state.get()["loaded_item"].set_marker(marker))
+                self.state.update(
+                    "loaded_item", self.state.get()["loaded_item"].set_marker(marker)
+                )
             except Exception as e:
                 self.logger.log.error(
-                    "Failed to set marker on loaded_item {}: {} with marker \n{}".format(timeslotitemid, e, marker))
+                    "Failed to set marker on loaded_item {}: {} with marker \n{}".format(
+                        timeslotitemid, e, marker
+                    )
+                )
                 success = False
 
         return success
@@ -605,7 +629,9 @@ class Player:
                 item.play_count_increment() if played else item.play_count_reset()
             self.state.update("show_plan", plan)
         elif len(plan) > weight:
-            plan[weight].play_count_increment() if played else plan[weight].play_count_reset()
+            plan[weight].play_count_increment() if played else plan[
+                weight
+            ].play_count_reset()
             self.state.update("show_plan", plan[weight], weight)
         else:
             return False
@@ -617,10 +643,9 @@ class Player:
         self.state.update("live", live)
 
         # If we're going to live (potentially from not live/PFL), potentially tracklist if it's playing.
-        if (live):
+        if live:
             self._potentially_tracklist()
         return True
-
 
     # Helper functions
 
@@ -629,18 +654,24 @@ class Player:
         mode = self.state.get()["tracklist_mode"]
 
         time: int = -1
-        if mode in ["on","fader-live"]:
+        if mode in ["on", "fader-live"]:
             time = 1  # Let's do it pretty quickly.
         elif mode == "delayed":
             # Let's do it in a bit, once we're sure it's been playing. (Useful if we've got no idea if it's live or cueing.)
             time = TRACKLISTING_DELAYED_S
 
         if time >= 0 and not self.tracklist_start_timer:
-            self.logger.log.info("Setting timer for tracklisting in {} secs due to Mode: {}".format(time, mode))
+            self.logger.log.info(
+                "Setting timer for tracklisting in {} secs due to Mode: {}".format(
+                    time, mode
+                )
+            )
             self.tracklist_start_timer = Timer(time, self._tracklist_start)
             self.tracklist_start_timer.start()
         elif self.tracklist_start_timer:
-            self.logger.log.error("Failed to potentially tracklist, timer already busy.")
+            self.logger.log.error(
+                "Failed to potentially tracklist, timer already busy."
+            )
 
     # This essentially allows the tracklist end API call to happen in a separate thread, to avoid hanging playout/loading.
     def _potentially_end_tracklist(self):
@@ -663,24 +694,34 @@ class Player:
             self.logger.log.info("No tracklist to end.")
             return
 
-        self.logger.log.info("Setting timer for ending tracklist_id '{}'".format(tracklist_id))
+        self.logger.log.info(
+            "Setting timer for ending tracklist_id '{}'".format(tracklist_id)
+        )
         if tracklist_id:
-            self.logger.log.info("Attempting to end tracklist_id '{}'".format(tracklist_id))
+            self.logger.log.info(
+                "Attempting to end tracklist_id '{}'".format(tracklist_id)
+            )
             if self.tracklist_end_timer:
-                self.logger.log.error("Failed to potentially end tracklist, timer already busy.")
+                self.logger.log.error(
+                    "Failed to potentially end tracklist, timer already busy."
+                )
                 return
             self.state.update("tracklist_id", None)
             # This threads it, so it won't hang track loading if it fails.
             self.tracklist_end_timer = Timer(1, self._tracklist_end, [tracklist_id])
             self.tracklist_end_timer.start()
         else:
-            self.logger.log.warning("Failed to potentially end tracklist, no tracklist started.")
+            self.logger.log.warning(
+                "Failed to potentially end tracklist, no tracklist started."
+            )
 
     def _tracklist_start(self):
         state = self.state.get()
         loaded_item = state["loaded_item"]
         if not loaded_item:
-            self.logger.log.error("Tried to call _tracklist_start() with no loaded item!")
+            self.logger.log.error(
+                "Tried to call _tracklist_start() with no loaded item!"
+            )
 
         elif not self.isPlaying:
             self.logger.log.info("Not tracklisting since not playing.")
@@ -688,20 +729,27 @@ class Player:
         else:
 
             tracklist_id = state["tracklist_id"]
-            if (not tracklist_id):
-                if (state["tracklist_mode"] == "fader-live" and not state["live"]):
+            if not tracklist_id:
+                if state["tracklist_mode"] == "fader-live" and not state["live"]:
                     self.logger.log.info("Not tracklisting since fader is not live.")
                 else:
-                    self.logger.log.info("Tracklisting item: '{}'".format(loaded_item.name))
+                    self.logger.log.info(
+                        "Tracklisting item: '{}'".format(loaded_item.name)
+                    )
                     tracklist_id = self.api.post_tracklist_start(loaded_item)
                     if not tracklist_id:
-                        self.logger.log.warning("Failed to tracklist '{}'".format(loaded_item.name))
+                        self.logger.log.warning(
+                            "Failed to tracklist '{}'".format(loaded_item.name)
+                        )
                     else:
                         self.logger.log.info("Tracklist id: '{}'".format(tracklist_id))
                         self.state.update("tracklist_id", tracklist_id)
             else:
-                self.logger.log.info("Not tracklisting item '{}', already got tracklistid: '{}'".format(
-                    loaded_item.name, tracklist_id))
+                self.logger.log.info(
+                    "Not tracklisting item '{}', already got tracklistid: '{}'".format(
+                        loaded_item.name, tracklist_id
+                    )
+                )
 
         # No matter what we end up doing, we need to kill this timer so future ones can run.
         self.tracklist_start_timer = None
@@ -709,10 +757,14 @@ class Player:
     def _tracklist_end(self, tracklist_id):
 
         if tracklist_id:
-            self.logger.log.info("Attempting to end tracklist_id '{}'".format(tracklist_id))
+            self.logger.log.info(
+                "Attempting to end tracklist_id '{}'".format(tracklist_id)
+            )
             self.api.post_tracklist_end(tracklist_id)
         else:
-            self.logger.log.error("Tracklist_id to _tracklist_end() missing. Failed to end tracklist.")
+            self.logger.log.error(
+                "Tracklist_id to _tracklist_end() missing. Failed to end tracklist."
+            )
 
         self.tracklist_end_timer = None
 
@@ -727,7 +779,11 @@ class Player:
             return
 
         # Track has ended
-        self.logger.log.info("Playback ended of {}, weight {}:".format(loaded_item.name, loaded_item.weight))
+        self.logger.log.info(
+            "Playback ended of {}, weight {}:".format(
+                loaded_item.name, loaded_item.weight
+            )
+        )
 
         # Repeat 1
         # TODO ENUM
@@ -742,19 +798,25 @@ class Player:
             # If it's been removed, weight will be -1.
             # Just stop in this case.
             if loaded_item.weight < 0:
-                self.logger.log.debug("Loaded item is no longer in channel (weight {}), not auto advancing.".format(loaded_item.weight))
+                self.logger.log.debug(
+                    "Loaded item is no longer in channel (weight {}), not auto advancing.".format(
+                        loaded_item.weight
+                    )
+                )
             else:
-                self.logger.log.debug("Found current loaded item in this channel show plan. Auto Advancing.")
+                self.logger.log.debug(
+                    "Found current loaded item in this channel show plan. Auto Advancing."
+                )
 
                 # If there's another item after this one, load that.
-                if len(state["show_plan"]) > loaded_item.weight+1:
-                    self.load(loaded_item.weight+1)
+                if len(state["show_plan"]) > loaded_item.weight + 1:
+                    self.load(loaded_item.weight + 1)
                     return
 
                 # Repeat All (Jump to top again)
                 # TODO ENUM
                 elif state["repeat"] == "all":
-                    self.load(0) # Jump to the top.
+                    self.load(0)  # Jump to the top.
                     return
 
         # No automations, just stop playing.
@@ -795,8 +857,7 @@ class Player:
 
             self.state.update(
                 "remaining",
-                max(0, (self.state.get()["length"] -
-                    self.state.get()["pos_true"])),
+                max(0, (self.state.get()["length"] - self.state.get()["pos_true"])),
             )
 
     def _ping_times(self):
@@ -832,17 +893,18 @@ class Player:
             response += "FAIL"
 
         if self.out_q:
-            if ("STATUS:" not in response):
+            if "STATUS:" not in response:
                 # Don't fill logs with status pushes, it's a mess.
                 self.logger.log.debug(("Sending: {}".format(response)))
             self.out_q.put(response)
         else:
-            self.logger.log.exception("Message return Queue is missing!!!! Can't send message.")
+            self.logger.log.exception(
+                "Message return Queue is missing!!!! Can't send message."
+            )
 
     def _send_status(self):
         # TODO This is hacky
-        self._retMsg(str(self.status), okay_str=True,
-                     custom_prefix="ALL:STATUS:")
+        self._retMsg(str(self.status), okay_str=True, custom_prefix="ALL:STATUS:")
 
     def _fix_and_update_weights(self, plan):
         def _sort_weight(e: PlanItem):
@@ -853,7 +915,6 @@ class Player:
             before += (item.weight, item.name)
 
         self.logger.log.debug("Weights before fixing:\n{}".format(before))
-
 
         plan.sort(key=_sort_weight)  # Sort into weighted order.
 
@@ -874,7 +935,11 @@ class Player:
         self.state.update("show_plan", plan)
 
     def __init__(
-        self, channel: int, in_q: multiprocessing.Queue, out_q: multiprocessing.Queue, server_state: StateManager
+        self,
+        channel: int,
+        in_q: multiprocessing.Queue,
+        out_q: multiprocessing.Queue,
+        server_state: StateManager,
     ):
 
         process_title = "Player: Channel " + str(channel)
@@ -899,7 +964,9 @@ class Player:
 
         self.state.update("channel", channel)
         self.state.update("tracklist_mode", server_state.get()["tracklist_mode"])
-        self.state.update("live", True) # Channel is live until controller says it isn't.
+        self.state.update(
+            "live", True
+        )  # Channel is live until controller says it isn't.
 
         # Just in case there's any weights somehow messed up, let's fix them.
         plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
@@ -908,8 +975,7 @@ class Player:
         loaded_state = copy.copy(self.state.state)
 
         if loaded_state["output"]:
-            self.logger.log.info("Setting output to: " +
-                                 str(loaded_state["output"]))
+            self.logger.log.info("Setting output to: " + str(loaded_state["output"]))
             self.output(loaded_state["output"])
         else:
             self.logger.log.info("Using default output device.")
@@ -918,7 +984,7 @@ class Player:
         loaded_item = loaded_state["loaded_item"]
         if loaded_item:
             # No need to load on init, the output switch does this, as it would for regular output switching.
-            #self.load(loaded_item.weight)
+            # self.load(loaded_item.weight)
 
             # Load may jump to the cue point, as it would do on a regular load.
             # If we were at a different state before, we have to override it now.
@@ -946,8 +1012,7 @@ class Player:
                         self.last_msg_source = ""
                         self.last_msg = ""
                         self.logger.log.warn(
-                            "Message from unknown sender source: {}".format(
-                                source)
+                            "Message from unknown sender source: {}".format(source)
                         )
                         continue
 
@@ -981,9 +1046,13 @@ class Player:
                             # Unpause, so we don't jump to 0, we play from the current pos.
                             "PLAY": lambda: self._retMsg(self.unpause()),
                             "PAUSE": lambda: self._retMsg(self.pause()),
-                            "PLAYPAUSE": lambda: self._retMsg(self.unpause() if not self.isPlaying else self.pause()), # For the hardware controller.
+                            "PLAYPAUSE": lambda: self._retMsg(
+                                self.unpause() if not self.isPlaying else self.pause()
+                            ),  # For the hardware controller.
                             "UNPAUSE": lambda: self._retMsg(self.unpause()),
-                            "STOP": lambda: self._retMsg(self.stop(user_initiated=True)),
+                            "STOP": lambda: self._retMsg(
+                                self.stop(user_initiated=True)
+                            ),
                             "SEEK": lambda: self._retMsg(
                                 self.seek(float(self.last_msg.split(":")[1]))
                             ),
@@ -1011,19 +1080,33 @@ class Player:
                             "UNLOAD": lambda: self._retMsg(self.unload()),
                             "ADD": lambda: self._retMsg(
                                 self.add_to_plan(
-                                    json.loads(
-                                        ":".join(self.last_msg.split(":")[1:]))
+                                    json.loads(":".join(self.last_msg.split(":")[1:]))
                                 )
                             ),
                             "REMOVE": lambda: self._retMsg(
-                                self.remove_from_plan(
-                                    int(self.last_msg.split(":")[1]))
+                                self.remove_from_plan(int(self.last_msg.split(":")[1]))
                             ),
                             "CLEAR": lambda: self._retMsg(self.clear_channel_plan()),
-                            "SETMARKER": lambda: self._retMsg(self.set_marker(self.last_msg.split(":")[1], self.last_msg.split(":", 2)[2])),
-                            "RESETPLAYED": lambda: self._retMsg(self.set_played(weight=int(self.last_msg.split(":")[1]), played = False)),
-                            "SETPLAYED": lambda: self._retMsg(self.set_played(weight=int(self.last_msg.split(":")[1]), played = True)),
-                            "SETLIVE": lambda: self._retMsg(self.set_live(self.last_msg.split(":")[1] == "True")),
+                            "SETMARKER": lambda: self._retMsg(
+                                self.set_marker(
+                                    self.last_msg.split(":")[1],
+                                    self.last_msg.split(":", 2)[2],
+                                )
+                            ),
+                            "RESETPLAYED": lambda: self._retMsg(
+                                self.set_played(
+                                    weight=int(self.last_msg.split(":")[1]),
+                                    played=False,
+                                )
+                            ),
+                            "SETPLAYED": lambda: self._retMsg(
+                                self.set_played(
+                                    weight=int(self.last_msg.split(":")[1]), played=True
+                                )
+                            ),
+                            "SETLIVE": lambda: self._retMsg(
+                                self.set_live(self.last_msg.split(":")[1] == "True")
+                            ),
                         }
 
                         message_type: str = self.last_msg.split(":")[0]
@@ -1051,8 +1134,7 @@ class Player:
         except SystemExit:
             self.logger.log.info("Received SystemExit")
         except Exception as e:
-            self.logger.log.exception(
-                "Received unexpected Exception: {}".format(e))
+            self.logger.log.exception("Received unexpected Exception: {}".format(e))
 
         self.logger.log.info("Quiting player " + str(channel))
         self.quit()

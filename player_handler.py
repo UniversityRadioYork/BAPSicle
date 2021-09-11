@@ -10,7 +10,9 @@ from helpers.the_terminator import Terminator
 class PlayerHandler:
     logger: LoggingManager
 
-    def __init__(self, channel_from_q, websocket_to_q, ui_to_q, controller_to_q, file_to_q):
+    def __init__(
+        self, channel_from_q, websocket_to_q, ui_to_q, controller_to_q, file_to_q
+    ):
 
         self.logger = LoggingManager("PlayerHandler")
         process_title = "Player Handler"
@@ -31,7 +33,6 @@ class PlayerHandler:
                         if command == "GET_PLAN" or command == "STATUS":
                             file_to_q[channel].put(message)
 
-
                         # TODO ENUM
                         if source in ["ALL", "WEBSOCKET"]:
                             websocket_to_q[channel].put(message)
@@ -46,7 +47,6 @@ class PlayerHandler:
 
                 sleep(0.02)
         except Exception as e:
-            self.logger.log.exception(
-                "Received unexpected exception: {}".format(e))
+            self.logger.log.exception("Received unexpected exception: {}".format(e))
         del self.logger
         _exit(0)

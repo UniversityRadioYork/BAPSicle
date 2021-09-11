@@ -1,6 +1,6 @@
 import json
 import os
-from logging import CRITICAL, DEBUG, INFO
+from logging import DEBUG, INFO
 import time
 from datetime import datetime
 from copy import copy
@@ -79,7 +79,7 @@ class StateManager:
                 # If there are any new config options in the default state, save them.
                 # Uses update() to save them to file too.
                 for key in default_state.keys():
-                    if not key in file_state.keys():
+                    if key not in file_state.keys():
                         self.update(key, default_state[key])
 
             except Exception:
@@ -113,7 +113,6 @@ class StateManager:
         state_to_json = copy(state)
 
         now = datetime.now()
-
 
         current_time = now.strftime("%H:%M:%S")
         state_to_json["last_updated"] = current_time
@@ -154,20 +153,30 @@ class StateManager:
             allow = False
 
             # It's hard to compare lists, especially of complex objects like show plans, just write it.
-            if (isinstance(value, list)):
+            if isinstance(value, list):
                 allow = True
 
             # If the two objects have dict representations, and they don't match, allow writing.
             # TODO: This should be easier.
-            if (getattr(value, "__dict__", None) and getattr(state_to_update[key], "__dict__", None)):
+            if getattr(value, "__dict__", None) and getattr(
+                state_to_update[key], "__dict__", None
+            ):
                 if value.__dict__ != state_to_update[key].__dict__:
                     allow = True
 
             if not allow:
 
                 # Just some debug logging.
-                if update_file and (key not in ["playing", "loaded", "initialised", "remaining", "pos_true"]):
-                    self._log("Not updating state for key '{}' with value '{}' of type '{}'.".format(key, value, type(value)), DEBUG)
+                if update_file and (
+                    key
+                    not in ["playing", "loaded", "initialised", "remaining", "pos_true"]
+                ):
+                    self._log(
+                        "Not updating state for key '{}' with value '{}' of type '{}'.".format(
+                            key, value, type(value)
+                        ),
+                        DEBUG,
+                    )
 
                 # We're trying to update the state with the same value.
                 # In this case, ignore the update
@@ -176,11 +185,21 @@ class StateManager:
 
         if index > -1 and key in state_to_update:
             if not isinstance(state_to_update[key], list):
-                self._log("Not updating state for key '{}' with value '{}' of type '{}' since index is set and key is not a list.".format(key, value, type(value)), DEBUG)
+                self._log(
+                    "Not updating state for key '{}' with value '{}' of type '{}' since index is set and key is not a list.".format(
+                        key, value, type(value)
+                    ),
+                    DEBUG,
+                )
                 return
             list_items = state_to_update[key]
             if index >= len(list_items):
-                self._log("Not updating state for key '{}' with value '{}' of type '{}' because index '{}' is too large..".format(key, value, type(value), index), DEBUG)
+                self._log(
+                    "Not updating state for key '{}' with value '{}' of type '{}' because index '{}' is too large..".format(
+                        key, value, type(value), index
+                    ),
+                    DEBUG,
+                )
                 return
             list_items[index] = value
             state_to_update[key] = list_items
@@ -190,7 +209,12 @@ class StateManager:
         self.state = state_to_update
 
         if update_file:
-            self._log("Writing change to key '{}' with value '{}' of type '{}' to disk.".format(key, value, type(value)), DEBUG)
+            self._log(
+                "Writing change to key '{}' with value '{}' of type '{}' to disk.".format(
+                    key, value, type(value)
+                ),
+                DEBUG,
+            )
             # Either a routine write, or state has changed.
             # Update the file
             self.write_to_file(state_to_update)

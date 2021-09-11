@@ -16,7 +16,11 @@ from time import sleep
 import json
 import os
 
-from helpers.os_environment import isBundelled, resolve_external_file_path, resolve_local_file_path
+from helpers.os_environment import (
+    isBundelled,
+    resolve_external_file_path,
+    resolve_local_file_path,
+)
 from helpers.logging_manager import LoggingManager
 from helpers.device_manager import DeviceManager
 from helpers.state_manager import StateManager
@@ -24,7 +28,10 @@ from helpers.the_terminator import Terminator
 from helpers.normalisation import get_normalised_filename_if_available
 from helpers.myradio_api import MyRadioAPI
 
-env = Environment(loader=FileSystemLoader('%s/ui-templates/' % os.path.dirname(__file__)), autoescape=select_autoescape())
+env = Environment(
+    loader=FileSystemLoader("%s/ui-templates/" % os.path.dirname(__file__)),
+    autoescape=select_autoescape(),
+)
 
 LOG_FILEPATH = resolve_external_file_path("logs")
 LOG_FILENAME = LOG_FILEPATH + "/WebServer.log"
@@ -52,17 +59,17 @@ LOGGING_CONFIG = dict(
         "file": {
             "class": "logging.FileHandler",
             "formatter": "generic",
-            "filename": LOG_FILENAME
+            "filename": LOG_FILENAME,
         },
         "error_file": {
             "class": "logging.FileHandler",
             "formatter": "generic",
-            "filename": LOG_FILENAME
+            "filename": LOG_FILENAME,
         },
         "access_file": {
             "class": "logging.FileHandler",
             "formatter": "access",
-            "filename": LOG_FILENAME
+            "filename": LOG_FILENAME,
         },
     },
     formatters={
@@ -113,7 +120,7 @@ def ui_index(request):
         "server_build": config["server_build"],
         "server_name": config["server_name"],
         "server_beta": config["server_beta"],
-        "server_branch": config["server_branch"]
+        "server_branch": config["server_branch"],
     }
     return render_template("index.html", data=data)
 
@@ -124,8 +131,7 @@ def ui_status(request):
     for i in range(server_state.get()["num_channels"]):
         channel_states.append(status(i))
 
-    data = {"channels": channel_states,
-            "ui_page": "status", "ui_title": "Status"}
+    data = {"channels": channel_states, "ui_page": "status", "ui_title": "Status"}
     return render_template("status.html", data=data)
 
 
@@ -153,7 +159,7 @@ def ui_config_server(request):
         "ui_title": "Server Config",
         "state": server_state.get(),
         "ser_ports": DeviceManager.getSerialPorts(),
-        "tracklist_modes": ["off", "on", "delayed", "fader-live"]
+        "tracklist_modes": ["off", "on", "delayed", "fader-live"],
     }
     return render_template("config_server.html", data=data)
 
@@ -177,7 +183,9 @@ def ui_config_server_update(request):
 
     server_state.update("myradio_base_url", request.form.get("myradio_base_url"))
     server_state.update("myradio_api_url", request.form.get("myradio_api_url"))
-    server_state.update("myradio_api_tracklist_source", request.form.get("myradio_api_tracklist_source"))
+    server_state.update(
+        "myradio_api_tracklist_source", request.form.get("myradio_api_tracklist_source")
+    )
     server_state.update("tracklist_mode", request.form.get("tracklist_mode"))
 
     return redirect("/restart")
@@ -192,11 +200,7 @@ def ui_logs_list(request):
             log_files.append(file.rstrip(".log"))
 
     log_files.sort()
-    data = {
-        "ui_page": "logs",
-        "ui_title": "Logs",
-        "logs": log_files
-    }
+    data = {"ui_page": "logs", "ui_title": "Logs", "logs": log_files}
     return render_template("loglist.html", data=data)
 
 
@@ -210,10 +214,12 @@ def ui_logs_render(request, path):
 
     log_file = open(resolve_external_file_path("/logs/{}.log").format(path))
     data = {
-        "logs": log_file.read().splitlines()[-300*page:(-300*(page-1) if page > 1 else None)][::-1],
+        "logs": log_file.read().splitlines()[
+            -300 * page : (-300 * (page - 1) if page > 1 else None)
+        ][::-1],
         "ui_page": "logs",
         "ui_title": "Logs - {}".format(path),
-        "page": page
+        "page": page,
     }
     log_file.close()
     return render_template("log.html", data=data)
@@ -296,6 +302,7 @@ def player_all_stop(request):
 
 # Show Plan Functions
 
+
 @app.route("/plan/load/<timeslotid:int>")
 def plan_load(request, timeslotid: int):
 
@@ -314,6 +321,7 @@ def plan_clear(request):
 
 # API Proxy Endpoints
 
+
 @app.route("/plan/list")
 async def api_list_showplans(request):
 
@@ -323,7 +331,11 @@ async def api_list_showplans(request):
 @app.route("/library/search/track")
 async def api_search_library(request):
 
-    return resp_json(await api.get_track_search(request.args.get("title"), request.args.get("artist")))
+    return resp_json(
+        await api.get_track_search(
+            request.args.get("title"), request.args.get("artist")
+        )
+    )
 
 
 @app.route("/library/playlists/<type:string>")
@@ -368,7 +380,7 @@ def json_status(request):
 async def audio_file(request, type: str, id: int):
     if type not in ["managed", "track"]:
         abort(404)
-    filename = resolve_external_file_path("music-tmp/{}-{}.mp3".format(type,id))
+    filename = resolve_external_file_path("music-tmp/{}-{}.mp3".format(type, id))
 
     # Swap with a normalised version if it's ready, else returns original.
     filename = get_normalised_filename_if_available(filename)
@@ -378,17 +390,24 @@ async def audio_file(request, type: str, id: int):
 
 
 # Static Files
-app.static("/favicon.ico", resolve_local_file_path("ui-static/favicon.ico"), name="ui-favicon")
+app.static(
+    "/favicon.ico", resolve_local_file_path("ui-static/favicon.ico"), name="ui-favicon"
+)
 app.static("/static", resolve_local_file_path("ui-static"), name="ui-static")
 
 
 dist_directory = resolve_local_file_path("presenter-build")
-app.static('/presenter', dist_directory)
-app.static("/presenter/", resolve_local_file_path("presenter-build/index.html"),
-           strict_slashes=True, name="presenter-index")
+app.static("/presenter", dist_directory)
+app.static(
+    "/presenter/",
+    resolve_local_file_path("presenter-build/index.html"),
+    strict_slashes=True,
+    name="presenter-index",
+)
 
 
 # Helper Functions
+
 
 def status(channel: int):
     while not player_from_q[channel].empty():
@@ -402,7 +421,7 @@ def status(channel: int):
             if response.startswith("UI:STATUS:"):
                 response = response.split(":", 2)[2]
                 # TODO: Handle OKAY / FAIL
-                response = response[response.index(":") + 1:]
+                response = response[response.index(":") + 1 :]
                 try:
                     response = json.loads(response)
                 except Exception as e:
@@ -416,6 +435,7 @@ def status(channel: int):
 
         sleep(0.02)
 
+
 # WebServer Start / Stop Functions
 
 
@@ -428,7 +448,7 @@ def quit(request):
         "ui_title": "Quitting BAPSicle",
         "title": "See you later!",
         "ui_menu": False,
-        "message": "BAPSicle is going back into winter hibernation, see you again soon!"
+        "message": "BAPSicle is going back into winter hibernation, see you again soon!",
     }
     return render_template("message.html", data)
 
@@ -444,7 +464,7 @@ def restart(request):
         "ui_menu": False,
         "message": "Just putting BAPSicle back in the freezer for a moment!",
         "redirect_to": "/",
-        "redirect_wait_ms": 10000
+        "redirect_wait_ms": 10000,
     }
     return render_template("message.html", data)
 
@@ -467,13 +487,15 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
     terminate = Terminator()
     while not terminate.terminate:
         try:
-            sync(app.run(
-                host=server_state.get()["host"],
-                port=server_state.get()["port"],
-                debug=(not isBundelled()),
-                auto_reload=False,
-                access_log=(not isBundelled())
-            ))
+            sync(
+                app.run(
+                    host=server_state.get()["host"],
+                    port=server_state.get()["port"],
+                    debug=(not isBundelled()),
+                    auto_reload=False,
+                    access_log=(not isBundelled()),
+                )
+            )
         except Exception:
             break
     loop = asyncio.get_event_loop()

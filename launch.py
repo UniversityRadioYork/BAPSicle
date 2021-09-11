@@ -70,7 +70,11 @@ if __name__ == "__main__":
             if sys.argv[1] == "Presenter":
                 webbrowser.open("http://localhost:13500/presenter/")
         except Exception as e:
-            print("ALERT:BAPSicle failed with exception of type {}:{}".format(type(e).__name__, e))
+            print(
+                "ALERT:BAPSicle failed with exception of type {}:{}".format(
+                    type(e).__name__, e
+                )
+            )
             sys.exit(1)
 
         sys.exit(0)
