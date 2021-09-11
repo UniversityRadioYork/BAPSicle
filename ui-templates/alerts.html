@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block head %}
+<meta http-equiv="refresh" content="2;url=/alerts" />
+{% endblock %}
+{% block content_inner %}
+  {% if data %}
+  <h2>Current Alerts: {{ data.alert_count_current }}</h2>
+
+  <div class="accordion" id="accordionExample">
+    {% for alert in data.alerts_current %}
+    <div class="card alert-{{ alert.ui_class }}">
+      <div class="card-header" id="headingOne">
+        <h2 class="mb-0">
+          <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+            {{ alert.title }}
+          </button>
+          <span class="badge badge-{{ alert.ui_class}}">{{ alert.severity }}</span>
+        </h2>
+        <span class="badge">Since {{ alert.start_time }}</span>
+        <span class="badge">Last Seen {{ alert.last_time }}</span>
+        {% if alert.end_time > -1 %}
+        <span class="badge">Ended {{ alert.end_time }}</span>
+        {% endif %}
+      </div>
+
+      <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordionExample">
+        <div class="card-body">
+          <strong>Module: </strong>{{ alert.module }}<br>
+          {{ alert.description }}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <hr>
+  <h2>Previous Alerts: {{ data.alert_count_previous }}</h2>
+    <div class="row">
+
+    </div>
+  {% endif %}
+{% endblock %}

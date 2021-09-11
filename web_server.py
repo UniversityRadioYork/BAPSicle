@@ -27,6 +27,7 @@ from helpers.state_manager import StateManager
 from helpers.the_terminator import Terminator
 from helpers.normalisation import get_normalised_filename_if_available
 from helpers.myradio_api import MyRadioAPI
+from helpers.alert_manager import AlertManager
 
 env = Environment(
     loader=FileSystemLoader("%s/ui-templates/" % os.path.dirname(__file__)),
@@ -97,6 +98,7 @@ def render_template(file, data, status=200):
 logger: LoggingManager
 server_state: StateManager
 api: MyRadioAPI
+alerts: AlertManager
 
 player_to_q: List[Queue] = []
 player_from_q: List[Queue] = []
@@ -116,6 +118,7 @@ def ui_index(request):
     data = {
         "ui_page": "index",
         "ui_title": "",
+        "alert_count": alerts.alert_count_current,
         "server_version": config["server_version"],
         "server_build": config["server_build"],
         "server_name": config["server_name"],
@@ -134,6 +137,20 @@ def ui_status(request):
     data = {"channels": channel_states,
             "ui_page": "status", "ui_title": "Status"}
     return render_template("status.html", data=data)
+
+@app.route("/alerts")
+def ui_alerts(request):
+    channel_states = []
+    for i in range(server_state.get()["num_channels"]):
+        channel_states.append(status(i))
+
+    data = {
+        "alerts_current": alerts.alerts_current,
+        "alerts_count_current": alerts.alert_count_current,
+        "ui_page": "alerts",
+        "ui_title": "Alerts"
+    }
+    return render_template("alerts.html", data=data)
 
 
 @app.route("/config/player")
@@ -479,13 +496,14 @@ def restart(request):
 # Don't use reloader, it causes Nested Processes!
 def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateManager):
 
-    global player_to_q, player_from_q, server_state, api, app
+    global player_to_q, player_from_q, server_state, api, app, alerts
     player_to_q = player_to
     player_from_q = player_from
     server_state = state
 
     logger = LoggingManager("WebServer")
     api = MyRadioAPI(logger, state)
+    alerts = AlertManager()
 
     process_title = "Web Server"
     setproctitle(process_title)

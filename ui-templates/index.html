@@ -1,4 +1,7 @@
 {% extends 'base.html' %}
+{% block head %}
+<meta http-equiv="refresh" content="2;url=/" />
+{% endblock %}
 {% block content %}
 
   <div class="card-body p-0">
@@ -16,6 +19,23 @@
           <a href="/presenter/" class="btn btn-primary btn-user btn-block">
             Open BAPS Presenter
           </a>
+
+          <hr>
+          {% if data.alert_count > 0 %}
+            <div class="alert alert-danger" role="alert">
+              <h4 class="alert-heading">Something's up! <a href="/alerts" class="btn btn-sm btn-danger float-right"><span class="badge badge-light mr-1">{{data.alert_count}}</span>View Alerts</a></h4>
+              <p>BAPSicle is having some issues. Please review the alerts page.
+          {% else %}
+          <div class="alert alert-success" role="alert">
+            <h4 class="alert-heading">We're all good!</h4>
+            <p>BAPSicle seems to be running well. If this doesn't seem to be the case, try restarting or taking a closer look at the logs.</p>
+          {% endif %}
+            <hr>
+            <a href="/logs" class="btn btn-success">Logs</a>
+            <a href="/restart" class="btn btn-info">Restart</a>
+            <a href="/shutdown" class="btn btn-danger">Shutdown</a>
+          </div>
+
           <hr>
           <p>Version: {{data.server_version}} - Build: {{data.server_build}} - Branch: {{data.server_branch}}</p>
           <p>Server Name: {{data.server_name}}</p>
