@@ -22,14 +22,11 @@ import json
 from setproctitle import setproctitle
 import psutil
 
-from helpers.os_environment import isBundelled, isMacOS
+from helpers.os_environment import isMacOS
 
 if not isMacOS():
     # Rip, this doesn't like threading on MacOS.
     import pyttsx3
-
-if isBundelled():
-    import build
 
 import package
 from typing import Dict, List
@@ -111,7 +108,8 @@ class BAPSicleServer:
         log_function = self.logger.log.info
 
         while (
-            not terminator.terminate and self.state.get()["running_state"] == "running"
+            not terminator.terminate and self.state.get()[
+                "running_state"] == "running"
         ):
 
             for channel in range(self.state.get()["num_channels"]):
@@ -122,7 +120,8 @@ class BAPSicleServer:
                     or not self.player[channel].is_alive()
                     or not psutil.pid_exists(self.player[channel].pid)
                 ):
-                    log_function("Player {} not running, (re)starting.".format(channel))
+                    log_function(
+                        "Player {} not running, (re)starting.".format(channel))
                     self.player[channel] = multiprocessing.Process(
                         target=player.Player,
                         args=(
@@ -183,7 +182,8 @@ class BAPSicleServer:
             ):
                 log_function("Webserver not running, (re)starting.")
                 self.webserver = multiprocessing.Process(
-                    target=WebServer, args=(self.player_to_q, self.ui_to_q, self.state)
+                    target=WebServer, args=(
+                        self.player_to_q, self.ui_to_q, self.state)
                 )
                 self.webserver.start()
 
@@ -320,7 +320,8 @@ class BAPSicleServer:
             self.player_handler.join(timeout=PROCESS_KILL_TIMEOUT_S)
             del self.player_handler
 
-        # Now we've stopped everything else, now is the time to stop the players. This is to keep playing for as long as possible during a restart.
+        # Now we've stopped everything else, now is the time to stop the players.
+        # This is to keep playing for as long as possible during a restart.
         print("Stopping Players")
         for q in self.player_to_q:
             q.put("ALL:QUIT")

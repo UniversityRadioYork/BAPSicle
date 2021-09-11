@@ -1,4 +1,4 @@
-autopep8
+wheel
 pygame==2.0.1
 sanic==21.3.4
 sanic-Cors==1.0.0

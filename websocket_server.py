@@ -71,7 +71,8 @@ class WebsocketServer:
         for channel in self.channel_to_q:
             channel.put("WEBSOCKET:STATUS")
 
-        self.from_webstudio = asyncio.create_task(self.handle_from_webstudio(websocket))
+        self.from_webstudio = asyncio.create_task(
+            self.handle_from_webstudio(websocket))
 
         try:
             self.threads = await shield(asyncio.gather(self.from_webstudio))
@@ -93,7 +94,8 @@ class WebsocketServer:
                 await asyncio.wait([conn.send(message) for conn in self.baps_clients])
 
         except websockets.exceptions.ConnectionClosedError as e:
-            self.logger.log.error("Client Disconncted {}, {}".format(websocket, e))
+            self.logger.log.error(
+                "Client Disconncted {}, {}".format(websocket, e))
 
         except Exception as e:
             self.logger.log.exception(
@@ -176,13 +178,15 @@ class WebsocketServer:
 
             except ValueError as e:
                 self.logger.log.exception(
-                    "Error decoding extra data {} for command {} ".format(e, command)
+                    "Error decoding extra data {} for command {} ".format(
+                        e, command)
                 )
                 pass
 
             # Stick the message together and send!
             message += (
-                command  # Put the command in at the end, in case MOVE etc changed it.
+                # Put the command in at the end, in case MOVE etc changed it.
+                command
             )
             if extra != "":
                 message += ":" + extra
@@ -197,7 +201,8 @@ class WebsocketServer:
                 )
 
         else:
-            self.logger.log.error("Command missing from message. Data: {}".format(data))
+            self.logger.log.error(
+                "Command missing from message. Data: {}".format(data))
 
     async def handle_to_webstudio(self):
 

@@ -41,7 +41,7 @@ class FileManager:
             while not terminator.terminate:
                 # If all channels have received the delete command, reset for the next one.
                 if (
-                    self.channel_received == None
+                    self.channel_received is None
                     or self.channel_received == [True] * self.channel_count
                 ):
                     self.channel_received = [False] * self.channel_count
@@ -60,18 +60,22 @@ class FileManager:
                         if command == "GETPLAN":
 
                             if (
-                                self.channel_received != [False] * self.channel_count
+                                self.channel_received != [
+                                    False] * self.channel_count
                                 and self.channel_received[channel] != True
                             ):
                                 # We've already received a delete trigger on a channel, let's not delete the folder more than once.
-                                # If the channel was already in the process of being deleted, the user has requested it again, so allow it.
+                                # If the channel was already in the process of being deleted, the user has
+                                # requested it again, so allow it.
 
                                 self.channel_received[channel] = True
                                 continue
 
                             # Delete the previous show files!
-                            # Note: The players load into RAM. If something is playing over the load, the source file can still be deleted.
-                            path: str = resolve_external_file_path("/music-tmp/")
+                            # Note: The players load into RAM. If something is playing over the load,
+                            # the source file can still be deleted.
+                            path: str = resolve_external_file_path(
+                                "/music-tmp/")
 
                             if not os.path.isdir(path):
                                 self.logger.log.warning(
@@ -102,7 +106,8 @@ class FileManager:
                                     )
                                     continue
                             self.channel_received[channel] = True
-                            self.known_channels_preloaded = [False] * self.channel_count
+                            self.known_channels_preloaded = [
+                                False] * self.channel_count
                             self.known_channels_normalised = [
                                 False
                             ] * self.channel_count
@@ -142,7 +147,8 @@ class FileManager:
                     sleep(0.2)
 
         except Exception as e:
-            self.logger.log.exception("Received unexpected exception: {}".format(e))
+            self.logger.log.exception(
+                "Received unexpected exception: {}".format(e))
         del self.logger
 
     # Attempt to preload a file onto disk.
@@ -169,7 +175,8 @@ class FileManager:
                     )
                 )
 
-                # Getting the file name will only pull the new file if the file doesn't already exist, so this is not too inefficient.
+                # Getting the file name will only pull the new file if the file doesn't
+                # already exist, so this is not too inefficient.
                 item_obj.filename, did_download = sync(
                     self.api.get_filename(item_obj, True)
                 )
@@ -181,7 +188,8 @@ class FileManager:
                 if did_download:
                     downloaded_something = True
                     self.logger.log.info(
-                        "File successfully preloaded: {}".format(item_obj.filename)
+                        "File successfully preloaded: {}".format(
+                            item_obj.filename)
                     )
                     break
                 else:
@@ -189,7 +197,8 @@ class FileManager:
                     # Let's try the next one.
                     continue
 
-        # Tell the file manager that this channel is fully downloaded, this is so it can consider normalising once all channels have files.
+        # Tell the file manager that this channel is fully downloaded, this is so
+        # it can consider normalising once all channels have files.
         self.known_channels_preloaded[channel] = not downloaded_something
 
         self.next_channel_preload += 1
@@ -241,7 +250,8 @@ class FileManager:
                 normalised_something = True
                 break  # Now go let another channel have a go.
             except Exception as e:
-                self.logger.log.exception("Failed to generate normalised file.", str(e))
+                self.logger.log.exception(
+                    "Failed to generate normalised file.", str(e))
                 continue
 
         self.known_channels_normalised[channel] = not normalised_something

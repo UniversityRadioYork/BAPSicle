@@ -39,7 +39,8 @@ def startServer(notifications=False):
 
     # Catch the handler being killed externally.
     except Exception as e:
-        printer("Received Exception {} with args: {}".format(type(e).__name__, e.args))
+        printer("Received Exception {} with args: {}".format(
+            type(e).__name__, e.args))
         if server and server.is_alive():
             server.terminate()
             server.join()

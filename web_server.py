@@ -1,4 +1,4 @@
-from sanic import Sanic, log
+from sanic import Sanic
 from sanic.exceptions import NotFound, abort
 from sanic.response import html, file, redirect
 from sanic.response import json as resp_json
@@ -131,7 +131,8 @@ def ui_status(request):
     for i in range(server_state.get()["num_channels"]):
         channel_states.append(status(i))
 
-    data = {"channels": channel_states, "ui_page": "status", "ui_title": "Status"}
+    data = {"channels": channel_states,
+            "ui_page": "status", "ui_title": "Status"}
     return render_template("status.html", data=data)
 
 
@@ -175,16 +176,20 @@ def ui_config_server_update(request):
     server_state.update("ws_port", int(request.form.get("ws_port")))
 
     serial_port = request.form.get("serial_port")
-    server_state.update("serial_port", None if serial_port == "None" else serial_port)
+    server_state.update("serial_port", None if serial_port ==
+                        "None" else serial_port)
 
     # Because we're not showing the api key once it's set.
     if "myradio_api_key" in request.form and request.form.get("myradio_api_key") != "":
-        server_state.update("myradio_api_key", request.form.get("myradio_api_key"))
+        server_state.update("myradio_api_key",
+                            request.form.get("myradio_api_key"))
 
-    server_state.update("myradio_base_url", request.form.get("myradio_base_url"))
+    server_state.update("myradio_base_url",
+                        request.form.get("myradio_base_url"))
     server_state.update("myradio_api_url", request.form.get("myradio_api_url"))
     server_state.update(
-        "myradio_api_tracklist_source", request.form.get("myradio_api_tracklist_source")
+        "myradio_api_tracklist_source", request.form.get(
+            "myradio_api_tracklist_source")
     )
     server_state.update("tracklist_mode", request.form.get("tracklist_mode"))
 
@@ -195,9 +200,9 @@ def ui_config_server_update(request):
 def ui_logs_list(request):
     files = os.listdir(resolve_external_file_path("/logs"))
     log_files = []
-    for file in files:
-        if file.endswith(".log"):
-            log_files.append(file.rstrip(".log"))
+    for file_name in files:
+        if file_name.endswith(".log"):
+            log_files.append(file_name.rstrip(".log"))
 
     log_files.sort()
     data = {"ui_page": "logs", "ui_title": "Logs", "logs": log_files}
@@ -215,7 +220,7 @@ def ui_logs_render(request, path):
     log_file = open(resolve_external_file_path("/logs/{}.log").format(path))
     data = {
         "logs": log_file.read().splitlines()[
-            -300 * page : (-300 * (page - 1) if page > 1 else None)
+            -300 * page:(-300 * (page - 1) if page > 1 else None)
         ][::-1],
         "ui_page": "logs",
         "ui_title": "Logs - {}".format(path),
@@ -380,7 +385,8 @@ def json_status(request):
 async def audio_file(request, type: str, id: int):
     if type not in ["managed", "track"]:
         abort(404)
-    filename = resolve_external_file_path("music-tmp/{}-{}.mp3".format(type, id))
+    filename = resolve_external_file_path(
+        "music-tmp/{}-{}.mp3".format(type, id))
 
     # Swap with a normalised version if it's ready, else returns original.
     filename = get_normalised_filename_if_available(filename)
@@ -411,7 +417,8 @@ app.static(
 
 def status(channel: int):
     while not player_from_q[channel].empty():
-        player_from_q[channel].get()  # Just waste any previous status responses.
+        # Just waste any previous status responses.
+        player_from_q[channel].get()
 
     player_to_q[channel].put("UI:STATUS")
     retries = 0
@@ -421,7 +428,7 @@ def status(channel: int):
             if response.startswith("UI:STATUS:"):
                 response = response.split(":", 2)[2]
                 # TODO: Handle OKAY / FAIL
-                response = response[response.index(":") + 1 :]
+                response = response[response.index(":") + 1:]
                 try:
                     response = json.loads(response)
                 except Exception as e:
