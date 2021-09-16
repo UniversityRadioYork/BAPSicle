@@ -1,5 +1,5 @@
 from sanic import Sanic
-from sanic.exceptions import NotFound, abort
+from sanic.exceptions import NotFound, ServerError, abort
 from sanic.response import html, file, redirect
 from sanic.response import json as resp_json
 from sanic_cors import CORS
@@ -108,9 +108,13 @@ player_from_q: List[Queue] = []
 
 @app.exception(NotFound)
 def page_not_found(request, e: Any):
-    data = {"ui_page": "404", "ui_title": "404"}
-    return render_template("404.html", data=data, status=404)
+    data = {"ui_page": "404", "ui_title": "404", "code": 404, "title": "Page Not Found", "message": "Looks like you fell off the tip of the iceberg." }
+    return render_template("error.html", data=data, status=404)
 
+@app.exception(Exception, ServerError)
+def server_error(request, e: Exception):
+    data = {"ui_page": "500", "ui_title": "500", "code": 500, "title": "Something went very wrong!", "message": "Looks like the server fell over. Try viewing the WebServer logs for more details." }
+    return render_template("error.html", data=data, status=500)
 
 @app.route("/")
 def ui_index(request):
@@ -234,7 +238,12 @@ def ui_logs_render(request, path):
     page = int(page)
     assert page >= 1
 
-    log_file = open(resolve_external_file_path("/logs/{}.log").format(path))
+    try:
+        log_file = open(resolve_external_file_path("/logs/{}.log").format(path))
+    except FileNotFoundError:
+        abort(404)
+        return
+
     data = {
         "logs": log_file.read().splitlines()[
             -300 * page:(-300 * (page - 1) if page > 1 else None)
