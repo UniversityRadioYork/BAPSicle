@@ -12,6 +12,7 @@
     Date:
         October, November 2020
 """
+from datetime import datetime
 from file_manager import FileManager
 import multiprocessing
 from multiprocessing.queues import Queue
@@ -224,6 +225,7 @@ class BAPSicleServer:
         )
 
         self.state.update("running_state", "running")
+        self.state.update("start_time", datetime.now().timestamp())
 
         print("Launching BAPSicle...")
 
