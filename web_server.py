@@ -17,7 +17,6 @@ import json
 import os
 
 from helpers.os_environment import (
-    isBundelled,
     resolve_external_file_path,
     resolve_local_file_path,
 )
@@ -28,6 +27,7 @@ from helpers.the_terminator import Terminator
 from helpers.normalisation import get_normalised_filename_if_available
 from helpers.myradio_api import MyRadioAPI
 from helpers.alert_manager import AlertManager
+import package
 
 env = Environment(
     loader=FileSystemLoader("%s/ui-templates/" % os.path.dirname(__file__)),
@@ -525,9 +525,9 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
                 app.run(
                     host=server_state.get()["host"],
                     port=server_state.get()["port"],
-                    debug=(not isBundelled()),
                     auto_reload=False,
-                    access_log=(not isBundelled()),
+                    debug=not package.BETA,
+                    access_log=not package.BETA,
                 )
             )
         except Exception:
