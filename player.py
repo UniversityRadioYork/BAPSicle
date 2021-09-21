@@ -35,6 +35,7 @@ from pygame import mixer
 from mutagen.mp3 import MP3
 from syncer import sync
 from threading import Timer
+from datetime import datetime
 
 from helpers.normalisation import get_normalised_filename_if_available
 from helpers.myradio_api import MyRadioAPI
@@ -969,7 +970,7 @@ class Player:
         self.out_q = out_q
 
         self.logger = LoggingManager(
-            "Player" + str(channel), debug=package.build_beta)
+            "Player" + str(channel), debug=package.BETA)
 
         self.api = MyRadioAPI(self.logger, server_state)
 
@@ -979,6 +980,8 @@ class Player:
             self.__default_state,
             self.__rate_limited_params,
         )
+
+        self.state.update("start_time", datetime.now().timestamp())
 
         self.state.add_callback(self._send_status)
 
