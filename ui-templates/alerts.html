@@ -5,14 +5,10 @@
 {% endblock %}
 {% block content_inner %}
   {% if data %}
-  <h2>Current Alerts: {{ data.alert_count_current }}</h2>
-  <div class="accordion" id="accordionExample">
-    {{ alert_list(data.alerts_current) }}
-  </div>
+  <h3 class="h4">Current Alerts: {{ data.alerts_current | length }}</h3>
+  {{ alert_list(data.alerts_current) }}
   <hr>
-  <h2>Previous Alerts: {{ data.alert_count_previous }}</h2>
-  <div class="accordion" id="accordionExample">
-    {{ alert_list(data.alerts_previous) }}
-  </div>
+  <h3 class="h4">Previous Alerts: {{ data.alerts_previous | length }}</h3>
+  {{ alert_list(data.alerts_previous) }}
   {% endif %}
 {% endblock %}

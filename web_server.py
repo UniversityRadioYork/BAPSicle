@@ -28,6 +28,7 @@ from helpers.normalisation import get_normalised_filename_if_available
 from helpers.myradio_api import MyRadioAPI
 from helpers.alert_manager import AlertManager
 import package
+from baps_types.happytime import happytime
 
 env = Environment(
     loader=FileSystemLoader("%s/ui-templates/" % os.path.dirname(__file__)),
@@ -94,6 +95,11 @@ def render_template(file, data, status=200):
     html_content = template.render(data=data)
     return html(html_content, status=status)
 
+
+def _filter_happytime(date):
+    return happytime(date)
+
+env.filters["happytime"] = _filter_happytime
 
 logger: LoggingManager
 server_state: StateManager

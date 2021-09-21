@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from helpers.os_environment import resolve_external_file_path
 from helpers.alert_manager import AlertProvider
 from baps_types.alert import CRITICAL, WARNING, Alert
+from baps_types.happytime import happytime
 
 MODULE = "BAPSicleServer" # This should match the log file, so the UI will link to the logs page.
 
@@ -66,7 +67,7 @@ class ServerAlertProvider(AlertProvider):
 It may have been automatically restarted by the OS.
 
 If this is not expected, please check logs to investigate why BAPSicle restarted/crashed."""
-        .format(str(start_time).rsplit(".",1)[0]),
+        .format(happytime(start_time)),
         "module": MODULE,
         "severity": WARNING
       })]

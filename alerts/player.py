@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from helpers.os_environment import resolve_external_file_path
 from helpers.alert_manager import AlertProvider
 from baps_types.alert import CRITICAL, WARNING, Alert
+from baps_types.happytime import happytime
 
 MODULE = "Player" # This should match the log file, so the UI will link to the logs page.
 
@@ -86,7 +87,7 @@ class PlayerAlertProvider(AlertProvider):
 This likely means there was an unhandled exception in the player code, causing the server to restart the player.
 
 Please check player logs to investigate the cause. Please restart the server to clear this warning."""
-          .format(channel, str(start_time).rsplit(".",1)[0], str(server_start_time).rsplit(".",1)[0]),
+          .format(channel, happytime(start_time), happytime(server_start_time)),
           "module": MODULE+str(channel),
           "severity": WARNING
         }))
