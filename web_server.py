@@ -122,7 +122,7 @@ def ui_index(request):
     data = {
         "ui_page": "index",
         "ui_title": "",
-        "alert_count": alerts.alert_count_current,
+        "alert_count": len(alerts.alerts_current),
         "server_version": config["server_version"],
         "server_build": config["server_build"],
         "server_name": config["server_name"],
@@ -146,7 +146,7 @@ def ui_status(request):
 def ui_alerts(request):
     data = {
         "alerts_current": alerts.alerts_current,
-        "alerts_count_current": alerts.alert_count_current,
+        "alerts_previous": alerts.alerts_previous,
         "ui_page": "alerts",
         "ui_title": "Alerts"
     }

@@ -1,13 +1,13 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from datetime import datetime
 
 CRITICAL = "Critical"
 WARNING = "Warning"
 
 class Alert:
-    start_time: int = 0
-    last_time: int = 0
-    end_time: int = -1
+    start_time: datetime
+    last_time: datetime
+    end_time: Optional[datetime]
     id: str
     title: str
     description: str
@@ -23,11 +23,14 @@ class Alert:
         return "warning"
       return "info"
 
-    #    return self._weight
+    # This alert has happened again.
+    def reoccured(self):
+      self.last_time = datetime.now()
+      self.end_time = None
 
-    # weight.setter
-    # def weight(self, value: int):
-    #     self._weight = value
+    # This alert has finished, just update end time and keep last_time.
+    def cleared(self):
+      self.end_time = datetime.now()
 
 
     @property
@@ -63,3 +66,4 @@ class Alert:
         setattr(self,key,new_data[key])
 
       self.last_time = self.start_time
+      self.end_time = None

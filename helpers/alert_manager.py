@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Optional
 
 #Magic for importing alert providers from alerts directory.
 from pkgutil import iter_modules
@@ -54,25 +54,40 @@ class AlertManager():
   def poll_alerts(self):
 
     # Poll modules for any alerts.
-    alerts: List[Alert] = []
+    new_alerts: List[Optional[Alert]] = []
     for provider in self._providers:
       provider_alerts = provider.get_alerts()
       if provider_alerts:
-        alerts.extend(provider_alerts)
+        new_alerts.extend(provider_alerts)
 
-    self._alerts = alerts
+    # Here we replace new firing alerts with older ones, to keep any context.
+    # (This doesn't do anything yet really, for future use.)
+    for existing in self._alerts:
+      found = False
+      for new in new_alerts:
+        # given we're removing alerts, got to skip any we removed.
+        if not new:
+          continue
+
+        if existing.id == new.id:
+          # Alert is continuing. Replace it with the old one.
+          index = new_alerts.index(new)
+          existing.reoccured()
+          new_alerts[index] = None # We're going to merge the existing and new, so clear the new one out.
+          found = True
+          break
+      if found == False:
+        # The existing alert is gone, mark it as ended.
+        existing.cleared()
+
+    self._alerts.extend([value for value in new_alerts if value]) # Remove any nulled out new alerts
 
   @property
   def alerts_current(self):
     self.poll_alerts()
-    return self._alerts
+    return [alert for alert in self._alerts if not alert.end_time]
 
   @property
-  def alert_count_current(self):
+  def alerts_previous(self):
     self.poll_alerts()
-    return len(self._alerts)
-
-  @property
-  def alert_count_previous(self):
-    self.poll_alerts()
-    return len(self._alerts)
+    return [alert for alert in self._alerts if alert.end_time]
