@@ -144,10 +144,6 @@ def ui_status(request):
 
 @app.route("/alerts")
 def ui_alerts(request):
-    channel_states = []
-    for i in range(server_state.get()["num_channels"]):
-        channel_states.append(status(i))
-
     data = {
         "alerts_current": alerts.alerts_current,
         "alerts_count_current": alerts.alert_count_current,
