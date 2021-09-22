@@ -65,7 +65,7 @@ class AlertManager():
                 new_alerts.extend(provider_alerts)
 
         # Here we replace new firing alerts with older ones, to keep any context.
-        # (This doesn't do anything yet really, for future use.)
+        # (This doesn't do much yet really, just remembering the start_time)
         for existing in self._alerts:
             found = False
             for new in new_alerts:
