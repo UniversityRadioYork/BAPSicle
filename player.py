@@ -199,9 +199,7 @@ class Player:
         if not self.isPlaying:
             state = self.state.get()
             position: float = state["pos_true"]
-            try:
-                self.play(position)
-            except Exception:
+            if not self.play(position):
                 self.logger.log.exception(
                     "Failed to unpause from pos: " + str(position)
                 )
