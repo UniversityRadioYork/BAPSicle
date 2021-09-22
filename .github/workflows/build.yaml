@@ -1,7 +1,8 @@
 name: Package
-on: [push]
+on: [push,pull_request]
+
 env:
-  version: ${{github.base_ref}}-${{github.sha}}
+  version: ${{github.head_ref}}${{github.ref}}
 jobs:
   build-macos:
 
