@@ -833,7 +833,7 @@ class Player:
             )
         )
         # Just make sure that if we stop and do nothing, we end up at 0.
-        self.state.update("pos",0)
+        self.state.update("pos", 0)
 
         # Repeat 1
         # TODO ENUM
