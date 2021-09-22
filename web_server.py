@@ -99,6 +99,7 @@ def render_template(file, data, status=200):
 def _filter_happytime(date):
     return happytime(date)
 
+
 env.filters["happytime"] = _filter_happytime
 
 logger: LoggingManager
@@ -114,13 +115,16 @@ player_from_q: List[Queue] = []
 
 @app.exception(NotFound)
 def page_not_found(request, e: Any):
-    data = {"ui_page": "404", "ui_title": "404", "code": 404, "title": "Page Not Found", "message": "Looks like you fell off the tip of the iceberg." }
+    data = {"ui_page": "404", "ui_title": "404", "code": 404, "title": "Page Not Found",
+            "message": "Looks like you fell off the tip of the iceberg."}
     return render_template("error.html", data=data, status=404)
 
-@app.exception(Exception, ServerError)
-def server_error(request, e: Exception):
-    data = {"ui_page": "500", "ui_title": "500", "code": 500, "title": "Something went very wrong!", "message": "Looks like the server fell over. Try viewing the WebServer logs for more details." }
+# Future use.
+def error_page(code=500, ui_title="500", title="Something went very wrong!",
+               message="Looks like the server fell over. Try viewing the WebServer logs for more details."):
+    data = {"ui_page": ui_title, "ui_title": ui_title, "code": code, "title": title, "message": message}
     return render_template("error.html", data=data, status=500)
+
 
 @app.route("/")
 def ui_index(request):
@@ -147,6 +151,7 @@ def ui_status(request):
     data = {"channels": channel_states,
             "ui_page": "status", "ui_title": "Status"}
     return render_template("status.html", data=data)
+
 
 @app.route("/alerts")
 def ui_alerts(request):
