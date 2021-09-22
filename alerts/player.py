@@ -48,7 +48,9 @@ class PlayerAlertProvider(AlertProvider):
                 "start_time": -1,  # Now
                 "id": "no_channels",
                 "title": "There are no players configured.",
-                "description": "The number of channels configured is {}. Please set to at least 1 on the 'Server Config' page.".format(self._player_count),
+                "description": "The number of channels configured is {}. \
+                  Please set to at least 1 on the 'Server Config' page."
+                .format(self._player_count),
                 "module": MODULE+"Handler",
                 "severity": CRITICAL
             })]
@@ -61,7 +63,8 @@ class PlayerAlertProvider(AlertProvider):
                     "start_time": -1,  # Now
                     "id": "player_{}_not_initialised".format(channel),
                     "title": "Player {} is not initialised.".format(channel),
-                    "description": "This typically means the player channel was not able find the configured sound output on the system. Please check the 'Player Config' and Player logs to determine the cause.",
+                    "description": "This typically means the player channel was not able find the configured sound output \
+                    on the system. Please check the 'Player Config' and Player logs to determine the cause.",
                     "module": MODULE+str(channel),
                     "severity": CRITICAL
                 }))

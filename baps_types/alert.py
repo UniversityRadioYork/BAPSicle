@@ -56,7 +56,8 @@ class Alert:
                 raise KeyError("Key {} is missing from data to create Alert.".format(key))
 
             # if type(new_data[key]) != type(getattr(self,key)):
-            #  raise TypeError("Key {} has type {}, was expecting {}.".format(key, type(new_data[key]), type(getattr(self,key))))
+            #  raise TypeError("Key {} has type {}, was expecting {}."
+            #   .format(key, type(new_data[key]), type(getattr(self,key))))
 
             # Account for if the creator didn't want to set a custom time.
             if key == "start_time" and new_data[key] == -1:

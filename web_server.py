@@ -1,5 +1,5 @@
 from sanic import Sanic
-from sanic.exceptions import NotFound, ServerError, abort
+from sanic.exceptions import NotFound, abort
 from sanic.response import html, file, redirect
 from sanic.response import json as resp_json
 from sanic_cors import CORS
@@ -118,6 +118,7 @@ def page_not_found(request, e: Any):
     data = {"ui_page": "404", "ui_title": "404", "code": 404, "title": "Page Not Found",
             "message": "Looks like you fell off the tip of the iceberg."}
     return render_template("error.html", data=data, status=404)
+
 
 # Future use.
 def error_page(code=500, ui_title="500", title="Something went very wrong!",

@@ -6,7 +6,7 @@ from importlib import import_module
 from inspect import getmembers, isclass
 from sys import modules
 
-from baps_types.alert import CRITICAL, Alert
+from baps_types.alert import Alert
 import alerts
 
 

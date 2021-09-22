@@ -37,7 +37,8 @@ class ServerAlertProvider(AlertProvider):
                 "start_time": -1,  # Now
                 "id": "api_key_missing",
                 "title": "MyRadio API Key is not configured.",
-                "description": "This means you will be unable to load show plans, audio items, or tracklist. Please set one on the 'Server Config' page.",
+                "description": "This means you will be unable to load show plans, audio items, or tracklist. \
+                    Please set one on the 'Server Config' page.",
                 "module": MODULE,
                 "severity": CRITICAL
             })]
@@ -47,7 +48,8 @@ class ServerAlertProvider(AlertProvider):
                 "start_time": -1,
                 "id": "api_key_missing",
                 "title": "MyRadio API Key seems incorrect.",
-                "description": "The API key is less than 10 characters, it's probably not a valid one. If it is valid, it shouldn't be.",
+                "description": "The API key is less than 10 characters, it's probably not a valid one. \
+                    If it is valid, it shouldn't be.",
                 "module": MODULE,
                 "severity": WARNING
             })]
