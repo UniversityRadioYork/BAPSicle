@@ -24,7 +24,7 @@ jobs:
         zip -r build/output/BAPSicle.zip build/output/BAPSicle.app
     - name: Extract branch name
       shell: bash
-      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"
       id: extract_branch
     - name: Archive Build
       uses: actions/upload-artifact@v2
@@ -54,7 +54,7 @@ jobs:
         build/build-linux.sh
     - name: Extract branch name
       shell: bash
-      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"
       id: extract_branch
     - name: Archive Build
       uses: actions/upload-artifact@v2
@@ -84,7 +84,7 @@ jobs:
         build/build-windows.bat no-venv
     - name: Extract branch name
       shell: bash
-      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"
       id: extract_branch
     - name: Archive Build
       uses: actions/upload-artifact@v2
