@@ -35,7 +35,7 @@ def startServer(notifications=False):
 
         if server and server.is_alive():
             server.terminate()
-            server.join()
+            server.join(timeout=20) # If we somehow get stuck stopping BAPSicle let it die.
 
     # Catch the handler being killed externally.
     except Exception as e:
@@ -43,7 +43,7 @@ def startServer(notifications=False):
             type(e).__name__, e.args))
         if server and server.is_alive():
             server.terminate()
-            server.join()
+            server.join(timeout=20)
 
 
 def printer(msg: Any):
@@ -81,3 +81,4 @@ if __name__ == "__main__":
         sys.exit(0)
     else:
         startServer()
+        sys.exit(0)
