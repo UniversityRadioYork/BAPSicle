@@ -73,13 +73,11 @@ class BAPSicleServer:
     }
 
     player_to_q: List[Queue] = []
-    player_from_q: List[Queue] = []
-    ui_to_q: List[Queue] = []
-    websocket_to_q: List[Queue] = []
-    controller_to_q: List[Queue] = []
-    file_to_q: List[Queue] = []
-    api_from_q: Queue
-    api_to_q: Queue
+    player_from_q: Queue
+    ui_to_q: Queue
+    websocket_to_q: Queue
+    controller_to_q: Queue
+    file_to_q: Queue
 
     player: List[multiprocessing.Process] = []
     websockets_server: Optional[multiprocessing.Process] = None
@@ -97,10 +95,8 @@ class BAPSicleServer:
 
             self.stopServer()
 
-            if self.state.get()["running_state"] == "restarting":
-                continue
-
-            break
+            if self.state.get()["running_state"] != "restarting":
+                break
 
     def check_processes(self):
 
@@ -128,7 +124,7 @@ class BAPSicleServer:
                         args=(
                             channel,
                             self.player_to_q[channel],
-                            self.player_from_q[channel],
+                            self.player_from_q,
                             self.state,
                         ),
                     )
@@ -239,11 +235,12 @@ class BAPSicleServer:
         for channel in range(self.state.get()["num_channels"]):
 
             self.player_to_q.append(multiprocessing.Queue())
-            self.player_from_q.append(multiprocessing.Queue())
-            self.ui_to_q.append(multiprocessing.Queue())
-            self.websocket_to_q.append(multiprocessing.Queue())
-            self.controller_to_q.append(multiprocessing.Queue())
-            self.file_to_q.append(multiprocessing.Queue())
+
+        self.player_from_q = multiprocessing.Queue()
+        self.ui_to_q = multiprocessing.Queue()
+        self.websocket_to_q = multiprocessing.Queue()
+        self.controller_to_q = multiprocessing.Queue()
+        self.file_to_q = multiprocessing.Queue()
 
         print(
             "Welcome to BAPSicle Server version: {}, build: {}.".format(
@@ -291,7 +288,7 @@ class BAPSicleServer:
         print("Stopping BASPicle Server.")
 
         print("Stopping Websocket Server")
-        self.websocket_to_q[0].put("WEBSOCKET:QUIT")
+        self.websocket_to_q.put("0:WEBSOCKET:QUIT")
         if self.websockets_server:
             self.websockets_server.join(timeout=PROCESS_KILL_TIMEOUT_S)
         del self.websockets_server

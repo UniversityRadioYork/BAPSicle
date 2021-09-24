@@ -8,9 +8,10 @@ import asyncio
 from jinja2 import Environment, FileSystemLoader
 from jinja2.utils import select_autoescape
 from urllib.parse import unquote
-from setproctitle import setproctitle
 from typing import Any, Optional, List
+from setproctitle import setproctitle
 from multiprocessing.queues import Queue
+from multiprocessing.process import current_process
 from queue import Empty
 from time import sleep
 import json
@@ -99,7 +100,7 @@ server_state: StateManager
 api: MyRadioAPI
 
 player_to_q: List[Queue] = []
-player_from_q: List[Queue] = []
+player_from_q: Queue
 
 # General UI Endpoints
 
@@ -416,15 +417,18 @@ app.static(
 
 
 def status(channel: int):
-    while not player_from_q[channel].empty():
+    while not player_from_q.empty():
         # Just waste any previous status responses.
-        player_from_q[channel].get()
+        player_from_q.get()
 
     player_to_q[channel].put("UI:STATUS")
     retries = 0
     while retries < 40:
         try:
-            response = player_from_q[channel].get_nowait()
+            message = player_from_q.get_nowait()
+            split = message.split(":",1)
+            channel = int(split[0])
+            response = split[1]
             if response.startswith("UI:STATUS:"):
                 response = response.split(":", 2)[2]
                 # TODO: Handle OKAY / FAIL
@@ -477,7 +481,7 @@ def restart(request):
 
 
 # Don't use reloader, it causes Nested Processes!
-def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateManager):
+def WebServer(player_to: List[Queue], player_from: Queue, state: StateManager):
 
     global player_to_q, player_from_q, server_state, api, app
     player_to_q = player_to
@@ -489,6 +493,7 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
 
     process_title = "Web Server"
     setproctitle(process_title)
+    current_process().name = process_title
     CORS(app, supports_credentials=True)  # Allow ALL CORS!!!
 
     terminate = Terminator()

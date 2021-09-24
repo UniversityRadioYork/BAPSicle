@@ -923,16 +923,17 @@ class Player:
 
     def _retAll(self, msg):
         if self.out_q:
-            self.out_q.put("ALL:" + msg)
+            self.out_q.put("{}:ALL:{}".format(self.state.get()["channel"],msg))
 
     def _retMsg(
         self, msg: Any, okay_str: bool = False, custom_prefix: Optional[str] = None
     ):
+        response = "{}:".format(self.state.get()["channel"])
         # Make sure to add the message source back, so that it can be sent to the correct destination in the main server.
         if custom_prefix:
-            response = custom_prefix
+            response += custom_prefix
         else:
-            response = "{}:{}:".format(self.last_msg_source, self.last_msg)
+            response += "{}:{}:".format(self.last_msg_source, self.last_msg)
         if msg is True:
             response += "OKAY"
         elif isinstance(msg, str):
