@@ -276,6 +276,8 @@ class MyRadioAPI:
         request = await self.async_api_call(url, api_version="non")
 
         if not request or not isinstance(request, (bytes, bytearray)):
+            # Remove the .downloading temp file given we gave up trying to download.
+            os.remove(filename + dl_suffix)
             return (None, False) if did_download else None
 
         try:
