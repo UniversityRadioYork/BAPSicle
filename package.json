@@ -1,7 +1,7 @@
 {
   "name": "bapsicle",
   "nice_name": "BAPSicle",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "BAPS3, the third generation of University Radio York's Broadcast and Presenting Suite. This package includes the Server (BAPSicle) and Presenter (WebStudio)",
   "main": "index.js",
   "directories": {
@@ -13,7 +13,7 @@
     "presenter-make": "npm run presenter-install && (rm -r presenter-build || true) && cd presenter && yarn build-baps && cp -r build ../presenter-build && cd ../ && npm install",
     "test": "echo \"Error: no test specified\" && exit 1",
     "presenter-start": "cd presenter && yarn start-baps",
-    "lint": "autopep8 -r -a -a --ignore E402,E226,E24,W50,W690 --max-line-length 127 --in-place --exclude=\"*node_modules*,*venv/*,presenter/*\" . "
+    "lint": "./venv/bin/autopep8 -r -a -a --ignore E402,E226,E24,W50,W690 --max-line-length 127 --in-place --exclude=\"*node_modules*,*venv/*,presenter/*\" . && ./venv/bin/flake8 . --exclude=\"*node_modules*,*venv/*,presenter/*\" --count --ignore=E402,E226,E24,W50,W690 --max-complexity=25 --max-line-length=127 --statistics"
   },
   "repository": {
     "type": "git",
