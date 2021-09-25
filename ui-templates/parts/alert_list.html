@@ -1,0 +1,27 @@
+{% macro alert_list(alerts) %}
+  {% for alert in alerts %}
+  <div class="card alert-{{ alert.ui_class }}">
+    <div class="card-header" id="headingOne">
+      <span class="badge badge-{{ alert.ui_class}}">{{ alert.severity }}</span>
+      <h4 class="h5 mb-0 mt-1">{{ alert.title }}</h4>
+      <span class="badge badge-primary">Since {{ alert.start_time | happytime }}</span>
+      <span class="badge badge-secondary">Last Seen {{ alert.last_time | happytime }}</span>
+      {% if alert.end_time %}
+      <span class="badge badge-success">Ended {{ alert.end_time | happytime }}</span>
+      {% endif %}
+    </div>
+
+    <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordionExample">
+      <div class="card-body pb-0">
+        <strong>Module: </strong><a href="/logs/{{ alert.module }}" title="Click for logs">{{ alert.module }}</a>
+        {% autoescape false %}
+        <p>{{ alert.description | replace("\n\n", "</p><p>") | replace("\n", "<br/>")}}</p>
+        {% endautoescape %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  {% if not alerts %}
+  <strong>No alerts here.</strong>
+  {% endif %}
+{% endmacro %}

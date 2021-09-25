@@ -17,7 +17,6 @@ import json
 import os
 
 from helpers.os_environment import (
-    isBundelled,
     resolve_external_file_path,
     resolve_local_file_path,
 )
@@ -27,6 +26,9 @@ from helpers.state_manager import StateManager
 from helpers.the_terminator import Terminator
 from helpers.normalisation import get_normalised_filename_if_available
 from helpers.myradio_api import MyRadioAPI
+from helpers.alert_manager import AlertManager
+import package
+from baps_types.happytime import happytime
 
 env = Environment(
     loader=FileSystemLoader("%s/ui-templates/" % os.path.dirname(__file__)),
@@ -94,9 +96,16 @@ def render_template(file, data, status=200):
     return html(html_content, status=status)
 
 
+def _filter_happytime(date):
+    return happytime(date)
+
+
+env.filters["happytime"] = _filter_happytime
+
 logger: LoggingManager
 server_state: StateManager
 api: MyRadioAPI
+alerts: AlertManager
 
 player_to_q: List[Queue] = []
 player_from_q: List[Queue] = []
@@ -106,8 +115,16 @@ player_from_q: List[Queue] = []
 
 @app.exception(NotFound)
 def page_not_found(request, e: Any):
-    data = {"ui_page": "404", "ui_title": "404"}
-    return render_template("404.html", data=data, status=404)
+    data = {"ui_page": "404", "ui_title": "404", "code": 404, "title": "Page Not Found",
+            "message": "Looks like you fell off the tip of the iceberg."}
+    return render_template("error.html", data=data, status=404)
+
+
+# Future use.
+def error_page(code=500, ui_title="500", title="Something went very wrong!",
+               message="Looks like the server fell over. Try viewing the WebServer logs for more details."):
+    data = {"ui_page": ui_title, "ui_title": ui_title, "code": code, "title": title, "message": message}
+    return render_template("error.html", data=data, status=500)
 
 
 @app.route("/")
@@ -116,6 +133,7 @@ def ui_index(request):
     data = {
         "ui_page": "index",
         "ui_title": "",
+        "alert_count": len(alerts.alerts_current),
         "server_version": config["server_version"],
         "server_build": config["server_build"],
         "server_name": config["server_name"],
@@ -134,6 +152,17 @@ def ui_status(request):
     data = {"channels": channel_states,
             "ui_page": "status", "ui_title": "Status"}
     return render_template("status.html", data=data)
+
+
+@app.route("/alerts")
+def ui_alerts(request):
+    data = {
+        "alerts_current": alerts.alerts_current,
+        "alerts_previous": alerts.alerts_previous,
+        "ui_page": "alerts",
+        "ui_title": "Alerts"
+    }
+    return render_template("alerts.html", data=data)
 
 
 @app.route("/config/player")
@@ -217,7 +246,12 @@ def ui_logs_render(request, path):
     page = int(page)
     assert page >= 1
 
-    log_file = open(resolve_external_file_path("/logs/{}.log").format(path))
+    try:
+        log_file = open(resolve_external_file_path("/logs/{}.log").format(path))
+    except FileNotFoundError:
+        abort(404)
+        return
+
     data = {
         "logs": log_file.read().splitlines()[
             -300 * page:(-300 * (page - 1) if page > 1 else None)
@@ -479,13 +513,14 @@ def restart(request):
 # Don't use reloader, it causes Nested Processes!
 def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateManager):
 
-    global player_to_q, player_from_q, server_state, api, app
+    global player_to_q, player_from_q, server_state, api, app, alerts
     player_to_q = player_to
     player_from_q = player_from
     server_state = state
 
     logger = LoggingManager("WebServer")
     api = MyRadioAPI(logger, state)
+    alerts = AlertManager()
 
     process_title = "Web Server"
     setproctitle(process_title)
@@ -498,9 +533,9 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
                 app.run(
                     host=server_state.get()["host"],
                     port=server_state.get()["port"],
-                    debug=(not isBundelled()),
                     auto_reload=False,
-                    access_log=(not isBundelled()),
+                    debug=not package.BETA,
+                    access_log=not package.BETA,
                 )
             )
         except Exception:
