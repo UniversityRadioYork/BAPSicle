@@ -437,6 +437,9 @@ class Player:
                     "Failed to find weight: {}".format(weight))
                 return False
 
+            # This item exists, so we're comitting to load this item.
+            self.state.update("loaded_item", loaded_item)
+
             # The file_manager helper may have pre-downloaded the file already, or we've played it before.
             reload = False
             if loaded_item.filename == "" or loaded_item.filename is None:
@@ -463,10 +466,8 @@ class Player:
                 loaded_item.filename
             )
 
-            # We're comitting to load this item.
+            # Given we've just messed around with filenames etc, update the item again.
             self.state.update("loaded_item", loaded_item)
-
-            # Given we've just messed around with filenames etc, update the item in the show plan too.
             for i in range(len(showplan)):
                 if showplan[i].weight == weight:
                     self.state.update("show_plan", index=i, value=loaded_item)
