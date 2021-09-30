@@ -190,6 +190,7 @@ def ui_config_server(request):
         "state": server_state.get(),
         "ser_ports": DeviceManager.getSerialPorts(),
         "tracklist_modes": ["off", "on", "delayed", "fader-live"],
+        "normalisation_modes": ["off", "on"],
     }
     return render_template("config_server.html", data=data)
 
@@ -221,6 +222,7 @@ def ui_config_server_update(request):
             "myradio_api_tracklist_source")
     )
     server_state.update("tracklist_mode", request.form.get("tracklist_mode"))
+    server_state.update("normalisation_mode", request.form.get("normalisation_mode"))
 
     return redirect("/restart")
 

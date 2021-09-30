@@ -48,6 +48,17 @@
         Delayed tracklisting is 20s, to account for cueing with fader down.<br>
         Fader Live means if a BAPS Controller is present with support, tracklists will trigger only if fader is up.
       </small></p>
+      <br>
+      <label for="serial_port">Normalisation:</label>
+      <select class="form-control" name="normalisation_mode">
+        <label>Modes</label>
+        {% for mode in data.normalisation_modes %}
+          <option value="{{mode}}" {% if mode == data.state.normalisation_mode %}selected{% endif %}>{{ mode.capitalize() }}</option>
+        {% endfor %}
+      </select>
+      <p><small>
+        Normalisation requests significant CPU requirements, if you're finding the CPU usuage is too high / causing audio glitches, disable this feature.
+      </small></p>
       <hr>
       <input type="submit" class="btn btn-primary" value="Save & Restart Server">
     </form>
