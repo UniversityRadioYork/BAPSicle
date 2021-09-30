@@ -7,7 +7,7 @@ from typing import List
 import websockets
 import json
 from os import _exit
-from websockets.server import Serve
+from websockets.server import serve
 from setproctitle import setproctitle
 from multiprocessing import current_process
 
@@ -25,7 +25,7 @@ class WebsocketServer:
     logger: LoggingManager
     to_webstudio: Task
     from_webstudio: Task
-    websocket_server: Serve
+    websocket_server: serve
 
     def __init__(self, in_q, out_q, state):
 
