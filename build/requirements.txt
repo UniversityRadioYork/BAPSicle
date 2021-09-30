@@ -1,7 +1,7 @@
 autopep8
 pygame==2.0.1
-sanic
-sanic-cors
+sanic==21.3.4
+sanic-Cors==1.0.0
 syncer
 aiohttp
 mutagen
