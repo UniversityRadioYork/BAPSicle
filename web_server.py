@@ -319,9 +319,15 @@ async def audio_file(request, type: str, id: int):
 # Static Files
 app.static("/favicon.ico", resolve_local_file_path("ui-static/favicon.ico"), name="ui-favicon")
 app.static("/static", resolve_local_file_path("ui-static"), name="ui-static")
-app.static("/presenter/", resolve_local_file_path("presenter-build/index.html"),
-           strict_slashes=True, name="presenter-index")
-app.static("/presenter/", resolve_local_file_path("presenter-build"))
+
+dist_directory = resolve_local_file_path("presenter-build")
+app.static("/presenter", dist_directory)
+app.static(
+    "/presenter/",
+    resolve_local_file_path("presenter-build/index.html"),
+    strict_slashes=True,
+    name="presenter-index",
+)
 
 
 # Helper Functions
