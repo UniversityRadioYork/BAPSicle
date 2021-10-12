@@ -540,9 +540,12 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
             )
         except Exception:
             break
-    loop = asyncio.get_event_loop()
-    if loop:
-        loop.close()
-    if app:
-        app.stop()
-        del app
+    try:
+        loop = asyncio.get_event_loop()
+        if loop:
+            loop.close()
+        if app:
+            app.stop()
+            del app
+    except:
+        pass

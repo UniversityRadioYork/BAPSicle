@@ -20,10 +20,10 @@ class DeviceManager:
         return host_api
 
     @classmethod
-    def _getAudioDevices(cls) -> sd.DeviceList:
+    def _getSDAudioDevices(cls):
         # To update the list of devices
-        # Sadly this doesn't work on MacOS.
-        if not isMacOS():
+        # Sadly this only works on Windows. Linux hangs, MacOS crashes.
+        if isWindows():
             sd._terminate()
             sd._initialize()
         devices: sd.DeviceList = sd.query_devices()
@@ -31,11 +31,13 @@ class DeviceManager:
 
     @classmethod
     def getAudioOutputs(cls) -> Tuple[List[Dict]]:
-        host_apis = sd.query_hostapis()
-        devices: sd.DeviceList = cls._getAudioDevices()
+
+        host_apis = list(sd.query_hostapis())
+        devices: sd.DeviceList = cls._getSDAudioDevices()
 
         for host_api_id in range(len(host_apis)):
-            if isWindows() and host_apis[host_api_id]["name"] not in WINDOWS_APIS:
+            # Linux SDL uses PortAudio, which SoundDevice doesn't find. So mark all as unsable.
+            if (isWindows() and host_apis[host_api_id]["name"] not in WINDOWS_APIS) or (isLinux()):
                 host_apis[host_api_id]["usable"] = False
             else:
                 host_apis[host_api_id]["usable"] = True

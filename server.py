@@ -23,7 +23,7 @@ import json
 from setproctitle import setproctitle
 import psutil
 
-from helpers.os_environment import isMacOS
+from helpers.os_environment import isLinux, isMacOS
 
 if not isMacOS():
     # Rip, this doesn't like threading on MacOS.
@@ -206,7 +206,9 @@ class BAPSicleServer:
             time.sleep(1)
 
     def startServer(self):
-        if isMacOS():
+        # On MacOS, the default causes something to keep creating new processes.
+        # On Linux, this is needed to make pulseaudio initiate properly.
+        if isMacOS() or isLinux():
             multiprocessing.set_start_method("spawn", True)
 
         process_title = "startServer"
