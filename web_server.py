@@ -496,6 +496,11 @@ def quit(request):
 
 @app.route("/restart")
 def restart(request):
+    if request.args.get("confirm", '') != "true":
+        for i in range(server_state.get()["num_channels"]):
+            state = status(i)
+            if state["playing"]:
+                return render_template("restart-confirm.html", data=None)
     server_state.update("running_state", "restarting")
 
     data = {
