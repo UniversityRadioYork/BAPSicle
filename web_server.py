@@ -17,6 +17,7 @@ import json
 import os
 
 from helpers.os_environment import (
+    isLinux,
     resolve_external_file_path,
     resolve_local_file_path,
 )
@@ -171,11 +172,16 @@ def ui_config_player(request):
     for i in range(server_state.get()["num_channels"]):
         channel_states.append(status(i))
 
-    outputs = DeviceManager.getAudioOutputs()
+    outputs = None
+    if isLinux():
+        outputs = DeviceManager.getAudioDevices()
+    else:
+        outputs = DeviceManager.getAudioOutputs()
 
     data = {
         "channels": channel_states,
         "outputs": outputs,
+        "sdl_direct": isLinux(), 
         "ui_page": "config",
         "ui_title": "Player Config",
     }

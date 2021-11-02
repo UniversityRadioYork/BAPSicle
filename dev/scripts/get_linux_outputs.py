@@ -5,7 +5,7 @@ os.putenv('SDL_AUDIODRIVER', 'pulseaudio')
 import pygame._sdl2 as sdl2
 import pygame
 from pygame import mixer
-#pygame.init()
+pygame.init()
 import time
 mixer.init(44100, -16, 2, 1024)
 is_capture = 0  # zero to request playback devices, non-zero to request recording devices

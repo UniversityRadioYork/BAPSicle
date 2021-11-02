@@ -33,6 +33,26 @@ Set for:
 Default Audio Output
 </code>
 </p>
+{% if data.sdl_direct %}
+Linux (Pulse Audio)
+<br>
+<code>
+{% for output in data.outputs %}
+Set for:
+  {% for channel in data.channels %}
+    {% if not channel %}
+    Player {{loop.index0}}
+    {% elif channel.output == output %}
+    <strong>Player {{channel.channel}}</strong>
+    {% else %}
+    <a href="/player/{{channel.channel}}/output/{{output}}">Player {{channel.channel}}</a>
+    {% endif %}
+    /
+  {% endfor %}
+{% if output %}{{output}}{% else %}System Default Output{% endif %}<br>
+{% endfor %}
+</code>
+{% else %}
 {% for host_api in data.outputs %}
   {{host_api.name}}
   <br>
@@ -54,4 +74,5 @@ Default Audio Output
   {% endfor %}
   </code>
 {% endfor %}
+{% endif %}
 {% endblock %}
