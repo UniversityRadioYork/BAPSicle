@@ -181,7 +181,7 @@ def ui_config_player(request):
     data = {
         "channels": channel_states,
         "outputs": outputs,
-        "sdl_direct": isLinux(), 
+        "sdl_direct": isLinux(),
         "ui_page": "config",
         "ui_title": "Player Config",
     }
@@ -553,5 +553,5 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
         if app:
             app.stop()
             del app
-    except:
+    except Exception:
         pass
