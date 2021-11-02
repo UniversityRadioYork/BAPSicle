@@ -40,7 +40,7 @@ from syncer import sync
 from threading import Timer
 from datetime import datetime
 
-from helpers.normalisation import get_normalised_filename_if_available
+from helpers.normalisation import get_normalised_filename_if_available, get_original_filename_from_normalised
 from helpers.myradio_api import MyRadioAPI
 from helpers.state_manager import StateManager
 from helpers.logging_manager import LoggingManager
@@ -174,9 +174,10 @@ class Player:
     # Audio Playout Related Methods
 
     def play(self, pos: float = 0):
-        if not self.isLoaded:
-            return
         self.logger.log.info("Playing from pos: " + str(pos))
+        if not self.isLoaded:
+            self.logger.log.warning("Player is not loaded.")
+            return False
         try:
             mixer.music.play(0, pos)
             self.state.update("pos_offset", pos)
@@ -203,9 +204,7 @@ class Player:
         if not self.isPlaying:
             state = self.state.get()
             position: float = state["pos_true"]
-            try:
-                self.play(position)
-            except Exception:
+            if not self.play(position):
                 self.logger.log.exception(
                     "Failed to unpause from pos: " + str(position)
                 )
@@ -335,7 +334,7 @@ class Player:
             # Right. So this may be confusing.
             # So... If the user has just moved the loaded item in the channel (by removing above and readding)
             # Then we want to re-associate the loaded_item object reference with the new one.
-            # The loaded item object before this change is now an ophan, which was
+            # The loaded item object before this change is now an orphan, which was
             # kept around while the loaded item was potentially moved to another
             # channel.
             if loaded_item.timeslotitemid == new_item_obj.timeslotitemid:
@@ -412,9 +411,13 @@ class Player:
 
     def load(self, weight: int):
         if not self.isPlaying:
-            loaded_state = self.state.get()
+            # If we have something loaded already, unload it first.
             self.unload()
 
+            loaded_state = self.state.get()
+
+            # Sometimes (at least on windows), the pygame player will lose output to the sound output after a while.
+            # It's odd, but essentially, to stop / recover from this, we de-init the pygame mixer and init it again.
             self.logger.log.info(
                 "Resetting output (in case of sound output gone silent somehow) to "
                 + str(loaded_state["output"])
@@ -425,16 +428,22 @@ class Player:
 
             loaded_item: Optional[PlanItem] = None
 
+            # Go find the show plan item of the weight we've been asked to load.
             for i in range(len(showplan)):
                 if showplan[i].weight == weight:
                     loaded_item = showplan[i]
                     break
 
+            # If we didn't find it, exit.
             if loaded_item is None:
                 self.logger.log.error(
                     "Failed to find weight: {}".format(weight))
                 return False
 
+            # This item exists, so we're comitting to load this item.
+            self.state.update("loaded_item", loaded_item)
+
+            # The file_manager helper may have pre-downloaded the file already, or we've played it before.
             reload = False
             if loaded_item.filename == "" or loaded_item.filename is None:
                 self.logger.log.info(
@@ -446,10 +455,12 @@ class Player:
                 )
                 reload = True
 
+            # Ask the API for the file if we need it.
             if reload:
-                loaded_item.filename = sync(
-                    self.api.get_filename(item=loaded_item))
+                file = sync(self.api.get_filename(item=loaded_item))
+                loaded_item.filename = str(file) if file else None
 
+            # If the API still couldn't get the file, RIP.
             if not loaded_item.filename:
                 return False
 
@@ -458,38 +469,55 @@ class Player:
                 loaded_item.filename
             )
 
+            # Given we've just messed around with filenames etc, update the item again.
             self.state.update("loaded_item", loaded_item)
-
             for i in range(len(showplan)):
                 if showplan[i].weight == weight:
                     self.state.update("show_plan", index=i, value=loaded_item)
                 break
-                # TODO: Update the show plan filenames???
 
             load_attempt = 0
 
-            if not isinstance(loaded_item.filename, str):
-                return False
-
+            # Let's have 5 attempts at loading the item audio
             while load_attempt < 5:
                 load_attempt += 1
+
+                original_file = None
+                if load_attempt == 3:
+                    # Ok, we tried twice already to load the file.
+                    # Let's see if we can recover from this.
+                    # Try swapping the normalised version out for the original.
+                    original_file = get_original_filename_from_normalised(
+                        loaded_item.filename
+                    )
+                    self.logger.log.warning("3rd attempt. Trying the non-normalised file: {}".format(original_file))
+
+                if load_attempt == 4:
+                    # well, we've got so far that the normalised and original files didn't load.
+                    # Take a last ditch effort to download the original file again.
+                    file = sync(self.api.get_filename(item=loaded_item, redownload=True))
+                    if file:
+                        original_file = str(file)
+                    self.logger.log.warning("4rd attempt. Trying to redownload the file, got: {}".format(original_file))
+
+                if original_file:
+                    loaded_item.filename = original_file
+
                 try:
                     self.logger.log.info(
-                        "Loading file: " + str(loaded_item.filename))
+                        "Attempt {} Loading file: {}".format(load_attempt, loaded_item.filename))
                     mixer.music.load(loaded_item.filename)
                 except Exception:
                     # We couldn't load that file.
                     self.logger.log.exception(
                         "Couldn't load file: " + str(loaded_item.filename)
                     )
-                    time.sleep(1)
                     continue  # Try loading again.
 
                 if not self.isLoaded:
                     self.logger.log.error(
                         "Pygame loaded file without error, but never actually loaded."
                     )
-                    time.sleep(1)
                     continue  # Try loading again.
 
                 try:
@@ -506,23 +534,25 @@ class Player:
                 except Exception:
                     self.logger.log.exception(
                         "Failed to update the length of item.")
-                    time.sleep(1)
                     continue  # Try loading again.
 
                 # Everything worked, we made it!
+                # Write the loaded item again once more, to confirm the filename if we've reattempted.
+                self.state.update("loaded_item", loaded_item)
+
                 if loaded_item.cue > 0:
                     self.seek(loaded_item.cue)
                 else:
                     self.seek(0)
 
-                if self.state.get()["play_on_load"]:
+                if loaded_state["play_on_load"]:
                     self.unpause()
 
                 return True
 
-            self.logger.log.error(
-                "Failed to load track after numerous retries.")
-            return False
+            # Even though we failed, make sure state is up to date with latest failure.
+            # We're comitting to load this item.
+            self.state.update("loaded_item", loaded_item)
 
         return False
 
@@ -552,8 +582,10 @@ class Player:
             self.logger.log.exception("Failed to quit mixer.")
 
     def output(self, name: Optional[str] = None):
-        wasPlaying = self.state.get()["playing"]
-        oldPos = self.state.get()["pos_true"]
+        wasPlaying = self.isPlaying
+
+        state = self.state.get()
+        oldPos = state["pos_true"]
 
         name = None if (not name or name.lower() == "none") else name
 
@@ -570,7 +602,7 @@ class Player:
             )
             return False
 
-        loadedItem = self.state.get()["loaded_item"]
+        loadedItem = state["loaded_item"]
         if loadedItem:
             self.logger.log.info("Reloading after output change.")
             self.load(loadedItem.weight)
@@ -805,6 +837,8 @@ class Player:
                 loaded_item.name, loaded_item.weight
             )
         )
+        # Just make sure that if we stop and do nothing, we end up at 0.
+        self.state.update("pos", 0)
 
         # Repeat 1
         # TODO ENUM

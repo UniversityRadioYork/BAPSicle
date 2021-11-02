@@ -432,7 +432,12 @@ async def audio_file(request, type: str, id: int):
     filename = get_normalised_filename_if_available(filename)
 
     # Send file or 404
-    return await file(filename)
+    try:
+        response = await file(filename)
+    except FileNotFoundError:
+        abort(404)
+        return
+    return response
 
 
 # Static Files
