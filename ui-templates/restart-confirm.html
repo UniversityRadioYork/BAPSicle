@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content_inner %}
+    <div class="text-center">
+      <p class="lead text-gray-800 mb-2">Hang on a second!</p>
+      <p class="text-gray-900 mb-3">Something is currently playing. Restarting will interrupt it! Are you sure?</p>
+        <a href="/status" class="btn btn-info">Cancel</a>
+        <a href="/restart?confirm=true" class="btn btn-danger">Confirm</a>
+    </div>
+{% endblock %}

@@ -24,5 +24,8 @@
   "bugs": {
     "url": "https://github.com/universityradioyork/bapsicle/issues"
   },
-  "homepage": "https://github.com/universityradioyork/bapsicle#readme"
+  "homepage": "https://github.com/universityradioyork/bapsicle#readme",
+  "dependencies": {
+    "yarn": "^1.22.15"
+  }
 }

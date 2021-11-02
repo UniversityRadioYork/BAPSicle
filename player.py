@@ -21,8 +21,11 @@
 
 # Stop the Pygame Hello message.
 import os
-
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
+from helpers.os_environment import isLinux
+# It's the only one we could get to work.
+if isLinux():
+    os.putenv('SDL_AUDIODRIVER', 'pulseaudio')
 
 from queue import Empty
 import multiprocessing
