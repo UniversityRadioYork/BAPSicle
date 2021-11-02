@@ -4,7 +4,8 @@ from helpers.os_environment import isLinux, isMacOS, isWindows
 import os
 
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
-os.putenv('SDL_AUDIODRIVER', 'pulseaudio')
+if isLinux():
+    os.putenv('SDL_AUDIODRIVER', 'pulseaudio')
 import pygame._sdl2 as sdl2
 from pygame import mixer
 import glob
