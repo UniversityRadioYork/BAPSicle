@@ -22,10 +22,14 @@ jobs:
         npm run presenter-make
         build/build-macos.sh
         zip -r build/output/BAPSicle.zip build/output/BAPSicle.app
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"
+      id: extract_branch
     - name: Archive Build
       uses: actions/upload-artifact@v2
       with:
-        name: Package - MacOS
+        name: BAPSicle-${{ steps.extract_branch.outputs.branch }}-${{github.sha}}-MacOS
         path: |
           build/output/BAPSicle.zip
 
@@ -48,10 +52,14 @@ jobs:
       run: |
         npm run presenter-make
         build/build-linux.sh
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"
+      id: extract_branch
     - name: Archive Build
       uses: actions/upload-artifact@v2
       with:
-        name: Package - Ubuntu
+        name: BAPSicle-${{ steps.extract_branch.outputs.branch }}-${{github.sha}}-Ubuntu
         path: |
           build/output/BAPSicle
 
@@ -74,10 +82,14 @@ jobs:
       run: |
         npm run presenter-make
         build/build-windows.bat no-venv
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"
+      id: extract_branch
     - name: Archive Build
       uses: actions/upload-artifact@v2
       with:
-        name: Package - Windows
+        name: BAPSicle-${{ steps.extract_branch.outputs.branch }}-${{github.sha}}-Windows
         path: |
           build/output/BAPSicle.exe
           install/

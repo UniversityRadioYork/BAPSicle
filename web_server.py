@@ -17,6 +17,7 @@ import json
 import os
 
 from helpers.os_environment import (
+    isLinux,
     resolve_external_file_path,
     resolve_local_file_path,
 )
@@ -171,11 +172,16 @@ def ui_config_player(request):
     for i in range(server_state.get()["num_channels"]):
         channel_states.append(status(i))
 
-    outputs = DeviceManager.getAudioOutputs()
+    outputs = None
+    if isLinux():
+        outputs = DeviceManager.getAudioDevices()
+    else:
+        outputs = DeviceManager.getAudioOutputs()
 
     data = {
         "channels": channel_states,
         "outputs": outputs,
+        "sdl_direct": isLinux(),
         "ui_page": "config",
         "ui_title": "Player Config",
     }
@@ -428,7 +434,12 @@ async def audio_file(request, type: str, id: int):
     filename = get_normalised_filename_if_available(filename)
 
     # Send file or 404
-    return await file(filename)
+    try:
+        response = await file(filename)
+    except FileNotFoundError:
+        abort(404)
+        return
+    return response
 
 
 # Static Files
@@ -498,6 +509,11 @@ def quit(request):
 
 @app.route("/restart")
 def restart(request):
+    if request.args.get("confirm", '') != "true":
+        for i in range(server_state.get()["num_channels"]):
+            state = status(i)
+            if state["playing"]:
+                return render_template("restart-confirm.html", data=None)
     server_state.update("running_state", "restarting")
 
     data = {
@@ -542,9 +558,12 @@ def WebServer(player_to: List[Queue], player_from: List[Queue], state: StateMana
             )
         except Exception:
             break
-    loop = asyncio.get_event_loop()
-    if loop:
-        loop.close()
-    if app:
-        app.stop()
-        del app
+    try:
+        loop = asyncio.get_event_loop()
+        if loop:
+            loop.close()
+        if app:
+            app.stop()
+            del app
+    except Exception:
+        pass
