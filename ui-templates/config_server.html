@@ -48,7 +48,6 @@
         Delayed tracklisting is 20s, to account for cueing with fader down.<br>
         Fader Live means if a BAPS Controller is present with support, tracklists will trigger only if fader is up.
       </small></p>
-      <br>
       <label for="serial_port">Normalisation:</label>
       <select class="form-control" name="normalisation_mode">
         <label>Modes</label>
@@ -57,7 +56,7 @@
         {% endfor %}
       </select>
       <p><small>
-        Normalisation requests significant CPU requirements, if you're finding the CPU usuage is too high / causing audio glitches, disable this feature.
+        Normalisation requests significant CPU requirements, if you're finding the CPU usuage is too high / causing audio glitches, disable this feature. <code>ffmpeg</code> or <code>avconf</code> required.
       </small></p>
       <hr>
       <input type="submit" class="btn btn-primary" value="Save & Restart Server">

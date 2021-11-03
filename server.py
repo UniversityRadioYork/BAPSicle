@@ -71,7 +71,7 @@ class BAPSicleServer:
         "myradio_api_tracklist_source": "",
         "running_state": "running",
         "tracklist_mode": "off",
-        "normalisation_mode": "on",
+        "normalisation_mode": "off",
     }
 
     player_to_q: List[Queue] = []
