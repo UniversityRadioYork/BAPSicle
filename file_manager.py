@@ -29,6 +29,14 @@ class FileManager:
         current_process().name = process_title
 
         terminator = Terminator()
+
+        self.normalisation_mode = server_config.get()["normalisation_mode"]
+
+        if self.normalisation_mode != "on":
+            self.logger.log.info("Normalisation is disabled.")
+        else:
+            self.logger.log.info("Normalisation is enabled.")
+
         self.channel_count = len(channel_from_q)
         self.channel_received = None
         self.last_known_show_plan = [[]] * self.channel_count
@@ -211,6 +219,10 @@ class FileManager:
 
     # If we've preloaded everything, get to work normalising tracks before playback.
     def do_normalise(self):
+
+        if self.normalisation_mode != "on":
+            return False
+
         # Some channels still have files to preload, do nothing.
         if self.known_channels_preloaded != [True] * self.channel_count:
             return False  # Didn't normalise
