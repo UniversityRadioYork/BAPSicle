@@ -7,7 +7,8 @@ from typing import List
 import websockets
 import json
 from os import _exit
-from websockets.server import Serve
+from websockets.legacy.server import Serve
+from websockets.server import serve
 from setproctitle import setproctitle
 from multiprocessing import current_process
 
@@ -39,7 +40,7 @@ class WebsocketServer:
         self.logger = LoggingManager("Websockets")
         self.server_name = state.get()["server_name"]
 
-        self.websocket_server = websockets.serve(
+        self.websocket_server = serve(
             self.websocket_handler, state.get()["host"], state.get()["ws_port"]
         )
 
