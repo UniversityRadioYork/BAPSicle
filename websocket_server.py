@@ -217,16 +217,12 @@ class WebsocketServer:
                     parts = len(msg_split)
                     source = msg_split[0]
                     command = msg_split[1]
+                    data = None
                     if parts == 4:
                         #status = msg_split[2]
                         data = msg_split[3]
                     elif parts == 3:
                         data = msg_split[2]
-                    else:
-                        self.logger.log.exception(
-                            "Invalid message size:", msg_split
-                        )
-                        continue
 
                     # TODO ENUM
                     if source not in ["WEBSOCKET", "ALL"]:
