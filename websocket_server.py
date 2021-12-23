@@ -213,7 +213,21 @@ class WebsocketServer:
             for channel in range(len(self.webstudio_to_q)):
                 try:
                     message = self.webstudio_to_q[channel].get_nowait()
-                    source = message.split(":")[0]
+                    msg_split = message.split(":",3)
+                    parts = len(msg_split)
+                    source = msg_split[0]
+                    command = msg_split[1]
+                    if parts == 4:
+                        #status = msg_split[2]
+                        data = msg_split[3]
+                    elif parts == 3:
+                        data = msg_split[2]
+                    else:
+                        self.logger.log.exception(
+                            "Invalid message size:", msg_split
+                        )
+                        continue
+
                     # TODO ENUM
                     if source not in ["WEBSOCKET", "ALL"]:
                         self.logger.log.error(
@@ -223,16 +237,14 @@ class WebsocketServer:
                         )
                         continue
 
-                    command = message.split(":")[1]
                     if command == "STATUS":
                         try:
-                            message = message.split("OKAY:")[1]
-                            message = json.loads(message)
+                            message = json.loads(data)
                         except Exception:
                             continue  # TODO more logging
                     elif command == "POS":
                         try:
-                            message = message.split(":", 2)[2]
+                            message = data
                         except Exception:
                             continue
                     elif command == "QUIT":

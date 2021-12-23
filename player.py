@@ -22,6 +22,7 @@
 # Stop the Pygame Hello message.
 import os
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
+
 from helpers.os_environment import isLinux
 # It's the only one we could get to work.
 if isLinux():
@@ -34,7 +35,7 @@ import copy
 import json
 import time
 from typing import Any, Callable, Dict, List, Optional
-from pygame import mixer
+from pygame import mixer, error
 from mutagen.mp3 import MP3
 from syncer import sync
 from threading import Timer
@@ -160,7 +161,7 @@ class Player:
 
     @property
     def status(self):
-        state = copy.copy(self.state.state)
+        state = self.state.state
 
         # Not the biggest fan of this, but maybe I'll get a better solution for this later
         state["loaded_item"] = (
@@ -1054,12 +1055,18 @@ class Player:
                 self.logger.log.info(
                     "Seeking to pos_true: " + str(loaded_state["pos_true"])
                 )
-                self.seek(loaded_state["pos_true"])
+                try:
+                    self.seek(loaded_state["pos_true"])
+                except error:
+                    self.logger.log.error("Failed to seek on player start. Continuing anyway.")
 
             if loaded_state["playing"] is True:
                 self.logger.log.info("Resuming playback on init.")
                 # Use un-pause as we don't want to jump to a new position.
-                self.unpause()
+                try:
+                    self.unpause()
+                except error:
+                    self.logger.log.error("Failed to unpause on player start. Continuing anyway.")
         else:
             self.logger.log.info("No file was previously loaded to resume.")
 
