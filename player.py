@@ -22,7 +22,6 @@
 # Stop the Pygame Hello message.
 import os
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
-
 from helpers.os_environment import isLinux
 # It's the only one we could get to work.
 if isLinux():
@@ -116,43 +115,45 @@ class Player:
 
     @property
     def isLoaded(self):
-        return self._isLoaded()
+        return self.state.get()["loaded"]
 
-    def _isLoaded(self, short_test: bool = False):
-        if not self.state.get()["loaded_item"]:
-            return False
-        if self.isPlaying:
-            return True
+    def _checkIsLoaded(self, short_test: bool = False):
 
-        # If we don't want to do any testing if it's really loaded, fine.
-        if short_test:
-            return True
+        loaded = True
 
-        # Because Pygame/SDL is annoying
-        # We're not playing now, so we can quickly test run
-        # If that works, we're loaded.
-        try:
-            mixer.music.set_volume(0)
-            mixer.music.play(0)
-        except Exception:
-            try:
+        if not self.state.get()["loaded_item"] or not self.isInit:
+            loaded = False
+        elif not self.isPlaying:
+            # If we don't want to do any testing if it's really loaded, fine.
+            if not short_test:
+
+                # Because Pygame/SDL is annoying
+                # We're not playing now, so we can quickly test run
+                # If that works, we're loaded.
+                try:
+                    mixer.music.set_volume(0)
+                    mixer.music.play(0)
+                except Exception:
+                    try:
+                        mixer.music.set_volume(1)
+                    except Exception:
+                        self.logger.log.exception(
+                            "Failed to reset volume after attempting loaded test."
+                        )
+                        pass
+                    loaded = False
+                finally:
+                    mixer.music.stop()
+
                 mixer.music.set_volume(1)
-            except Exception:
-                self.logger.log.exception(
-                    "Failed to reset volume after attempting loaded test."
-                )
-                pass
-            return False
-        finally:
-            mixer.music.stop()
 
-        mixer.music.set_volume(1)
-        return True
+        self.state.update("loaded", loaded)
+        return loaded
 
     @property
     def isCued(self):
         # Don't mess with playback, we only care about if it's supposed to be loaded.
-        if not self._isLoaded(short_test=True):
+        if not self.isLoaded:
             return False
         return (
             self.state.get()["pos_true"] == self.state.get()["loaded_item"].cue
@@ -540,6 +541,7 @@ class Player:
                 # Everything worked, we made it!
                 # Write the loaded item again once more, to confirm the filename if we've reattempted.
                 self.state.update("loaded_item", loaded_item)
+                self._checkIsLoaded()
 
                 if loaded_item.cue > 0:
                     self.seek(loaded_item.cue)
@@ -554,6 +556,7 @@ class Player:
             # Even though we failed, make sure state is up to date with latest failure.
             # We're comitting to load this item.
             self.state.update("loaded_item", loaded_item)
+            self._checkIsLoaded()
 
         return False
 
@@ -901,7 +904,6 @@ class Player:
                 self._ended()
 
             self.state.update("playing", self.isPlaying)
-            self.state.update("loaded", self.isLoaded)
 
             self.state.update(
                 "pos_true",
@@ -1072,7 +1074,6 @@ class Player:
 
         try:
             while self.running:
-                time.sleep(0.02)
                 self._updateState()
                 self._ping_times()
                 try:
@@ -1098,10 +1099,18 @@ class Player:
                 except Empty:
                     # The incomming message queue was empty,
                     # skip message processing
-                    pass
+
+                    # If we're getting no messages, sleep.
+                    # But if we do have messages, once we've done with one, we'll check for the next one more quickly.
+                    time.sleep(0.05)
                 else:
 
                     # We got a message.
+
+                    ## Check if we're successfully loaded
+                    # This is here so that we can check often, but not every single loop
+                    # Only when user gives input.
+                    self._checkIsLoaded()
 
                     # Output re-inits the mixer, so we can do this any time.
                     if self.last_msg.startswith("OUTPUT"):
