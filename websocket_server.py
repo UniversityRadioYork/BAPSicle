@@ -59,7 +59,7 @@ class WebsocketServer:
         _exit(0)
 
     def __del__(self):
-        print("Deleting websocket server")
+        self.logger.log.info("Deleting websocket server")
         self.quit()
 
     async def websocket_handler(self, websocket, path):
@@ -71,12 +71,11 @@ class WebsocketServer:
         for channel in self.channel_to_q:
             channel.put("WEBSOCKET:STATUS")
 
-        self.from_webstudio = asyncio.create_task(self.handle_from_webstudio(websocket))
+        self.from_webstudio = asyncio.create_task(
+            self.handle_from_webstudio(websocket))
 
         try:
-            self.threads = await shield(
-                asyncio.gather(self.from_webstudio)
-            )
+            self.threads = await shield(asyncio.gather(self.from_webstudio))
         finally:
             self.from_webstudio.cancel()
 
@@ -92,9 +91,7 @@ class WebsocketServer:
                     channel = int(data["channel"])
                     self.sendCommand(channel, data)
 
-                await asyncio.wait(
-                    [conn.send(message) for conn in self.baps_clients]
-                )
+                await asyncio.wait([conn.send(message) for conn in self.baps_clients])
 
         except websockets.exceptions.ConnectionClosedError as e:
             self.logger.log.error(
@@ -146,12 +143,13 @@ class WebsocketServer:
                     extra += str(data["weight"])
                 elif command == "RESETPLAYED":
                     extra += str(data["weight"])
-                elif command == "GET_PLAN":
+                elif command == "SETPLAYED":
+                    extra += str(data["weight"])
+                elif command == "GETPLAN":
                     extra += str(data["timeslotId"])
                 elif command == "SETMARKER":
                     extra += "{}:{}".format(
-                        data["timeslotitemid"],
-                        json.dumps(data["marker"])
+                        data["timeslotitemid"], json.dumps(data["marker"])
                     )
 
                 # TODO: Move this to player handler.
@@ -172,7 +170,8 @@ class WebsocketServer:
 
                     # Now send the special case.
                     self.channel_to_q[new_channel].put(
-                        "WEBSOCKET:ADD:" + json.dumps(item))
+                        "WEBSOCKET:ADD:" + json.dumps(item)
+                    )
 
                     # Don't bother, we should be done.
                     return
@@ -180,13 +179,15 @@ class WebsocketServer:
             except ValueError as e:
                 self.logger.log.exception(
                     "Error decoding extra data {} for command {} ".format(
-                        e, command
-                    )
+                        e, command)
                 )
                 pass
 
             # Stick the message together and send!
-            message += command # Put the command in at the end, in case MOVE etc changed it.
+            message += (
+                # Put the command in at the end, in case MOVE etc changed it.
+                command
+            )
             if extra != "":
                 message += ":" + extra
 
@@ -201,8 +202,7 @@ class WebsocketServer:
 
         else:
             self.logger.log.error(
-                "Command missing from message. Data: {}".format(data)
-            )
+                "Command missing from message. Data: {}".format(data))
 
     async def handle_to_webstudio(self):
 
@@ -223,7 +223,6 @@ class WebsocketServer:
                         continue
 
                     command = message.split(":")[1]
-                    # print("Websocket Out:", command)
                     if command == "STATUS":
                         try:
                             message = message.split("OKAY:")[1]
@@ -243,9 +242,7 @@ class WebsocketServer:
                     data = json.dumps(
                         {"command": command, "data": message, "channel": channel}
                     )
-                    await asyncio.wait(
-                        [conn.send(data) for conn in self.baps_clients]
-                    )
+                    await asyncio.wait([conn.send(data) for conn in self.baps_clients])
                 except queue.Empty:
                     continue
                 except ValueError:
@@ -261,4 +258,4 @@ class WebsocketServer:
 
 
 if __name__ == "__main__":
-    print("Don't do this")
+    raise Exception("Don't run this file standalone.")

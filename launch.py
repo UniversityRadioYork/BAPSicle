@@ -39,7 +39,8 @@ def startServer(notifications=False):
 
     # Catch the handler being killed externally.
     except Exception as e:
-        printer("Received Exception {} with args: {}".format(type(e).__name__, e.args))
+        printer("Received Exception {} with args: {}".format(
+            type(e).__name__, e.args))
         if server and server.is_alive():
             server.terminate()
             server.join()
@@ -70,7 +71,11 @@ if __name__ == "__main__":
             if sys.argv[1] == "Presenter":
                 webbrowser.open("http://localhost:13500/presenter/")
         except Exception as e:
-            print("ALERT:BAPSicle failed with exception of type {}:\n{}".format(type(e).__name__, str(e)))
+            print(
+                "ALERT:BAPSicle failed with exception of type {}:{}".format(
+                    type(e).__name__, e
+                )
+            )
             sys.exit(1)
 
         sys.exit(0)

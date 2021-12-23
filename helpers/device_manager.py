@@ -1,7 +1,15 @@
 from typing import Any, Dict, List, Optional, Tuple
 import sounddevice as sd
 from helpers.os_environment import isLinux, isMacOS, isWindows
+import os
+
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
+if isLinux():
+    os.putenv('SDL_AUDIODRIVER', 'pulseaudio')
+import pygame._sdl2 as sdl2
+from pygame import mixer
 import glob
+
 if isWindows():
     from serial.tools.list_ports_windows import comports
 
@@ -19,10 +27,10 @@ class DeviceManager:
         return host_api
 
     @classmethod
-    def _getAudioDevices(cls) -> sd.DeviceList:
+    def _getSDAudioDevices(cls):
         # To update the list of devices
-        # Sadly this doesn't work on MacOS.
-        if not isMacOS():
+        # Sadly this only works on Windows. Linux hangs, MacOS crashes.
+        if isWindows():
             sd._terminate()
             sd._initialize()
         devices: sd.DeviceList = sd.query_devices()
@@ -30,16 +38,20 @@ class DeviceManager:
 
     @classmethod
     def getAudioOutputs(cls) -> Tuple[List[Dict]]:
-        host_apis = sd.query_hostapis()
-        devices: sd.DeviceList = cls._getAudioDevices()
+
+        host_apis = list(sd.query_hostapis())
+        devices: sd.DeviceList = cls._getSDAudioDevices()
 
         for host_api_id in range(len(host_apis)):
-            if isWindows() and host_apis[host_api_id]["name"] not in WINDOWS_APIS:
+            # Linux SDL uses PortAudio, which SoundDevice doesn't find. So mark all as unsable.
+            if (isWindows() and host_apis[host_api_id]["name"] not in WINDOWS_APIS) or (isLinux()):
                 host_apis[host_api_id]["usable"] = False
             else:
                 host_apis[host_api_id]["usable"] = True
 
-            host_api_devices = (device for device in devices if device["hostapi"] == host_api_id)
+            host_api_devices = (
+                device for device in devices if device["hostapi"] == host_api_id
+            )
 
             outputs: List[Dict] = list(filter(cls._isOutput, host_api_devices))
             outputs = sorted(outputs, key=lambda k: k["name"])
@@ -47,6 +59,15 @@ class DeviceManager:
             host_apis[host_api_id]["output_devices"] = outputs
 
         return host_apis
+
+    @classmethod
+    def getAudioDevices(cls) -> List[str]:
+        mixer.init(44100, -16, 2, 1024)
+        is_capture = 0  # zero to request playback devices, non-zero to request recording devices
+        num = sdl2.get_num_audio_devices(is_capture)
+        names = [str(sdl2.get_audio_device_name(i, is_capture), encoding="utf-8") for i in range(num)]
+        mixer.quit()
+        return names
 
     @classmethod
     def getSerialPorts(cls) -> List[Optional[str]]:

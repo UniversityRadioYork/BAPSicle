@@ -7,16 +7,19 @@ build_branch="$(git branch --show-current)"
 echo "BUILD: str = \"$build_commit\"" > ../build.py
 echo "BRANCH: str = \"$build_branch\"" >> ../build.py
 
-apt install libportaudio2
+sudo apt install libportaudio2
 
 python3 -m venv ../venv
 source ../venv/bin/activate
 
+pip3 install wheel
 pip3 install -r requirements.txt
 pip3 install -r requirements-linux.txt
 pip3 install -e ../
 
 python3 ./generate-build-exe-config.py
+
+chmod +x output/BAPSicle
 
 python3 ./build-exe.py
 

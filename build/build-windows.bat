@@ -17,6 +17,7 @@ if "%1" == "no-venv" goto skip-venv
 
 :skip-venv
 
+pip install wheel
 pip install -r requirements.txt
 pip install -r requirements-windows.txt
 pip install -e ..\

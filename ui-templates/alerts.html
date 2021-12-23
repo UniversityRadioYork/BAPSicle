@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% from 'parts/alert_list.html' import alert_list %}
+{% block head %}
+<meta http-equiv="refresh" content="15;url=/alerts" />
+{% endblock %}
+{% block content_inner %}
+  {% if data %}
+  <h3 class="h4">Current Alerts: {{ data.alerts_current | length }}</h3>
+  {{ alert_list(data.alerts_current) }}
+  <hr>
+  <h3 class="h4">Previous Alerts: {{ data.alerts_previous | length }}</h3>
+  {{ alert_list(data.alerts_previous) }}
+  {% endif %}
+{% endblock %}
