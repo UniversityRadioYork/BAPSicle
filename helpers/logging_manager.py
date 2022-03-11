@@ -1,7 +1,9 @@
 import logging
 from logging.handlers import RotatingFileHandler
+from typing import Optional
 from helpers.os_environment import resolve_external_file_path
 import os
+import package
 
 LOG_MAX_SIZE_MB = 20
 LOG_BACKUP_COUNT = 4
@@ -11,7 +13,7 @@ class LoggingManager:
 
     logger: logging.Logger
 
-    def __init__(self, name: str, debug: bool = False):
+    def __init__(self, name: str, debug: Optional[bool] = None):
         self.logger = logging.getLogger(name)
 
         logpath: str = resolve_external_file_path("/logs")
@@ -33,6 +35,10 @@ class LoggingManager:
             except Exception:
                 print("Failed to create log file.")
                 return
+
+        # Enable debug by default
+        if (debug == None and package.BETA):
+            debug = True
 
         self.logger.setLevel(logging.DEBUG if debug else logging.INFO)
         fh = RotatingFileHandler(
