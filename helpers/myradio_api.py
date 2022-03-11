@@ -102,16 +102,21 @@ class MyRadioAPI:
         self._log("Requesting API V2 URL with method {}: {}".format(method, url))
 
         request = None
-        if method == "GET":
-            request = await self.async_call(url, method="GET", timeout=timeout)
-        elif method == "POST":
-            self._log("POST data: {}".format(data))
-            request = await self.async_call(url, data=data, method="POST", timeout=timeout)
-        elif method == "PUT":
-            request = await self.async_call(url, method="PUT", timeout=timeout)
-        else:
-            self._logException("Invalid API method. Request not sent.")
+        try:
+            if method == "GET":
+                request = await self.async_call(url, method="GET", timeout=timeout)
+            elif method == "POST":
+                self._log("POST data: {}".format(data))
+                request = await self.async_call(url, data=data, method="POST", timeout=timeout)
+            elif method == "PUT":
+                request = await self.async_call(url, method="PUT", timeout=timeout)
+            else:
+                self._logException("Invalid API method. Request not sent.")
+                return None
+        except aiohttp.ClientError:
+            self._logException("Failed async API request.")
             return None
+
         self._log("Finished request.")
 
         return request
@@ -271,6 +276,8 @@ class MyRadioAPI:
         request = await self.async_api_call(url, api_version="non")
 
         if not request or not isinstance(request, (bytes, bytearray)):
+            # Remove the .downloading temp file given we gave up trying to download.
+            os.remove(filename + dl_suffix)
             return (None, False) if did_download else None
 
         try:
@@ -291,7 +298,7 @@ class MyRadioAPI:
 
         if not request or not isinstance(request, bytes):
             self._logException("Failed to retrieve music playlists.")
-            return None
+            return []
 
         return json.loads(request)["payload"]
 
@@ -302,7 +309,7 @@ class MyRadioAPI:
 
         if not request or not isinstance(request, bytes):
             self._logException("Failed to retrieve music playlists.")
-            return None
+            return []
 
         return json.loads(request)["payload"]
 
@@ -319,7 +326,7 @@ class MyRadioAPI:
             self._logException(
                 "Failed to retrieve items for aux playlist {}.".format(library_id)
             )
-            return None
+            return []
 
         return json.loads(request)["payload"]
 
@@ -333,7 +340,7 @@ class MyRadioAPI:
             self._logException(
                 "Failed to retrieve items for music playlist {}.".format(library_id)
             )
-            return None
+            return []
 
         return json.loads(request)["payload"]
 
@@ -347,7 +354,7 @@ class MyRadioAPI:
 
         if not request or not isinstance(request, bytes):
             self._logException("Failed to search for track.")
-            return None
+            return []
 
         return json.loads(request)["payload"]
 

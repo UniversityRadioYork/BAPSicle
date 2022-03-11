@@ -9,26 +9,50 @@
 <h4 class="h5">Currently Selected</h4>
 <p>
 {% for channel in data.channels %}
-  <strong>Player {{channel.channel}}:</strong>
-  {% if channel.output %}
-    {{channel.output}}
+  <strong>Player {{loop.index0}}:</strong>
+  {% if channel %}
+    {% if channel.output %}
+      {{channel.output}}
+    {% else %}
+      Default Audio Device
+    {% endif %}
+    {% if not channel.initialised %}
+      <code> - <strong>ERROR:</strong> Player did not start, potentially configured sound output is missing? Check <a href="/alerts">Alerts</a>.</code>
+    {% endif %}
   {% else %}
-    Default Audio Device
-  {% endif %}
-  {% if not channel.initialised %}
-    <code> - <strong>ERROR:</strong> Player did not start, potentially missing sound output?</code>
+    <code> - <strong>ERROR:</strong> Player did not respond, likely it is dead :/ Check <a href="/alerts">Alerts</a>.</code>
   {% endif %}
   <br>
 {% endfor %}
 <br/>
 <code>
 Set for:
-{% for channel in data.channels %}
+{% for channel in data.channels if channel %}
   <a href="/player/{{channel.channel}}/output/None">Player {{channel.channel}}</a> /
 {% endfor %}
 Default Audio Output
 </code>
 </p>
+{% if data.sdl_direct %}
+Linux (Pulse Audio)
+<br>
+<code>
+{% for output in data.outputs %}
+Set for:
+  {% for channel in data.channels %}
+    {% if not channel %}
+    Player {{loop.index0}}
+    {% elif channel.output == output %}
+    <strong>Player {{channel.channel}}</strong>
+    {% else %}
+    <a href="/player/{{channel.channel}}/output/{{output}}">Player {{channel.channel}}</a>
+    {% endif %}
+    /
+  {% endfor %}
+{% if output %}{{output}}{% else %}System Default Output{% endif %}<br>
+{% endfor %}
+</code>
+{% else %}
 {% for host_api in data.outputs %}
   {{host_api.name}}
   <br>
@@ -37,7 +61,9 @@ Default Audio Output
   {% if host_api.usable %}
   Set for:
     {% for channel in data.channels %}
-      {% if channel.output == output.name %}
+      {% if not channel %}
+      Player {{loop.index0}}
+      {% elif channel.output == output.name %}
       <strong>Player {{channel.channel}}</strong>
       {% else %}
       <a href="/player/{{channel.channel}}/output/{{output.name}}">Player {{channel.channel}}</a>
@@ -48,4 +74,5 @@ Default Audio Output
   {% endfor %}
   </code>
 {% endfor %}
+{% endif %}
 {% endblock %}

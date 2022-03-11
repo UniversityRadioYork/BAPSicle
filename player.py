@@ -21,8 +21,11 @@
 
 # Stop the Pygame Hello message.
 import os
-
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
+from helpers.os_environment import isLinux
+# It's the only one we could get to work.
+if isLinux():
+    os.putenv('SDL_AUDIODRIVER', 'pulseaudio')
 
 from queue import Empty
 import multiprocessing
@@ -31,10 +34,11 @@ import copy
 import json
 import time
 from typing import Any, Callable, Dict, List, Optional
-from pygame import mixer
+from pygame import mixer, error
 from mutagen.mp3 import MP3
 from syncer import sync
 from threading import Timer
+from datetime import datetime
 
 from helpers.normalisation import get_normalised_filename_if_available, get_original_filename_from_normalised
 from helpers.myradio_api import MyRadioAPI
@@ -111,43 +115,45 @@ class Player:
 
     @property
     def isLoaded(self):
-        return self._isLoaded()
+        return self.state.get()["loaded"]
 
-    def _isLoaded(self, short_test: bool = False):
-        if not self.state.get()["loaded_item"]:
-            return False
-        if self.isPlaying:
-            return True
+    def _checkIsLoaded(self, short_test: bool = False):
 
-        # If we don't want to do any testing if it's really loaded, fine.
-        if short_test:
-            return True
+        loaded = True
 
-        # Because Pygame/SDL is annoying
-        # We're not playing now, so we can quickly test run
-        # If that works, we're loaded.
-        try:
-            mixer.music.set_volume(0)
-            mixer.music.play(0)
-        except Exception:
-            try:
+        if not self.state.get()["loaded_item"] or not self.isInit:
+            loaded = False
+        elif not self.isPlaying:
+            # If we don't want to do any testing if it's really loaded, fine.
+            if not short_test:
+
+                # Because Pygame/SDL is annoying
+                # We're not playing now, so we can quickly test run
+                # If that works, we're loaded.
+                try:
+                    mixer.music.set_volume(0)
+                    mixer.music.play(0)
+                except Exception:
+                    try:
+                        mixer.music.set_volume(1)
+                    except Exception:
+                        self.logger.log.exception(
+                            "Failed to reset volume after attempting loaded test."
+                        )
+                        pass
+                    loaded = False
+                finally:
+                    mixer.music.stop()
+
                 mixer.music.set_volume(1)
-            except Exception:
-                self.logger.log.exception(
-                    "Failed to reset volume after attempting loaded test."
-                )
-                pass
-            return False
-        finally:
-            mixer.music.stop()
 
-        mixer.music.set_volume(1)
-        return True
+        self.state.update("loaded", loaded)
+        return loaded
 
     @property
     def isCued(self):
         # Don't mess with playback, we only care about if it's supposed to be loaded.
-        if not self._isLoaded(short_test=True):
+        if not self.isLoaded:
             return False
         return (
             self.state.get()["pos_true"] == self.state.get()["loaded_item"].cue
@@ -156,7 +162,7 @@ class Player:
 
     @property
     def status(self):
-        state = copy.copy(self.state.state)
+        state = self.state.state
 
         # Not the biggest fan of this, but maybe I'll get a better solution for this later
         state["loaded_item"] = (
@@ -436,6 +442,9 @@ class Player:
                     "Failed to find weight: {}".format(weight))
                 return False
 
+            # This item exists, so we're comitting to load this item.
+            self.state.update("loaded_item", loaded_item)
+
             # The file_manager helper may have pre-downloaded the file already, or we've played it before.
             reload = False
             if loaded_item.filename == "" or loaded_item.filename is None:
@@ -462,10 +471,8 @@ class Player:
                 loaded_item.filename
             )
 
-            # We're comitting to load this item.
+            # Given we've just messed around with filenames etc, update the item again.
             self.state.update("loaded_item", loaded_item)
-
-            # Given we've just messed around with filenames etc, update the item in the show plan too.
             for i in range(len(showplan)):
                 if showplan[i].weight == weight:
                     self.state.update("show_plan", index=i, value=loaded_item)
@@ -534,6 +541,7 @@ class Player:
                 # Everything worked, we made it!
                 # Write the loaded item again once more, to confirm the filename if we've reattempted.
                 self.state.update("loaded_item", loaded_item)
+                self._checkIsLoaded()
 
                 if loaded_item.cue > 0:
                     self.seek(loaded_item.cue)
@@ -548,6 +556,7 @@ class Player:
             # Even though we failed, make sure state is up to date with latest failure.
             # We're comitting to load this item.
             self.state.update("loaded_item", loaded_item)
+            self._checkIsLoaded()
 
         return False
 
@@ -895,7 +904,6 @@ class Player:
                 self._ended()
 
             self.state.update("playing", self.isPlaying)
-            self.state.update("loaded", self.isLoaded)
 
             self.state.update(
                 "pos_true",
@@ -1003,7 +1011,7 @@ class Player:
         self.out_q = out_q
 
         self.logger = LoggingManager(
-            "Player" + str(channel), debug=package.build_beta)
+            "Player" + str(channel), debug=package.BETA)
 
         self.api = MyRadioAPI(self.logger, server_state)
 
@@ -1013,6 +1021,8 @@ class Player:
             self.__default_state,
             self.__rate_limited_params,
         )
+
+        self.state.update("start_time", datetime.now().timestamp())
 
         self.state.add_callback(self._send_status)
 
@@ -1048,18 +1058,23 @@ class Player:
                 self.logger.log.info(
                     "Seeking to pos_true: " + str(loaded_state["pos_true"])
                 )
-                self.seek(loaded_state["pos_true"])
+                try:
+                    self.seek(loaded_state["pos_true"])
+                except error:
+                    self.logger.log.error("Failed to seek on player start. Continuing anyway.")
 
             if loaded_state["playing"] is True:
                 self.logger.log.info("Resuming playback on init.")
                 # Use un-pause as we don't want to jump to a new position.
-                self.unpause()
+                try:
+                    self.unpause()
+                except error:
+                    self.logger.log.error("Failed to unpause on player start. Continuing anyway.")
         else:
             self.logger.log.info("No file was previously loaded to resume.")
 
         try:
             while self.running:
-                time.sleep(0.02)
                 self._updateState()
                 self._ping_times()
                 try:
@@ -1085,10 +1100,18 @@ class Player:
                 except Empty:
                     # The incomming message queue was empty,
                     # skip message processing
-                    pass
+
+                    # If we're getting no messages, sleep.
+                    # But if we do have messages, once we've done with one, we'll check for the next one more quickly.
+                    time.sleep(0.05)
                 else:
 
                     # We got a message.
+
+                    ## Check if we're successfully loaded
+                    # This is here so that we can check often, but not every single loop
+                    # Only when user gives input.
+                    self._checkIsLoaded()
 
                     # Output re-inits the mixer, so we can do this any time.
                     if self.last_msg.startswith("OUTPUT"):

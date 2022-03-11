@@ -12,6 +12,7 @@
     Date:
         October, November 2020
 """
+from datetime import datetime
 from file_manager import FileManager
 import multiprocessing
 from multiprocessing.queues import Queue
@@ -22,7 +23,7 @@ import json
 from setproctitle import setproctitle
 import psutil
 
-from helpers.os_environment import isMacOS
+from helpers.os_environment import isLinux, isMacOS
 
 if not isMacOS():
     # Rip, this doesn't like threading on MacOS.
@@ -70,6 +71,7 @@ class BAPSicleServer:
         "myradio_api_tracklist_source": "",
         "running_state": "running",
         "tracklist_mode": "off",
+        "normalisation_mode": "off",
     }
 
     player_to_q: List[Queue] = []
@@ -201,7 +203,9 @@ class BAPSicleServer:
             time.sleep(1)
 
     def startServer(self):
-        if isMacOS():
+        # On MacOS, the default causes something to keep creating new processes.
+        # On Linux, this is needed to make pulseaudio initiate properly.
+        if isMacOS() or isLinux():
             multiprocessing.set_start_method("spawn", True)
 
         process_title = "startServer"
@@ -220,6 +224,7 @@ class BAPSicleServer:
         )
 
         self.state.update("running_state", "running")
+        self.state.update("start_time", datetime.now().timestamp())
 
         print("Launching BAPSicle...")
 
