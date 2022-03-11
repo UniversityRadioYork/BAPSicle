@@ -65,11 +65,14 @@ class FileManager:
                 else:
                     try:
 
-                        split = message.split(":", 1)
+                        split = message.split(":", 3)
 
                         channel = int(split[0])
                         # source = split[1]
                         command = split[2]
+                        # rest of message = split[3]
+
+                        self.logger.log.debug("Got command {} for channel {}".format(command,channel))
 
                         # If we have requested a new show plan, empty the music-tmp directory for the previous show.
                         if command == "GETPLAN":
@@ -150,8 +153,8 @@ class FileManager:
 
                     except Exception:
                         self.logger.log.exception(
-                            "Failed to handle message {} on channel {}.".format(
-                                message, channel
+                            "Failed to handle message {}.".format(
+                                message
                             )
                         )
 
