@@ -931,7 +931,7 @@ class Player:
 
     def _retAll(self, msg):
         if self.out_q:
-            self.out_q.put("{}:ALL:{}".format(self.state.get()["channel"],msg))
+            self.out_q.put("{}:ALL:{}".format(self.state.get()["channel"], msg))
 
     def _retMsg(
         self, msg: Any, okay_str: bool = False, custom_prefix: Optional[str] = None
@@ -1108,7 +1108,7 @@ class Player:
 
                     # We got a message.
 
-                    ## Check if we're successfully loaded
+                    # Check if we're successfully loaded
                     # This is here so that we can check often, but not every single loop
                     # Only when user gives input.
                     self._checkIsLoaded()

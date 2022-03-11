@@ -473,7 +473,7 @@ def status(channel: int):
     while retries < 40:
         try:
             message = player_from_q.get_nowait()
-            split = message.split(":",1)
+            split = message.split(":", 1)
             channel = int(split[0])
             response = split[1]
             if response.startswith("UI:STATUS:"):

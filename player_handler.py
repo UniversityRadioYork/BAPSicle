@@ -27,7 +27,7 @@ class PlayerHandler:
                     q_msg = channel_from_q.get_nowait()
                     if not isinstance(q_msg, str):
                         continue
-                    split = q_msg.split(":",1)
+                    split = q_msg.split(":", 1)
                     message = split[1]
                     source = message.split(":")[0]
                     command = message.split(":")[1]

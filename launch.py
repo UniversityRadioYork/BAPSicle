@@ -35,7 +35,7 @@ def startServer(notifications=False):
 
         if server and server.is_alive():
             server.terminate()
-            server.join(timeout=20) # If we somehow get stuck stopping BAPSicle let it die.
+            server.join(timeout=20)  # If we somehow get stuck stopping BAPSicle let it die.
 
     # Catch the handler being killed externally.
     except Exception as e:

@@ -255,7 +255,6 @@ class WebsocketServer:
                     "Exception trying to send to websocket:", e
                 )
 
-
         self.quit()
 
 

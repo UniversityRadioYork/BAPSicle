@@ -1,6 +1,5 @@
 from helpers.state_manager import StateManager
 from helpers.os_environment import isWindows, resolve_external_file_path
-from typing import List
 from setproctitle import setproctitle
 from multiprocessing import current_process, Queue
 from time import sleep
@@ -72,7 +71,7 @@ class FileManager:
                         command = split[2]
                         # rest of message = split[3]
 
-                        self.logger.log.debug("Got command {} for channel {}".format(command,channel))
+                        self.logger.log.debug("Got command {} for channel {}".format(command, channel))
 
                         # If we have requested a new show plan, empty the music-tmp directory for the previous show.
                         if command == "GETPLAN":
@@ -157,8 +156,6 @@ class FileManager:
                                 message
                             )
                         )
-
-
 
         except Exception as e:
             self.logger.log.exception(

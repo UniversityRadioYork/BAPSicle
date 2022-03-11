@@ -37,7 +37,7 @@ class LoggingManager:
                 return
 
         # Enable debug by default
-        if (debug == None and package.BETA):
+        if (debug is None and package.BETA):
             debug = True
 
         self.logger.setLevel(logging.DEBUG if debug else logging.INFO)
