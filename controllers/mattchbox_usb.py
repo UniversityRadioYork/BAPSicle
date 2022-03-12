@@ -68,16 +68,18 @@ class MattchBox(Controller):
         if port:
             # connect to serial port
             self.ser = serial.serial_for_url(port, do_not_open=True)
-            self.ser.baudrate = 2400
-            try:
-                self.ser.open()
-                self.logger.log.info("Connected to serial port {}".format(port))
-            except (FileNotFoundError, serial.SerialException) as e:
-                self.logger.log.error(
-                    "Could not open serial port {}:\n{}".format(port, e)
-                )
-                self._disconnected()
-                self.ser = None
+            if self.ser:
+                self.ser.baudrate = 2400
+                self.ser.timeout = 0.1 # Speed up waiting for a byte.
+                try:
+                    self.ser.open()
+                    self.logger.log.info("Connected to serial port {}".format(port))
+                except (FileNotFoundError, serial.SerialException) as e:
+                    self.logger.log.error(
+                        "Could not open serial port {}:\n{}".format(port, e)
+                    )
+                    self._disconnected()
+                    self.ser = None
         else:
             self.ser = None
 
@@ -88,22 +90,23 @@ class MattchBox(Controller):
                 self.ser and self.ser.is_open and self.port
             ):  # If self.port is changing (via state_handler), we should stop.
                 try:
-                    line = int.from_bytes(
-                        self.ser.read(1), "big"
-                    )  # Endianness doesn't matter for 1 byte.
-                    self.logger.log.info("Received from controller: " + str(line))
-                    if line == 255:
-                        self.ser.write(b"\xff")  # Send 255 back, this is a keepalive.
-                    elif line in [51, 52, 53]:
-                        # We've received a status update about fader live status, fader is down.
-                        self.sendToPlayer(line - 51, "SETLIVE:False")
-                    elif line in [61, 62, 63]:
-                        # We've received a status update about fader live status, fader is up.
-                        self.sendToPlayer(line - 61, "SETLIVE:True")
-                    elif line in [1, 3, 5]:
-                        self.sendToPlayer(int(line / 2), "PLAYPAUSE")
-                    elif line in [2, 4, 6]:
-                        self.sendToPlayer(int(line / 2) - 1, "STOP")
+                    if self.ser.in_waiting > 0:
+                        line = int.from_bytes(
+                            self.ser.read(1), "big"
+                        )  # Endianness doesn't matter for 1 byte.
+                        self.logger.log.info("Received from controller: " + str(line))
+                        if line == 255:
+                            self.ser.write(b"\xff")  # Send 255 back, this is a keepalive.
+                        elif line in [51, 52, 53]:
+                            # We've received a status update about fader live status, fader is down.
+                            self.sendToPlayer(line - 51, "SETLIVE:False")
+                        elif line in [61, 62, 63]:
+                            # We've received a status update about fader live status, fader is up.
+                            self.sendToPlayer(line - 61, "SETLIVE:True")
+                        elif line in [1, 3, 5]:
+                            self.sendToPlayer(int(line / 2), "PLAYPAUSE")
+                        elif line in [2, 4, 6]:
+                            self.sendToPlayer(int(line / 2) - 1, "STOP")
                 except Exception:
                     time.sleep(5)
                     self.connect(self.port)
