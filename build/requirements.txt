@@ -3,7 +3,7 @@ pygame==2.0.2
 sanic==21.9.3
 sanic-Cors==1.0.1
 syncer==1.3.0
-aiohttp==3.7.4.post0
+aiohttp==3.7.4
 mutagen==1.45.1
 sounddevice==0.4.2
 setproctitle==1.2.2
