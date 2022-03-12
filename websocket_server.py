@@ -33,7 +33,7 @@ class WebsocketServer:
         self.player_to_q = in_q
         self.player_from_q = out_q
 
-        process_title = "Websockets Server"
+        process_title = "BAPSicle - Websockets Server"
         setproctitle(process_title)
         current_process().name = process_title
 

@@ -58,7 +58,7 @@ if __name__ == "__main__":
     # If it's not here, multiprocessing just doesn't run in the package.
     # Freeze support refers to being packaged with Pyinstaller.
     multiprocessing.freeze_support()
-    setproctitle("BAPSicle Launcher")
+    setproctitle("BAPSicle - Launcher")
     if len(sys.argv) > 1:
         # We got an argument! It's probably Platypus's UI.
         try:

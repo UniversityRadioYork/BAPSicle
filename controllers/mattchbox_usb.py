@@ -21,7 +21,7 @@ class MattchBox(Controller):
         self, player_to_q: List[Queue], player_from_q: Queue, state: StateManager
     ):
 
-        process_title = "ControllerHandler"
+        process_title = "BAPSicle - ControllerHandler"
         setproctitle(process_title)
         current_process().name = process_title
 

@@ -208,7 +208,7 @@ class BAPSicleServer:
         if isMacOS() or isLinux():
             multiprocessing.set_start_method("spawn", True)
 
-        process_title = "startServer"
+        process_title = "BAPSicle - startServer"
         setproctitle(process_title)
         multiprocessing.current_process().name = process_title
 

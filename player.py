@@ -1092,7 +1092,7 @@ class Player:
         server_state: StateManager,
     ):
 
-        process_title = "Player: Channel " + str(channel)
+        process_title = "BAPSicle - Player: Channel " + str(channel)
         setproctitle.setproctitle(process_title)
         multiprocessing.current_process().name = process_title
 
