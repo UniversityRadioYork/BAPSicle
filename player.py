@@ -1256,10 +1256,10 @@ class Player:
                             "LOADED?": lambda: self._retMsg(self.isLoaded),
                             "UNLOAD": lambda: self._retMsg(self.unload()),
                             "ADD": lambda: self._retMsg(
-                                self.add_to_plan(
+                                self.add_to_plan([
                                     json.loads(
                                         ":".join(self.last_msg.split(":")[1:]))
-                                )
+                                ])
                             ),
                             "REMOVE": lambda: self._retMsg(
                                 self.remove_from_plan(
