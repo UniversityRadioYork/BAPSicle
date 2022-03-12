@@ -332,7 +332,7 @@ class BAPSicleServer:
         for player in self.player:
             player.join(timeout=PROCESS_KILL_TIMEOUT_S)
 
-        del self.player
+        #del self.player
 
         print("Deleting all queues.")
         # Should speed up GC on exit a bit.
@@ -345,16 +345,15 @@ class BAPSicleServer:
             self.file_to_q,
         ]
         for queue in queues:
+            print(str(queue))
             if isinstance(queue, List):
                 for inner_queue in queue:
-                    while not inner_queue.empty():
-                        inner_queue.get()
-                    del inner_queue
+                    inner_queue.close()
+                    #del inner_queue
             elif isinstance(queue, Queue):
-                while not queue.empty():
-                    queue.get()
-        for queue in queues:
-            del queue
+                queue.close()
+            print("del", str(queue))
+            #del queue
 
         print("Stopped all processes.")
 
