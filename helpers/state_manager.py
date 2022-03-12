@@ -5,6 +5,8 @@ import time
 from datetime import datetime
 from copy import copy
 from typing import Any, Dict, List
+from setproctitle import setproctitle
+from multiprocessing import current_process
 
 from baps_types.plan import PlanItem
 from helpers.logging_manager import LoggingManager
@@ -28,6 +30,11 @@ class StateManager:
         rate_limit_params=[],
         rate_limit_period_s=5,
     ):
+        # When a StateManager is shared via proxy to other processes, it has a thread itself.
+        process_title = "StateManager Proxy"
+        setproctitle(process_title)
+        current_process().name = process_title
+
         self.logger = logger
 
         path_dir: str = resolve_external_file_path("/state")

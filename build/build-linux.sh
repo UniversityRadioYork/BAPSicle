@@ -8,6 +8,7 @@ echo "BUILD: str = \"$build_commit\"" > ../build.py
 echo "BRANCH: str = \"$build_branch\"" >> ../build.py
 
 sudo apt install libportaudio2
+sudo apt install python3-pip python3-venv ffmpeg
 
 python3 -m venv ../venv
 source ../venv/bin/activate

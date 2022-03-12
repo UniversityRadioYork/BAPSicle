@@ -18,7 +18,7 @@ class MattchBox(Controller):
     logger: LoggingManager
 
     def __init__(
-        self, server_to_q: List[Queue], server_from_q: List[Queue], state: StateManager
+        self, player_to_q: List[Queue], player_from_q: Queue, state: StateManager
     ):
 
         process_title = "ControllerHandler"
@@ -39,8 +39,8 @@ class MattchBox(Controller):
         self.next_port = self.server_state.get()["serial_port"]
         self.logger.log.info("Server config gives port as: {}".format(self.next_port))
 
-        self.server_from_q = server_from_q
-        self.server_to_q = server_to_q
+        self.player_from_q = player_from_q
+        self.player_to_q = player_to_q
 
         self.handler()
 
@@ -59,7 +59,7 @@ class MattchBox(Controller):
 
     def _disconnected(self):
         # If we lose the controller, make sure to set channels live, so we tracklist.
-        for i in range(len(self.server_from_q)):
+        for i in range(len(self.player_to_q)):
             self.sendToPlayer(i, "SETLIVE:True")
         self.server_state.update("ser_connected", False)
 
@@ -138,4 +138,4 @@ class MattchBox(Controller):
         self.logger.log.info(
             "Sending message to player channel {}: {}".format(channel, msg)
         )
-        self.server_to_q[channel].put("CONTROLLER:" + msg)
+        self.player_to_q[channel].put("CONTROLLER:" + msg)

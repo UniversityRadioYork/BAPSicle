@@ -22,28 +22,31 @@ class PlayerHandler:
         terminator = Terminator()
         try:
             while not terminator.terminate:
+                try:
+                    # Format <CHANNEL NUM>:<SOURCE>:<COMMAND>:<EXTRAS>
+                    q_msg = channel_from_q.get_nowait()
+                    if not isinstance(q_msg, str):
+                        continue
+                    split = q_msg.split(":", 1)
+                    message = split[1]
+                    source = message.split(":")[0]
+                    command = message.split(":")[1]
 
-                for channel in range(len(channel_from_q)):
-                    try:
-                        message = channel_from_q[channel].get_nowait()
-                        source = message.split(":")[0]
-                        command = message.split(":")[1]
+                    # Let the file manager manage the files based on status and loading new show plan triggers.
+                    if command == "GETPLAN" or command == "STATUS":
+                        file_to_q.put(q_msg)
 
-                        # Let the file manager manage the files based on status and loading new show plan triggers.
-                        if command == "GETPLAN" or command == "STATUS":
-                            file_to_q[channel].put(message)
-
-                        # TODO ENUM
-                        if source in ["ALL", "WEBSOCKET"]:
-                            websocket_to_q[channel].put(message)
-                        if source in ["ALL", "UI"]:
-                            if not message.split(":")[1] == "POS":
-                                # We don't care about position update spam
-                                ui_to_q[channel].put(message)
-                        if source in ["ALL", "CONTROLLER"]:
-                            controller_to_q[channel].put(message)
-                    except Exception:
-                        pass
+                    # TODO ENUM
+                    if source in ["ALL", "WEBSOCKET"]:
+                        websocket_to_q.put(q_msg)
+                    if source in ["ALL", "UI"]:
+                        if not message.split(":")[1] == "POS":
+                            # We don't care about position update spam
+                            ui_to_q.put(q_msg)
+                    if source in ["ALL", "CONTROLLER"]:
+                        controller_to_q.put(q_msg)
+                except Exception:
+                    pass
 
                 sleep(0.02)
         except Exception as e:
