@@ -1,6 +1,5 @@
 from helpers.state_manager import StateManager
 from helpers.os_environment import isWindows, resolve_external_file_path
-from typing import List
 from setproctitle import setproctitle
 from multiprocessing import current_process, Queue
 from time import sleep
@@ -19,7 +18,7 @@ class FileManager:
     logger: LoggingManager
     api: MyRadioAPI
 
-    def __init__(self, channel_from_q: List[Queue], server_config: StateManager):
+    def __init__(self, channel_from_q: Queue, server_config: StateManager):
 
         self.logger = LoggingManager("FileManager")
         self.api = MyRadioAPI(self.logger, server_config)
@@ -29,15 +28,12 @@ class FileManager:
         current_process().name = process_title
 
         terminator = Terminator()
-
         self.normalisation_mode = server_config.get()["normalisation_mode"]
-
         if self.normalisation_mode != "on":
             self.logger.log.info("Normalisation is disabled.")
         else:
             self.logger.log.info("Normalisation is enabled.")
-
-        self.channel_count = len(channel_from_q)
+        self.channel_count = server_config.get()["num_channels"]
         self.channel_received = None
         self.last_known_show_plan = [[]] * self.channel_count
         self.next_channel_preload = 0
@@ -54,15 +50,28 @@ class FileManager:
                 ):
                     self.channel_received = [False] * self.channel_count
 
-                for channel in range(self.channel_count):
-                    try:
-                        message = channel_from_q[channel].get_nowait()
-                    except Exception:
-                        continue
+                try:
+                    message = channel_from_q.get_nowait()
+                except Exception:
+                    # No new messages
+                    # Let's try preload / normalise some files now we're free of messages.
+                    preloaded = self.do_preload()
+                    normalised = self.do_normalise()
 
+                    if not preloaded and not normalised:
+                        # We didn't do any hard work, let's sleep.
+                        sleep(0.2)
+                else:
                     try:
-                        # source = message.split(":")[0]
-                        command = message.split(":", 2)[1]
+
+                        split = message.split(":", 3)
+
+                        channel = int(split[0])
+                        # source = split[1]
+                        command = split[2]
+                        # rest of message = split[3]
+
+                        self.logger.log.debug("Got command {} for channel {}".format(command, channel))
 
                         # If we have requested a new show plan, empty the music-tmp directory for the previous show.
                         if command == "GETPLAN":
@@ -122,12 +131,12 @@ class FileManager:
                             ] * self.channel_count
 
                         # If we receive a new status message, let's check for files which have not been pre-loaded.
-                        if command == "STATUS":
-                            extra = message.split(":", 3)
-                            if extra[2] != "OKAY":
+                        elif command == "STATUS":
+                            extra = message.split(":", 4)
+                            if extra[3] != "OKAY":
                                 continue
 
-                            status = json.loads(extra[3])
+                            status = json.loads(extra[4])
                             show_plan = status["show_plan"]
                             item_ids = []
                             for item in show_plan:
@@ -143,18 +152,10 @@ class FileManager:
 
                     except Exception:
                         self.logger.log.exception(
-                            "Failed to handle message {} on channel {}.".format(
-                                message, channel
+                            "Failed to handle message {}.".format(
+                                message
                             )
                         )
-
-                # Let's try preload / normalise some files now we're free of messages.
-                preloaded = self.do_preload()
-                normalised = self.do_normalise()
-
-                if not preloaded and not normalised:
-                    # We didn't do any hard work, let's sleep.
-                    sleep(0.2)
 
         except Exception as e:
             self.logger.log.exception(
