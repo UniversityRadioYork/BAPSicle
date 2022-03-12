@@ -49,6 +49,7 @@ def startServer(notifications=False):
 def printer(msg: Any):
     print("LAUNCHER:{}".format(msg))
 
+
 def notif(msg: str):
     print("NOTIFICATION:{}".format(msg))
 

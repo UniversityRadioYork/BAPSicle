@@ -70,7 +70,7 @@ class MattchBox(Controller):
             self.ser = serial.serial_for_url(port, do_not_open=True)
             if self.ser:
                 self.ser.baudrate = 2400
-                self.ser.timeout = 0.1 # Speed up waiting for a byte.
+                self.ser.timeout = 0.1  # Speed up waiting for a byte.
                 try:
                     self.ser.open()
                     self.logger.log.info("Connected to serial port {}".format(port))

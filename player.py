@@ -132,7 +132,9 @@ class Player:
         if not self.state.get()["loaded_item"] or not self.isInit:
             loaded = False
         elif not self.isPlaying:
-            # Because this function can be called very often, only some (less frequent) checks will initiate a full trial of loading success, for efficiency.
+            # Because this function can be called very often, only some (less
+            # frequent) checks will initiate a full trial of loading success, for
+            # efficiency.
             if not short_test:
                 # We're not playing now, so we can quickly test run
                 # If that works, we're truely loaded.
@@ -184,9 +186,9 @@ class Player:
 
     # Audio Playout Related Methods
 
-
     # Loads a plan item into the player, ready for playing.
     # This includes some retry logic to try and double-down on ensuring it plays successfully.
+
     def load(self, weight: int):
         if not self.isPlaying:
             # If we have something loaded already, unload it first.
@@ -350,7 +352,7 @@ class Player:
                 self.logger.log.exception("Failed to unload channel.")
                 return False
 
-        #self._potentially_end_tracklist()
+        # self._potentially_end_tracklist()
         # If we unloaded successfully, reset the tracklist_id, ready for the next item.
         if not self.isLoaded:
             self.state.update("tracklist_id", None)
@@ -358,8 +360,8 @@ class Player:
         # If we successfully unloaded, this will return true, for success!
         return not self.isLoaded
 
-
     # Starts playing the loaded item, from a given position (secs)
+
     def play(self, pos: float = 0):
         self.logger.log.info("Playing from pos: " + str(pos))
         if not self.isLoaded:
@@ -513,9 +515,9 @@ class Player:
         except Exception:
             self.logger.log.exception("Failed to quit mixer.")
 
-
     # Sets whether auto advance is on or off
     # Auto advance is where the next item in the list is selected after the current item is finished playing.
+
     def set_auto_advance(self, message: bool) -> bool:
         self.state.update("auto_advance", message)
         return True
@@ -533,7 +535,6 @@ class Player:
     def set_play_on_load(self, message: bool) -> bool:
         self.state.update("play_on_load", message)
         return True
-
 
     # Show Plan Related Methods
 
@@ -775,7 +776,8 @@ class Player:
         # If we're going to live (potentially from not live/PFL), potentially tracklist if it's playing.
         if live:
             self._potentially_tracklist()
-        # If the fader is now not live, don't bother stopping the tracklist, incase it's faded up again during the same playback.
+        # If the fader is now not live, don't bother stopping the tracklist,
+        # incase it's faded up again during the same playback.
         return True
 
     # Helper functions
@@ -786,9 +788,9 @@ class Player:
 
         time: int = -1
         if mode == "on":
-            time = 0 # Let's do it pretty quickly.
+            time = 0  # Let's do it pretty quickly.
         if mode == "fader-live":
-            time = 4 # Give presenter a bit of a grace period in case they accidentally fade up the wrong one.
+            time = 4  # Give presenter a bit of a grace period in case they accidentally fade up the wrong one.
         elif mode == "delayed":
             # Let's do it in a bit, once we're sure it's been playing. (Useful if we've got no idea if it's live or cueing.)
             time = TRACKLISTING_DELAYED_S
@@ -1049,7 +1051,8 @@ class Player:
                 "Message return Queue is missing!!!! Can't send message."
             )
 
-    # Send the current status to all other modules/clients. Used for updating all client UIs when one of them causes a change etc.
+    # Send the current status to all other modules/clients. Used for updating
+    # all client UIs when one of them causes a change etc.
     def _send_status(self):
         self._retMsg(str(self.status), okay_str=True,
                      custom_prefix="ALL:STATUS:")
