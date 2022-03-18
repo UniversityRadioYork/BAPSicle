@@ -15,7 +15,7 @@ class PlayerHandler:
     ):
 
         self.logger = LoggingManager("PlayerHandler")
-        process_title = "Player Handler"
+        process_title = "BAPSicle - Player Handler"
         setproctitle(process_title)
         current_process().name = process_title
 

@@ -208,7 +208,7 @@ class BAPSicleServer:
         if isMacOS() or isLinux():
             multiprocessing.set_start_method("spawn", True)
 
-        process_title = "startServer"
+        process_title = "BAPSicle - startServer"
         setproctitle(process_title)
         multiprocessing.current_process().name = process_title
 
@@ -333,28 +333,6 @@ class BAPSicleServer:
             player.join(timeout=PROCESS_KILL_TIMEOUT_S)
 
         del self.player
-
-        print("Deleting all queues.")
-        # Should speed up GC on exit a bit.
-        queues = [
-            self.player_to_q,
-            self.player_from_q,
-            self.ui_to_q,
-            self.websocket_to_q,
-            self.controller_to_q,
-            self.file_to_q,
-        ]
-        for queue in queues:
-            if isinstance(queue, List):
-                for inner_queue in queue:
-                    while not inner_queue.empty():
-                        inner_queue.get()
-                    del inner_queue
-            elif isinstance(queue, Queue):
-                while not queue.empty():
-                    queue.get()
-        for queue in queues:
-            del queue
 
         print("Stopped all processes.")
 

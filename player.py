@@ -13,11 +13,11 @@
         October, November 2020
 """
 
-# This is the player. Reliability is critical here, so we're catching
-# literally every exception possible and handling it.
+# This is the player. It does everything regarding playing sound.
+# Reliability is critical here, so we're catching literally every exception possible and handling it.
 
-# It is key that whenever the parent server tells us to do something
-# that we respond with something, FAIL or OKAY. The server doesn't like to be kept waiting.
+# It is key that whenever the clients tells us to do something
+# that we respond with something, FAIL or OKAY. They don't like to be kept waiting/ignored.
 
 # Stop the Pygame Hello message.
 import os
@@ -70,6 +70,7 @@ class Player:
     tracklist_start_timer: Optional[Timer] = None
     tracklist_end_timer: Optional[Timer] = None
 
+    # The default state that should be set if there is no previous state info.
     __default_state = {
         "initialised": False,
         "loaded_item": None,
@@ -92,8 +93,12 @@ class Player:
         "tracklist_id": None,
     }
 
+    # These tell the StateManager which variables we don't care about really accurate history for.
+    # This means that the internal running state of the player will have quickly updating info (multiple times a sec)
+    # But we will rate limit (a few secs) saving updates to these variables to the state JSON file.
     __rate_limited_params = ["pos", "pos_offset", "pos_true", "remaining"]
 
+    # Checks if the mixer is init'd. It will throw an exception if not.
     @property
     def isInit(self):
         try:
@@ -106,7 +111,7 @@ class Player:
     @property
     def isPlaying(self) -> bool:
         if self.isInit:
-            return (not self.isPaused) and bool(mixer.music.get_busy())
+            return not self.isPaused and mixer.music.get_busy()
         return False
 
     @property
@@ -117,6 +122,9 @@ class Player:
     def isLoaded(self):
         return self.state.get()["loaded"]
 
+    # Checks if a file has been loaded
+    # This should be run with a long test before client requests for status etc.
+    # Short tests are used in other logic in the player, without fussing over full playback tests.
     def _checkIsLoaded(self, short_test: bool = False):
 
         loaded = True
@@ -124,12 +132,12 @@ class Player:
         if not self.state.get()["loaded_item"] or not self.isInit:
             loaded = False
         elif not self.isPlaying:
-            # If we don't want to do any testing if it's really loaded, fine.
+            # Because this function can be called very often, only some (less
+            # frequent) checks will initiate a full trial of loading success, for
+            # efficiency.
             if not short_test:
-
-                # Because Pygame/SDL is annoying
                 # We're not playing now, so we can quickly test run
-                # If that works, we're loaded.
+                # If that works, we're truely loaded.
                 try:
                     mixer.music.set_volume(0)
                     mixer.music.play(0)
@@ -150,9 +158,9 @@ class Player:
         self.state.update("loaded", loaded)
         return loaded
 
+    # Is the player at a cue marker point?
     @property
     def isCued(self):
-        # Don't mess with playback, we only care about if it's supposed to be loaded.
         if not self.isLoaded:
             return False
         return (
@@ -160,11 +168,14 @@ class Player:
             and not self.isPlaying
         )
 
+    # Returns the state of the player as a nice friendly JSON dump.
     @property
     def status(self):
+        # Get a copy of the server state.
         state = self.state.state
 
         # Not the biggest fan of this, but maybe I'll get a better solution for this later
+        # Convert objects to a nice JSON friendly dicts.
         state["loaded_item"] = (
             state["loaded_item"].__dict__ if state["loaded_item"] else None
         )
@@ -175,241 +186,8 @@ class Player:
 
     # Audio Playout Related Methods
 
-    def play(self, pos: float = 0):
-        self.logger.log.info("Playing from pos: " + str(pos))
-        if not self.isLoaded:
-            self.logger.log.warning("Player is not loaded.")
-            return False
-        try:
-            mixer.music.play(0, pos)
-            self.state.update("pos_offset", pos)
-        except Exception:
-            self.logger.log.exception("Failed to play at pos: " + str(pos))
-            return False
-        self.state.update("paused", False)
-        self._potentially_tracklist()
-        self.stopped_manually = False
-        return True
-
-    def pause(self):
-        try:
-            mixer.music.stop()
-        except Exception:
-            self.logger.log.exception("Failed to pause.")
-            return False
-
-        self.stopped_manually = True
-        self.state.update("paused", True)
-        return True
-
-    def unpause(self):
-        if not self.isPlaying:
-            state = self.state.get()
-            position: float = state["pos_true"]
-            if not self.play(position):
-                self.logger.log.exception(
-                    "Failed to unpause from pos: " + str(position)
-                )
-                return False
-
-            self.state.update("paused", False)
-
-            # Increment Played count
-            loaded_item = state["loaded_item"]
-            if loaded_item:
-                loaded_item.play_count_increment()
-                self.state.update("loaded_item", loaded_item)
-
-            return True
-        return False
-
-    def stop(self, user_initiated: bool = False):
-        try:
-            mixer.music.stop()
-        except Exception:
-            self.logger.log.exception("Failed to stop playing.")
-            return False
-        self.state.update("paused", False)
-
-        if user_initiated:
-            self._potentially_end_tracklist()
-
-        self.stopped_manually = True
-
-        if not self.state.get()["loaded_item"]:
-            self.logger.log.warning("Tried to stop without a loaded item.")
-            return True
-
-        # This lets users toggle (using the stop button) between cue point and 0.
-        if user_initiated and not self.isCued:
-            # if there's a cue point ant we're not at it, go there.
-            self.seek(self.state.get()["loaded_item"].cue)
-        else:
-            # Otherwise, let's go to 0.
-            self.seek(0)
-
-        return True
-
-    def seek(self, pos: float) -> bool:
-        self.logger.log.info("Seeking to pos:" + str(pos))
-        if self.isPlaying:
-            try:
-                self.play(pos)
-            except Exception:
-                self.logger.log.exception("Failed to seek to pos: " + str(pos))
-                return False
-            return True
-        else:
-            self.logger.log.debug(
-                "Not playing during seek, setting pos state for next play."
-            )
-            self.stopped_manually = True  # Don't trigger _ended() on seeking.
-            if pos > 0:
-                self.state.update("paused", True)
-            self._updateState(pos=pos)
-        return True
-
-    def set_auto_advance(self, message: bool) -> bool:
-        self.state.update("auto_advance", message)
-        return True
-
-    def set_repeat(self, message: str) -> bool:
-        if message in ["all", "one", "none"]:
-            self.state.update("repeat", message)
-            return True
-        else:
-            return False
-
-    def set_play_on_load(self, message: bool) -> bool:
-        self.state.update("play_on_load", message)
-        return True
-
-    # Show Plan Related Methods
-    def get_plan(self, message: int):
-        plan = sync(self.api.get_showplan(message))
-        self.clear_channel_plan()
-        channel = self.state.get()["channel"]
-        self.logger.log.debug(plan)
-        if not isinstance(plan, dict):
-            return False
-        if str(channel) in plan.keys():
-            for plan_item in plan[str(channel)]:
-                try:
-                    self.add_to_plan(plan_item)
-                except Exception as e:
-                    self.logger.log.critical(
-                        "Failed to add item to show plan: {}".format(e)
-                    )
-                    continue
-
-        return True
-
-    def _check_ghosts(self, item: PlanItem):
-        if isinstance(item.timeslotitemid, str) and item.timeslotitemid.startswith("I"):
-            # Kinda a bodge for the moment, each "Ghost" (item which is not saved in the database showplan yet)
-            # needs to have a unique temporary item.
-            # To do this, we'll start with the channel number the item was originally added to
-            # (to stop items somehow simultaneously added to different channels from having the same id)
-            # And chuck in the unix epoch in ns for good measure.
-            item.timeslotitemid = "GHOST-{}-{}".format(
-                self.state.get()["channel"], time.time_ns()
-            )
-        return item
-
-    # TODO Allow just moving an item inside the channel instead of removing and adding.
-    def add_to_plan(self, new_item: Dict[str, Any]) -> bool:
-        new_item_obj = PlanItem(new_item)
-        new_item_obj = self._check_ghosts(new_item_obj)
-        plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
-        # Shift any plan items after the new position down one to make space.
-        for item in plan_copy:
-            if item.weight >= new_item_obj.weight:
-                item.weight += 1
-
-        plan_copy += [new_item_obj]  # Add the new item.
-
-        self._fix_and_update_weights(plan_copy)
-
-        loaded_item = self.state.get()["loaded_item"]
-        if loaded_item:
-
-            # Right. So this may be confusing.
-            # So... If the user has just moved the loaded item in the channel (by removing above and readding)
-            # Then we want to re-associate the loaded_item object reference with the new one.
-            # The loaded item object before this change is now an orphan, which was
-            # kept around while the loaded item was potentially moved to another
-            # channel.
-            if loaded_item.timeslotitemid == new_item_obj.timeslotitemid:
-                self.state.update("loaded_item", new_item_obj)
-
-            # NOPE NOPE NOPE
-            # THIS IS AN EXAMPLE OF WHAT NOT TO DO!
-            # ONCE AGAIN, THE LOADED ITEM IS THE SAME OBJECT INSTANCE AS THE ONE IN
-            # THE SHOW PLAN (AS LONG AS IT HASN'T BEEN RE/MOVED)
-
-            #    loaded_item.weight = new_item_obj.weight
-
-            # Bump the loaded_item's weight if we just added a new item above it.
-            # elif loaded_item.weight >= new_item_obj.weight:
-            #     loaded_item.weight += 1
-
-            # Else, new weight stays the same.
-            # else:
-            #     return True
-
-            # self.state.update("loaded_item", loaded_item)
-
-        return True
-
-    def remove_from_plan(self, weight: int) -> bool:
-        plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
-        found: Optional[PlanItem] = None
-
-        before = []
-        for item in plan_copy:
-            before += (item.weight, item.name)
-
-        self.logger.log.debug(
-            "Weights before removing weight {}:\n{}".format(weight, before)
-        )
-
-        for i in plan_copy:
-            if i.weight == weight:
-                found = i
-                plan_copy.remove(i)
-
-        if found:
-            self._fix_and_update_weights(plan_copy)
-
-            # If we removed the loaded item from this channel, update it's weight
-            # So we know how/not to autoadvance.
-            loaded_item = self.state.get()["loaded_item"]
-            if loaded_item == found:
-                # Loaded_item is actually the same PlanItem instance as in the show_plan.
-                # So if it's still in the show plan, we'll have corrected it's weight already.
-                # If it was removed above, fix_weights won't have done anything
-                # So we'll want to update the weight.
-
-                # We're removing the loaded item from the channel.
-                # if loaded_item.weight == weight:
-                loaded_item.weight = -1
-
-                # If loaded_item wasn't the same instance, we'd want to do the below.
-
-                # We removed an item above it. Shift it up.
-                # elif loaded_item.weight > weight:
-                #    loaded_item.weight -= 1
-                # Else, new weight stays the same.
-                # else:
-                #    return True
-
-                self.state.update("loaded_item", loaded_item)
-            return True
-        return False
-
-    def clear_channel_plan(self) -> bool:
-        self.state.update("show_plan", [])
-        return True
+    # Loads a plan item into the player, ready for playing.
+    # This includes some retry logic to try and double-down on ensuring it plays successfully.
 
     def load(self, weight: int):
         if not self.isPlaying:
@@ -424,7 +202,7 @@ class Player:
                 "Resetting output (in case of sound output gone silent somehow) to "
                 + str(loaded_state["output"])
             )
-            self.output(loaded_state["output"])
+            self.set_output(loaded_state["output"])
 
             showplan = loaded_state["show_plan"]
 
@@ -516,12 +294,6 @@ class Player:
                     )
                     continue  # Try loading again.
 
-                if not self.isLoaded:
-                    self.logger.log.error(
-                        "Pygame loaded file without error, but never actually loaded."
-                    )
-                    continue  # Try loading again.
-
                 try:
                     if loaded_item.filename.endswith(".mp3"):
                         song = MP3(loaded_item.filename)
@@ -541,8 +313,16 @@ class Player:
                 # Everything worked, we made it!
                 # Write the loaded item again once more, to confirm the filename if we've reattempted.
                 self.state.update("loaded_item", loaded_item)
-                self._checkIsLoaded()
 
+                # Now just double check that pygame could actually play it (silently)
+                self._checkIsLoaded()
+                if not self.isLoaded:
+                    self.logger.log.error(
+                        "Pygame loaded file without error, but never actually loaded."
+                    )
+                    continue  # Try loading again.
+
+                # If the track has a cue point, let's jump to that, ready.
                 if loaded_item.cue > 0:
                     self.seek(loaded_item.cue)
                 else:
@@ -560,6 +340,8 @@ class Player:
 
         return False
 
+    # Remove the currently loaded item from the player.
+    # Not much reason to do this, but if it makes you happy.
     def unload(self):
         if not self.isPlaying:
             try:
@@ -570,22 +352,122 @@ class Player:
                 self.logger.log.exception("Failed to unload channel.")
                 return False
 
-        self._potentially_end_tracklist()
+        # self._potentially_end_tracklist()
         # If we unloaded successfully, reset the tracklist_id, ready for the next item.
         if not self.isLoaded:
             self.state.update("tracklist_id", None)
 
+        # If we successfully unloaded, this will return true, for success!
         return not self.isLoaded
 
-    def quit(self):
-        try:
-            mixer.quit()
-            self.state.update("paused", False)
-            self.logger.log.info("Quit mixer.")
-        except Exception:
-            self.logger.log.exception("Failed to quit mixer.")
+    # Starts playing the loaded item, from a given position (secs)
 
-    def output(self, name: Optional[str] = None):
+    def play(self, pos: float = 0):
+        self.logger.log.info("Playing from pos: " + str(pos))
+        if not self.isLoaded:
+            self.logger.log.warning("Player is not loaded.")
+            return False
+        try:
+            mixer.music.play(0, pos)
+            self.state.update("pos_offset", pos)
+        except Exception:
+            self.logger.log.exception("Failed to play at pos: " + str(pos))
+            return False
+        self.state.update("paused", False)
+        self._potentially_tracklist()
+        self.stopped_manually = False
+        return True
+
+    # Pauses the player
+    def pause(self):
+        # Because the player's position is stored by a event from pygame while playing only,
+        # the current playback position state will remain, in case we unpause later.
+        try:
+            mixer.music.stop()
+        except Exception:
+            self.logger.log.exception("Failed to pause.")
+            return False
+
+        self.stopped_manually = True
+        self.state.update("paused", True)
+        return True
+
+    # Plays the player, from the playback position it was already at.
+    def unpause(self):
+        if not self.isPlaying:
+            state = self.state.get()
+            position: float = state["pos_true"]
+            if not self.play(position):
+                self.logger.log.exception(
+                    "Failed to unpause from pos: " + str(position)
+                )
+                return False
+
+            self.state.update("paused", False)
+
+            # Increment Played count
+            loaded_item = state["loaded_item"]
+            if loaded_item:
+                loaded_item.play_count_increment()
+                self.state.update("loaded_item", loaded_item)
+
+            return True
+        return False
+
+    # Stop the player.
+    def stop(self, user_initiated: bool = False):
+        try:
+            mixer.music.stop()
+        except Exception:
+            self.logger.log.exception("Failed to stop playing.")
+            return False
+        self.state.update("paused", False)
+
+        # When it wasn't _ended() calling this, end the tracklist.
+        # _ended() already calls this, but user stops won't have.
+        if user_initiated:
+            self._potentially_end_tracklist()
+            self.stopped_manually = True
+
+        if not self.state.get()["loaded_item"]:
+            self.logger.log.warning("Tried to stop without a loaded item.")
+            return True
+
+        # This lets users toggle (using the stop button) between cue point and 0.
+
+        if user_initiated and not self.isCued:
+            # if there's a cue point ant we're not at it, go there.
+            self.seek(self.state.get()["loaded_item"].cue)
+        else:
+            # Otherwise, let's go to 0.
+            self.seek(0)
+
+        return True
+
+    # Move the audio position (secs) of the player
+    def seek(self, pos: float) -> bool:
+        self.logger.log.info("Seeking to pos:" + str(pos))
+        if self.isPlaying:
+            # If we're playing, just start playing directly from that position
+            try:
+                self.play(pos)
+            except Exception:
+                self.logger.log.exception("Failed to seek to pos: " + str(pos))
+                return False
+            return True
+        else:
+            # If we're not actually playing at the moment, set the player to be paused at the new position
+            self.logger.log.debug(
+                "Not playing during seek, setting pos state for next play."
+            )
+            self.stopped_manually = True  # Don't trigger _ended() on seeking.
+            if pos > 0:
+                self.state.update("paused", True)
+            self._updateState(pos=pos)
+        return True
+
+    # Set the output device name and initialise the pygame audio mixer.
+    def set_output(self, name: Optional[str] = None):
         wasPlaying = self.isPlaying
 
         state = self.state.get()
@@ -593,12 +475,19 @@ class Player:
 
         name = None if (not name or name.lower() == "none") else name
 
+        # Stop the mixer if it's already init'd.
         self.quit()
         self.state.update("output", name)
         try:
+            # Setup the mixer.
+            # Sample rate of 44100Hz (44.1KHz) (matching the MP3's and typical CD/online source material)
+            # 16 bits per sample
+            # 2 channels (stereo)
+            # sample buffer of 1024 samples
             if name:
                 mixer.init(44100, -16, 2, 1024, devicename=name)
             else:
+                # Use the default system output
                 mixer.init(44100, -16, 2, 1024)
         except Exception:
             self.logger.log.exception(
@@ -606,6 +495,7 @@ class Player:
             )
             return False
 
+        # If we had something loaded before, load it back in and play it.
         loadedItem = state["loaded_item"]
         if loadedItem:
             self.logger.log.info("Reloading after output change.")
@@ -616,11 +506,192 @@ class Player:
 
         return True
 
-    # Timeslotitemid can be a ghost (un-submitted item), so may be "IXXX"
+    # De-initialises the pygame mixer.
+    def quit(self):
+        try:
+            mixer.quit()
+            self.state.update("paused", False)
+            self.logger.log.info("Quit mixer.")
+        except Exception:
+            self.logger.log.exception("Failed to quit mixer.")
+
+    # Sets whether auto advance is on or off
+    # Auto advance is where the next item in the list is selected after the current item is finished playing.
+
+    def set_auto_advance(self, message: bool) -> bool:
+        self.state.update("auto_advance", message)
+        return True
+
+    # As you'd expect, all rotates around all of the items in the channel plan, and loops to the first from the last.
+    # One plays the same item over and over again
+    def set_repeat(self, message: str) -> bool:
+        if message in ["all", "one", "none"]:
+            self.state.update("repeat", message)
+            return True
+        else:
+            return False
+
+    # Set whether the player should play the item as soon as it's been selected.
+    def set_play_on_load(self, message: bool) -> bool:
+        self.state.update("play_on_load", message)
+        return True
+
+    # Show Plan Related Methods
+
+    def _check_ghosts(self, item: PlanItem):
+        # Webstudio returns intermediate "I" objects when dragging in from the media sidebar.
+        if isinstance(item.timeslotitemid, str) and item.timeslotitemid.startswith("I"):
+            # Kinda a bodge for the moment, each "Ghost" (item which is not saved in the database showplan yet)
+            # needs to have a unique temporary item.
+            # To do this, we'll start with the channel number the item was originally added to
+            # (to stop items somehow simultaneously added to different channels from having the same id)
+            # And chuck in the unix epoch in ns for good measure.
+            item.timeslotitemid = "GHOST-{}-{}".format(
+                self.state.get()["channel"], time.time_ns()
+            )
+        return item
+
+    # Pull in from the API the show plan items for this player channel.
+    def get_plan(self, show_plan_id: int):
+        # Call the API
+        # sync turns the asyncronous API into syncronous.
+        plan = sync(self.api.get_showplan(show_plan_id))
+
+        # Empty the channel plan so we can put the updated items in.
+        self.clear_channel_plan()
+        channel = self.state.get()["channel"]
+        self.logger.log.debug(plan)
+        # If there isn't a show plan for the required show, return failure without filling in the plan.
+        if not isinstance(plan, dict):
+            return False
+
+        # Add the items, if this channel has any.
+        if str(channel) in plan.keys():
+            plan_items = plan[str(channel)]
+            try:
+                self.add_to_plan(plan_items)
+            except Exception as e:
+                self.logger.log.error(
+                    "Failed to add items to show plan: {}".format(e)
+                )
+                return False
+
+        return True
+
+    # Add a list of new show plan items to the channel.
+    # These will be in dict format, we'll validate them and turn them into proper plan objects.
+    # TODO Allow just moving an item inside the channel instead of removing and adding.
+    def add_to_plan(self, new_items: List[Dict[str, Any]]) -> bool:
+        plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
+
+        for new_item in new_items:
+            new_item_obj = PlanItem(new_item)
+            new_item_obj = self._check_ghosts(new_item_obj)
+
+            # Shift any plan items after the new position down one to make space.
+            for item in plan_copy:
+                if item.weight >= new_item_obj.weight:
+                    item.weight += 1
+
+            plan_copy += [new_item_obj]  # Add the new item.
+
+            loaded_item = self.state.get()["loaded_item"]
+            if loaded_item:
+
+                # Right. So this may be confusing.
+                # So... If the user has just moved the loaded item in the channel (by removing above and readding)
+                # Then we want to re-associate the loaded_item object reference with the new one.
+                # The loaded item object before this change is now an orphan, which was
+                # kept around while the loaded item was potentially moved to another
+                # channel.
+                if loaded_item.timeslotitemid == new_item_obj.timeslotitemid:
+                    self.state.update("loaded_item", new_item_obj)
+
+                # NOPE NOPE NOPE
+                # THIS IS AN EXAMPLE OF WHAT NOT TO DO!
+                # ONCE AGAIN, THE LOADED ITEM IS THE SAME OBJECT INSTANCE AS THE ONE IN
+                # THE SHOW PLAN (AS LONG AS IT HASN'T BEEN RE/MOVED)
+
+                #    loaded_item.weight = new_item_obj.weight
+
+                # Bump the loaded_item's weight if we just added a new item above it.
+                # elif loaded_item.weight >= new_item_obj.weight:
+                #     loaded_item.weight += 1
+
+                # Else, new weight stays the same.
+                # else:
+                #     return True
+
+                # self.state.update("loaded_item", loaded_item)
+
+        # Just in case somehow we've ended up with items with the same weights (or gaps)
+        # We'll correct them.
+        # This function also orders and saves the updated plan copy we've given it.
+        self._fix_and_update_weights(plan_copy)
+
+        return True
+
+    # Removes an item from the show plan with the given weight (index)
+    def remove_from_plan(self, weight: int) -> bool:
+        plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
+        found: Optional[PlanItem] = None
+
+        # Give some helpful debug
+        before = []
+        for item in plan_copy:
+            before += (item.weight, item.name)
+
+        self.logger.log.debug(
+            "Weights before removing weight {}:\n{}".format(weight, before)
+        )
+
+        # Look for the item with the correct weight
+        for i in plan_copy:
+            if i.weight == weight:
+                found = i
+                plan_copy.remove(i)
+
+        if found:
+            self._fix_and_update_weights(plan_copy)
+
+            # If we removed the loaded item from this channel, update it's weight
+            # So we know how/not to autoadvance.
+            loaded_item = self.state.get()["loaded_item"]
+            if loaded_item == found:
+                # Loaded_item is actually the same PlanItem instance as in the show_plan.
+                # So if it's still in the show plan, we'll have corrected it's weight already.
+                # If it was removed above, fix_weights won't have done anything
+                # So we'll want to update the weight.
+
+                # We're removing the loaded item from the channel.
+                # if loaded_item.weight == weight:
+                loaded_item.weight = -1
+
+                # If loaded_item wasn't the same instance, we'd want to do the below.
+
+                # We removed an item above it. Shift it up.
+                # elif loaded_item.weight > weight:
+                #    loaded_item.weight -= 1
+                # Else, new weight stays the same.
+                # else:
+                #    return True
+
+                self.state.update("loaded_item", loaded_item)
+            return True
+        return False
+
+    # Empties the channel's plan.
+    def clear_channel_plan(self) -> bool:
+        self.state.update("show_plan", [])
+        return True
+
+    # PlanItems can have markers. These are essentially bookmarked positions in the audio.
+    # Timeslotitemid can be a ghost (un-submitted item), so may be "IXXX", hence str.
     def set_marker(self, timeslotitemid: str, marker_str: str):
         set_loaded = False
         success = True
         try:
+            # Take a string representation of the marker (from clients)
             marker = Marker(marker_str)
         except Exception as e:
             self.logger.log.error(
@@ -630,6 +701,7 @@ class Player:
             )
             return False
 
+        # Allow setting a marker for the currently loaded item.
         if timeslotitemid == "-1":
             set_loaded = True
             if not self.isLoaded:
@@ -641,6 +713,9 @@ class Player:
         ):
             set_loaded = True
 
+        # Loop over the show plan items. When you find the timeslotitemid the marker is for, update it.
+        # This is instead of weight, since the client asking doesn't know the weight of the item (or which channel it is)
+        # So all channels will look and update if necessary.
         plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
         for i in range(len(self.state.get()["show_plan"])):
 
@@ -659,6 +734,7 @@ class Player:
                     )
                     success = False
 
+        # If the item to update was the loaded item, update it.
         if set_loaded:
             try:
                 self.state.update(
@@ -675,6 +751,8 @@ class Player:
 
         return success
 
+    # This marks an item as played, or not.
+    # A weight of -1 will affect all items in the channel
     def set_played(self, weight: int, played: bool):
         plan: List[PlanItem] = self.state.get()["show_plan"]
         if weight == -1:
@@ -698,17 +776,21 @@ class Player:
         # If we're going to live (potentially from not live/PFL), potentially tracklist if it's playing.
         if live:
             self._potentially_tracklist()
+        # If the fader is now not live, don't bother stopping the tracklist,
+        # incase it's faded up again during the same playback.
         return True
 
     # Helper functions
 
-    # This essentially allows the tracklist end API call to happen in a separate thread, to avoid hanging playout/loading.
+    # This essentially allows the tracklist start API call to happen in a separate thread, to avoid hanging playout/loading.
     def _potentially_tracklist(self):
         mode = self.state.get()["tracklist_mode"]
 
         time: int = -1
-        if mode in ["on", "fader-live"]:
-            time = 1  # Let's do it pretty quickly.
+        if mode == "on":
+            time = 0  # Let's do it pretty quickly.
+        if mode == "fader-live":
+            time = 4  # Give presenter a bit of a grace period in case they accidentally fade up the wrong one.
         elif mode == "delayed":
             # Let's do it in a bit, once we're sure it's been playing. (Useful if we've got no idea if it's live or cueing.)
             time = TRACKLISTING_DELAYED_S
@@ -735,7 +817,7 @@ class Player:
             self.tracklist_start_timer.cancel()
             self.tracklist_start_timer = None
 
-            # Decrement Played count on track we didn't play much of.
+            # Decrement Played count on track we didn't play enough of to tracklist.
             state = self.state.get()
             loaded_item = state["loaded_item"]
             if loaded_item and loaded_item.type == "central":
@@ -748,9 +830,6 @@ class Player:
             self.logger.log.info("No tracklist to end.")
             return
 
-        self.logger.log.info(
-            "Setting timer for ending tracklist_id '{}'".format(tracklist_id)
-        )
         if tracklist_id:
             self.logger.log.info(
                 "Attempting to end tracklist_id '{}'".format(tracklist_id)
@@ -770,6 +849,7 @@ class Player:
                 "Failed to potentially end tracklist, no tracklist started."
             )
 
+    # The actual function that will register with the API an item being played.
     def _tracklist_start(self):
         state = self.state.get()
         loaded_item = state["loaded_item"]
@@ -811,6 +891,7 @@ class Player:
         # No matter what we end up doing, we need to kill this timer so future ones can run.
         self.tracklist_start_timer = None
 
+    # The actual function that will register with the API an item being finished playing.
     def _tracklist_end(self, tracklist_id):
 
         if tracklist_id:
@@ -823,8 +904,10 @@ class Player:
                 "Tracklist_id to _tracklist_end() missing. Failed to end tracklist."
             )
 
+        # No matter what we end up doing, we need to kill this timer so future ones can run.
         self.tracklist_end_timer = None
 
+    # When an item has ended (the pygame mixer has told us that it has stopped playing)
     def _ended(self):
         self._potentially_end_tracklist()
 
@@ -844,7 +927,7 @@ class Player:
         # Just make sure that if we stop and do nothing, we end up at 0.
         self.state.update("pos", 0)
 
-        # Repeat 1
+        # Repeat 1? Spin that record again!
         # TODO ENUM
         if state["repeat"] == "one":
             self.play()
@@ -882,10 +965,12 @@ class Player:
         self.stop()
         self._retAll("STOPPED")  # Tell clients that we've stopped playing.
 
+    # This runs every main loop, to update anything that changes often / automatically.
     def _updateState(self, pos: Optional[float] = None):
-
-        self.state.update("initialised", self.isInit)
-        if self.isInit:
+        # Is pygame still happy?
+        isInit = self.isInit
+        self.state.update("initialised", isInit)
+        if isInit:
             if pos is not None:
                 # Seeking sets the position like this when not playing.
                 self.state.update("pos", pos)  # Reset back to 0 if stopped.
@@ -919,6 +1004,8 @@ class Player:
                     self.state.get()["pos_true"])),
             )
 
+    # Sends the current playback position to clients, so they can update their UI frequently.
+    # Run on every main loop, but rate limited.
     def _ping_times(self):
 
         UPDATES_FREQ_SECS = 0.2
@@ -929,10 +1016,12 @@ class Player:
             self.last_time_update = time.time()
             self._retAll("POS:" + str(self.state.get()["pos_true"]))
 
+    # Broadcast a message to all other modules of the BAPSicle server.
     def _retAll(self, msg):
         if self.out_q:
             self.out_q.put("{}:ALL:{}".format(self.state.get()["channel"], msg))
 
+    # Send a response back to an incoming command, with the original content and a success or failure.
     def _retMsg(
         self, msg: Any, okay_str: bool = False, custom_prefix: Optional[str] = None
     ):
@@ -962,12 +1051,14 @@ class Player:
                 "Message return Queue is missing!!!! Can't send message."
             )
 
+    # Send the current status to all other modules/clients. Used for updating
+    # all client UIs when one of them causes a change etc.
     def _send_status(self):
-        # TODO This is hacky
         self._retMsg(str(self.status), okay_str=True,
                      custom_prefix="ALL:STATUS:")
 
-    def _fix_and_update_weights(self, plan):
+    # Takes an input show plan, checks and corrects duplicate / gaps in weights, and stores it.
+    def _fix_and_update_weights(self, plan: List[PlanItem]):
         def _sort_weight(e: PlanItem):
             return e.weight
 
@@ -995,6 +1086,7 @@ class Player:
         self.logger.log.debug("Weights after sorting:\n{}".format(fixed))
         self.state.update("show_plan", plan)
 
+    # Player start up. This is called from the BAPSicle server.py.
     def __init__(
         self,
         channel: int,
@@ -1003,7 +1095,7 @@ class Player:
         server_state: StateManager,
     ):
 
-        process_title = "Player: Channel " + str(channel)
+        process_title = "BAPSicle - Player: Channel " + str(channel)
         setproctitle.setproctitle(process_title)
         multiprocessing.current_process().name = process_title
 
@@ -1024,28 +1116,30 @@ class Player:
 
         self.state.update("start_time", datetime.now().timestamp())
 
+        # When the state changes, use _send_status() to tell all clients.
         self.state.add_callback(self._send_status)
 
         self.state.update("channel", channel)
+        # tracklist mode is shared between all players, so grab that from the server config.
         self.state.update("tracklist_mode", server_state.get()[
                           "tracklist_mode"])
         self.state.update(
             "live", True
-        )  # Channel is live until controller says it isn't.
+        )  # Channel Fader is live until controller says it isn't.
 
         # Just in case there's any weights somehow messed up, let's fix them.
         plan_copy: List[PlanItem] = copy.copy(self.state.get()["show_plan"])
         self._fix_and_update_weights(plan_copy)
 
-        loaded_state = copy.copy(self.state.state)
+        loaded_state = self.state.state
 
         if loaded_state["output"]:
             self.logger.log.info("Setting output to: " +
                                  str(loaded_state["output"]))
-            self.output(loaded_state["output"])
+            self.set_output(loaded_state["output"])
         else:
             self.logger.log.info("Using default output device.")
-            self.output()
+            self.set_output()
 
         loaded_item = loaded_state["loaded_item"]
         if loaded_item:
@@ -1073,11 +1167,15 @@ class Player:
         else:
             self.logger.log.info("No file was previously loaded to resume.")
 
+        # The main loop. This keeps running till something tells it to stop.
         try:
             while self.running:
+                # Update the state for playback position changes etc
                 self._updateState()
+                # If we need to, tell clients of the position updates
                 self._ping_times()
                 try:
+                    # Try and get a new command message from clients
                     message = in_q.get_nowait()
                     source = message.split(":")[0]
                     if source not in VALID_MESSAGE_SOURCES:
@@ -1116,8 +1214,9 @@ class Player:
                     # Output re-inits the mixer, so we can do this any time.
                     if self.last_msg.startswith("OUTPUT"):
                         split = self.last_msg.split(":")
-                        self._retMsg(self.output(split[1]))
+                        self._retMsg(self.set_output(split[1]))
 
+                    # Only process these commands if we're properly initialised.
                     elif self.isInit:
                         message_types: Dict[
                             str, Callable[..., Any]
@@ -1160,10 +1259,10 @@ class Player:
                             "LOADED?": lambda: self._retMsg(self.isLoaded),
                             "UNLOAD": lambda: self._retMsg(self.unload()),
                             "ADD": lambda: self._retMsg(
-                                self.add_to_plan(
+                                self.add_to_plan([
                                     json.loads(
                                         ":".join(self.last_msg.split(":")[1:]))
-                                )
+                                ])
                             ),
                             "REMOVE": lambda: self._retMsg(
                                 self.remove_from_plan(
@@ -1195,6 +1294,7 @@ class Player:
 
                         message_type: str = self.last_msg.split(":")[0]
 
+                        # From the list above, work out which command type we have, and run it's handling function.
                         if message_type in message_types.keys():
                             message_types[message_type]()
 
@@ -1206,7 +1306,7 @@ class Player:
                         else:
                             self._retMsg("Unknown Command")
                     else:
-
+                        # We're not initialised, return a failed status if they asked for one, or just say the command failed
                         if self.last_msg == "STATUS":
                             self._retMsg(self.status)
                         else:

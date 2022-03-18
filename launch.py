@@ -24,13 +24,13 @@ def startServer(notifications=False):
             time.sleep(1)
             if server and server.is_alive():
                 if notifications and not sent_start_notif:
-                    print("NOTIFICATION:Welcome to BAPSicle!")
+                    notif("Welcome to BAPSicle!")
                     sent_start_notif = True
                 pass
             else:
-                print("Server dead. Exiting.")
+                printer("Server dead. Exiting.")
                 if notifications:
-                    print("NOTIFICATION:BAPSicle Server Stopped!")
+                    notif("BAPSicle Server Stopped!")
                 sys.exit(0)
 
         if server and server.is_alive():
@@ -50,6 +50,10 @@ def printer(msg: Any):
     print("LAUNCHER:{}".format(msg))
 
 
+def notif(msg: str):
+    print("NOTIFICATION:{}".format(msg))
+
+
 if __name__ == "__main__":
     # On Windows, calling this function is necessary.
     # Causes all kinds of loops if not present.
@@ -58,12 +62,12 @@ if __name__ == "__main__":
     # If it's not here, multiprocessing just doesn't run in the package.
     # Freeze support refers to being packaged with Pyinstaller.
     multiprocessing.freeze_support()
-    setproctitle("BAPSicle Launcher")
+    setproctitle("BAPSicle - Launcher")
     if len(sys.argv) > 1:
         # We got an argument! It's probably Platypus's UI.
         try:
             if (sys.argv[1]) == "Start Server":
-                print("NOTIFICATION:BAPSicle is starting, please wait...")
+                notif("BAPSicle is starting, please wait...")
                 webbrowser.open("http://localhost:13500/")
                 startServer(notifications=True)
             if sys.argv[1] == "Server":
@@ -71,7 +75,7 @@ if __name__ == "__main__":
             if sys.argv[1] == "Presenter":
                 webbrowser.open("http://localhost:13500/presenter/")
         except Exception as e:
-            print(
+            printer(
                 "ALERT:BAPSicle failed with exception of type {}:{}".format(
                     type(e).__name__, e
                 )

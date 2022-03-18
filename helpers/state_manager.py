@@ -31,7 +31,7 @@ class StateManager:
         rate_limit_period_s=5,
     ):
         # When a StateManager is shared via proxy to other processes, it has a thread itself.
-        process_title = "StateManager Proxy"
+        process_title = "BAPSicle - StateManager Proxy"
         setproctitle(process_title)
         current_process().name = process_title
 

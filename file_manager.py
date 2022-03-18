@@ -23,7 +23,7 @@ class FileManager:
         self.logger = LoggingManager("FileManager")
         self.api = MyRadioAPI(self.logger, server_config)
 
-        process_title = "File Manager"
+        process_title = "BAPSicle - File Manager"
         setproctitle(process_title)
         current_process().name = process_title
 

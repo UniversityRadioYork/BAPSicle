@@ -544,7 +544,7 @@ def WebServer(player_to: List[Queue], player_from: Queue, state: StateManager):
     api = MyRadioAPI(logger, state)
     alerts = AlertManager()
 
-    process_title = "Web Server"
+    process_title = "BAPSicle - Web Server"
     setproctitle(process_title)
     current_process().name = process_title
     CORS(app, supports_credentials=True)  # Allow ALL CORS!!!
