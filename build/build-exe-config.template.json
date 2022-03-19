@@ -80,6 +80,10 @@
   {
     "optionDest": "datas",
     "value": "/package.json;./"
+  },
+  {
+    "optionDest": "collect-all",
+    "value": "sanic"
   }
  ],
  "nonPyinstallerOptions": {
