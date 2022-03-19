@@ -84,6 +84,10 @@
   {
     "optionDest": "collect-all",
     "value": "sanic"
+  },
+  {
+    "optionDest": "collect-all",
+    "value": "setproctitle"
   }
  ],
  "nonPyinstallerOptions": {
