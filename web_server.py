@@ -14,6 +14,7 @@ from queue import Empty
 from time import sleep
 import json
 import os
+import sys
 
 from helpers.os_environment import (
     isLinux,
@@ -557,4 +558,4 @@ def WebServer(player_to: List[Queue], player_from: Queue, state: StateManager):
             )
         except Exception as e:
             logger.log.exception(e)
-            sleep(1)
+            sys.exit(1)
