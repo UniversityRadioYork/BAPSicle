@@ -1,10 +1,15 @@
 import json
+from helpers.os_environment import isLinux
 
 file = open('build-exe-config.json', 'r')
 config = json.loads(file.read())
 file.close()
 
-cmd_str = "pyinstaller "
+if isLinux():
+    cmd_str = "python3 -m PyInstaller "
+else:
+    cmd_str = "pyinstaller "
+
 json_dests = ["icon_file", "clean_build"]
 pyi_dests = ["icon", "clean"]
 
