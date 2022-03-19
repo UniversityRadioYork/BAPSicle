@@ -2,7 +2,6 @@
 import multiprocessing
 import time
 import sys
-import os
 from typing import Any
 import webbrowser
 from setproctitle import setproctitle
@@ -32,14 +31,11 @@ def startServer(notifications=False):
                 printer("Server dead. Exiting.")
                 if notifications:
                     notif("BAPSicle Server Stopped!")
-                os._exit(0)
+                sys.exit(0)
 
         if server and server.is_alive():
-            printer("Terminating server.")
             server.terminate()
-            printer("Waiting to terminate.")
             server.join(timeout=20)  # If we somehow get stuck stopping BAPSicle let it die.
-            printer("Terminated")
 
     # Catch the handler being killed externally.
     except Exception as e:
@@ -84,10 +80,9 @@ if __name__ == "__main__":
                     type(e).__name__, e
                 )
             )
-            os._exit(1)
+            sys.exit(1)
 
-        os._exit(0)
+        sys.exit(0)
     else:
         startServer()
-        printer("Exiting.")
-        os._exit(0)
+        sys.exit(0)
