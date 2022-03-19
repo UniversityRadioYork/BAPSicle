@@ -13,6 +13,7 @@
         October, November 2020
 """
 from datetime import datetime
+import os
 from file_manager import FileManager
 import multiprocessing
 from multiprocessing.queues import Queue
@@ -98,7 +99,7 @@ class BAPSicleServer:
             self.stopServer()
 
             if self.state.get()["running_state"] != "restarting":
-                break
+                os._exit(0)
 
     def check_processes(self):
 
