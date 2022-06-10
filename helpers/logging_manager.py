@@ -1,3 +1,6 @@
+import socket
+import google.cloud.logging
+from google.oauth2 import service_account
 import logging
 from logging.handlers import RotatingFileHandler
 from typing import Optional
@@ -46,10 +49,19 @@ class LoggingManager:
             maxBytes=LOG_MAX_SIZE_MB * (1024 ** 2),
             backupCount=LOG_BACKUP_COUNT,
         )
-        formatter = logging.Formatter("%(asctime)s  | %(levelname)s | %(message)s")
+
+        formatter = logging.Formatter(
+            "%(asctime)s  | %(levelname)s | %(message)s")
         fh.setFormatter(formatter)
         # add the handler to the logger
         self.logger.addHandler(fh)
+
+        if os.path.exists(".google-key.json"):
+            google_client = google.cloud.logging.Client(credentials=service_account.Credentials.from_service_account_file(
+                ".google-key.json"))
+            ch = google_client.get_default_handler(name=socket.gethostname())
+            self.logger.addHandler(ch)
+
         self.logger.info("** LOGGER STARTED **")
 
     # def __del__(self):

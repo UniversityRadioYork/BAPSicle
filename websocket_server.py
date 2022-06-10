@@ -3,11 +3,11 @@ from asyncio.futures import Future
 from asyncio.tasks import Task, shield
 import multiprocessing
 import queue
-from typing import List
+from typing import Any, List
 import websockets
 import json
 from os import _exit
-from websockets.legacy.server import Serve
+# from websockets.legacy.server import Serve
 from websockets.server import serve
 from setproctitle import setproctitle
 from multiprocessing import current_process
@@ -26,7 +26,7 @@ class WebsocketServer:
     logger: LoggingManager
     to_webstudio: Task
     from_webstudio: Task
-    websocket_server: Serve
+    websocket_server: Any
 
     def __init__(self, in_q, out_q, state):
 

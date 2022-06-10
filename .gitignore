@@ -27,3 +27,5 @@ music-tmp/
 presenter-build
 
 node_modules/
+helpers/logging_manager.py
+.google-key.json
