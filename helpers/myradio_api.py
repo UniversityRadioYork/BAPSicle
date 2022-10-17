@@ -94,12 +94,20 @@ class MyRadioAPI:
             self._logException("Invalid API version. Request not sent.")
             return None
 
+        url_without_api_key = url
+
         if "?" in url:
             url += "&api_key={}".format(self.config.get()["myradio_api_key"])
+            url_without_api_key += "&api_key=REDACTED"
         else:
             url += "?api_key={}".format(self.config.get()["myradio_api_key"])
+            url_without_api_key += "?api_key=REDACTED"
 
-        self._log("Requesting API V2 URL with method {}: {}".format(method, url))
+        self._log(
+            "Requesting API V2 URL with method {}: {}".format(
+                method, url_without_api_key
+            )
+        )
 
         request = None
         try:
@@ -107,7 +115,9 @@ class MyRadioAPI:
                 request = await self.async_call(url, method="GET", timeout=timeout)
             elif method == "POST":
                 self._log("POST data: {}".format(data))
-                request = await self.async_call(url, data=data, method="POST", timeout=timeout)
+                request = await self.async_call(
+                    url, data=data, method="POST", timeout=timeout
+                )
             elif method == "PUT":
                 request = await self.async_call(url, method="PUT", timeout=timeout)
             else:
@@ -131,12 +141,20 @@ class MyRadioAPI:
             self._logException("Invalid API version. Request not sent.")
             return None
 
+        url_without_api_key = url
+
         if "?" in url:
             url += "&api_key={}".format(self.config.get()["myradio_api_key"])
+            url_without_api_key += "&api_key=REDACTED"
         else:
             url += "?api_key={}".format(self.config.get()["myradio_api_key"])
+            url_without_api_key += "?api_key=REDACTED"
 
-        self._log("Requesting API V2 URL with method {}: {}".format(method, url))
+        self._log(
+            "Requesting API V2 URL with method {}: {}".format(
+                method, url_without_api_key
+            )
+        )
 
         request = None
         if method == "GET":
@@ -209,7 +227,9 @@ class MyRadioAPI:
 
     # Audio Library
 
-    async def get_filename(self, item: PlanItem, did_download: bool = False, redownload=False):
+    async def get_filename(
+        self, item: PlanItem, did_download: bool = False, redownload=False
+    ):
         format = "mp3"  # TODO: Maybe we want this customisable?
         if item.trackid:
             itemType = "track"
