@@ -436,7 +436,7 @@ async def audio_file(request, type: str, id: int):
     try:
         response = await file(filename)
     except FileNotFoundError:
-        raise SanicException("Not Found",404)
+        raise SanicException("Not Found: "+filename,404)
     return response
 
 
