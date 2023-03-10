@@ -25,7 +25,7 @@ from helpers.logging_manager import LoggingManager
 from helpers.device_manager import DeviceManager
 from helpers.state_manager import StateManager
 from helpers.the_terminator import Terminator
-from helpers.normalisation import get_normalised_filename_if_available
+from helpers.audio_tools import get_silence_filename_if_available
 from helpers.myradio_api import MyRadioAPI
 from helpers.alert_manager import AlertManager
 import package
@@ -419,8 +419,7 @@ def json_status(request):
     return resp_json({"server": server_state.get(), "channels": channel_states})
 
 
-# Get audio for UI to generate waveforms.
-
+# Get a silent file of correct length for UI.
 
 @app.route("/audiofile/<type:str>/<id:int>")
 async def audio_file(request, type: str, id: int):
@@ -429,8 +428,8 @@ async def audio_file(request, type: str, id: int):
     filename = resolve_external_file_path(
         "music-tmp/{}-{}.mp3".format(type, id))
 
-    # Swap with a normalised version if it's ready, else returns original.
-    filename = get_normalised_filename_if_available(filename)
+    # Swap with a silence version if it's ready, else returns original.
+    filename = get_silence_filename_if_available(filename)
 
     # Send file or 404
     try:

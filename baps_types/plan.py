@@ -109,7 +109,23 @@ class PlanItem:
 
     @property
     def length(self) -> Optional[str]:
+        'Length as a colon separated string: HH:MM:SS'
         return self._length
+
+    @property
+    def length_secs(self) -> int:
+        'Length in seconds'
+        seconds = 0
+        if self.length:
+            # Split time into HH:MM:SS
+            length_parts = self.length.split(":")
+            length_parts.reverse() # Get SS:MM:HH
+            modifier=1
+            if len(length_parts) > 0:
+                for part in length_parts:
+                    seconds += int(part)*modifier
+                    modifier *= 60
+        return seconds
 
     @property
     def type(self) -> Optional[str]:
