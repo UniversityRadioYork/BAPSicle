@@ -1,10 +1,8 @@
 from sanic import Sanic
-from sanic.exceptions import NotFound, abort
+from sanic.exceptions import NotFound, SanicException
 from sanic.response import html, file, redirect
 from sanic.response import json as resp_json
 from sanic_cors import CORS
-from syncer import sync
-import asyncio
 from jinja2 import Environment, FileSystemLoader
 from jinja2.utils import select_autoescape
 from urllib.parse import unquote
@@ -16,6 +14,7 @@ from queue import Empty
 from time import sleep
 import json
 import os
+import sys
 
 from helpers.os_environment import (
     isLinux,
@@ -89,7 +88,7 @@ LOGGING_CONFIG = dict(
     },
 )
 
-app = Sanic("BAPSicle Web Server", log_config=LOGGING_CONFIG)
+app = Sanic("BAPSicle-WebServer", log_config=LOGGING_CONFIG)
 
 
 def render_template(file, data, status=200):
@@ -258,8 +257,7 @@ def ui_logs_render(request, path):
     try:
         log_file = open(resolve_external_file_path("/logs/{}.log").format(path))
     except FileNotFoundError:
-        abort(404)
-        return
+        raise SanicException("Not Found",404)
 
     data = {
         "logs": log_file.read().splitlines()[
@@ -285,10 +283,10 @@ def player_simple(request, channel: int, command: str):
         player_to_q[channel].put("UI:" + command.upper())
         return redirect("/status")
 
-    abort(404)
+    raise SanicException("Not Found",404)
 
 
-@app.route("/player/<channel:int>/seek/<pos:number>")
+@app.route("/player/<channel:int>/seek/<pos:float>")
 def player_seek(request, channel: int, pos: float):
 
     player_to_q[channel].put("UI:SEEK:" + str(pos))
@@ -310,7 +308,7 @@ def player_remove(request, channel: int, channel_weight: int):
     return redirect("/status")
 
 
-@app.route("/player/<channel:int>/output/<name:string>")
+@app.route("/player/<channel:int>/output/<name:str>")
 def player_output(request, channel: int, name: Optional[str]):
     player_to_q[channel].put("UI:OUTPUT:" + unquote(str(name)))
     return redirect("/config/player")
@@ -322,7 +320,7 @@ def player_autoadvance(request, channel: int, state: int):
     return redirect("/status")
 
 
-@app.route("/player/<channel:int>/repeat/<state:string>")
+@app.route("/player/<channel:int>/repeat/<state:str>")
 def player_repeat(request, channel: int, state: str):
     player_to_q[channel].put("UI:REPEAT:" + state.upper())
     return redirect("/status")
@@ -386,11 +384,11 @@ async def api_search_library(request):
     )
 
 
-@app.route("/library/playlists/<type:string>")
+@app.route("/library/playlists/<type:str>")
 async def api_get_playlists(request, type: str):
 
     if type not in ["music", "aux"]:
-        abort(401)
+        raise SanicException("Bad Request",400)
 
     if type == "music":
         return resp_json(await api.get_playlist_music())
@@ -398,11 +396,11 @@ async def api_get_playlists(request, type: str):
         return resp_json(await api.get_playlist_aux())
 
 
-@app.route("/library/playlist/<type:string>/<library_id:string>")
+@app.route("/library/playlist/<type:str>/<library_id:str>")
 async def api_get_playlist(request, type: str, library_id: str):
 
     if type not in ["music", "aux"]:
-        abort(401)
+        raise SanicException("Bad Request",400)
 
     if type == "music":
         return resp_json(await api.get_playlist_music_items(library_id))
@@ -424,10 +422,10 @@ def json_status(request):
 # Get audio for UI to generate waveforms.
 
 
-@app.route("/audiofile/<type:string>/<id:int>")
+@app.route("/audiofile/<type:str>/<id:int>")
 async def audio_file(request, type: str, id: int):
     if type not in ["managed", "track"]:
-        abort(404)
+        raise SanicException("Bad Request",400)
     filename = resolve_external_file_path(
         "music-tmp/{}-{}.mp3".format(type, id))
 
@@ -438,8 +436,7 @@ async def audio_file(request, type: str, id: int):
     try:
         response = await file(filename)
     except FileNotFoundError:
-        abort(404)
-        return
+        raise SanicException("Not Found: "+filename,404)
     return response
 
 
@@ -552,23 +549,13 @@ def WebServer(player_to: List[Queue], player_from: Queue, state: StateManager):
     terminate = Terminator()
     while not terminate.terminate:
         try:
-            sync(
-                app.run(
-                    host=server_state.get()["host"],
-                    port=server_state.get()["port"],
-                    auto_reload=False,
-                    debug=not package.BETA,
-                    access_log=not package.BETA,
-                )
+            app.run(
+                host=server_state.get()["host"],
+                port=server_state.get()["port"],
+                auto_reload=False,
+                debug=not package.BETA,
+                access_log=not package.BETA,
             )
-        except Exception:
-            break
-    try:
-        loop = asyncio.get_event_loop()
-        if loop:
-            loop.close()
-        if app:
-            app.stop()
-            del app
-    except Exception:
-        pass
+        except Exception as e:
+            logger.log.exception(e)
+            sys.exit(1)
