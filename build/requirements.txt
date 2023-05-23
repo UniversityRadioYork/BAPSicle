@@ -11,7 +11,7 @@ pyttsx3==2.90
 websockets==10.1
 typing_extensions==3.10.0.0
 pyserial==3.5
-requests==2.26.0
+requests==2.31.0
 Jinja2==3.0.1
 pydub==0.25.1
 psutil
