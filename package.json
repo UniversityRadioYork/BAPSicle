@@ -10,7 +10,7 @@
   },
   "scripts": {
     "presenter-install": "cd presenter && git submodule update --init && yarn --network-timeout 100000",
-    "presenter-make": "npm run presenter-install && (rm -r presenter-build || true) && cd presenter && yarn build-baps && cp -r build ../presenter-build && cd ../ && npm install",
+    "presenter-make": "npm run presenter-install && (rm -r presenter-build || true) && cd presenter && set NODE_OPTIONS=--openssl-legacy-provider&& yarn build-baps && cp -r build ../presenter-build && cd ../ && npm install",
     "test": "echo \"Error: no test specified\" && exit 1",
     "presenter-start": "cd presenter && yarn start-baps",
     "lint": "./venv/bin/autopep8 -r -a -a --ignore E402,E226,E24,W50,W690 --max-line-length 127 --in-place --exclude=\"*node_modules*,*venv/*,presenter/*\" . && ./venv/bin/flake8 . --exclude=\"*node_modules*,*venv/*,presenter/*\" --count --ignore=E402,E226,E24,W50,W690 --max-complexity=25 --max-line-length=127 --statistics"

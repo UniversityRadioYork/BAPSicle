@@ -64,8 +64,7 @@ class DeviceManager:
     def getAudioDevices(cls) -> List[str]:
         mixer.init(44100, -16, 2, 1024)
         is_capture = 0  # zero to request playback devices, non-zero to request recording devices
-        num = sdl2.get_num_audio_devices(is_capture)
-        names = [str(sdl2.get_audio_device_name(i, is_capture), encoding="utf-8") for i in range(num)]
+        names = sdl2.audio.get_audio_device_names(is_capture)
         mixer.quit()
         return names
 
