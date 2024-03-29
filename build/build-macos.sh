@@ -11,10 +11,7 @@ echo "BRANCH: str = \"$build_branch\"" >> ../build.py
 python3 -m venv ../venv
 source ../venv/bin/activate
 
-pip3 install wheel
-pip3 install -r requirements.txt
-pip3 install -r requirements-macos.txt
-pip3 install -e ..\
+poetry install
 
 python3 ./generate-build-exe-config.py
 

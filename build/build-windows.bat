@@ -17,10 +17,7 @@ if "%1" == "no-venv" goto skip-venv
 
 :skip-venv
 
-pip install wheel
-pip install -r requirements.txt
-pip install -r requirements-windows.txt
-pip install -e ..\
+poetry install
 
 : Generate the json config in case you wanted to use the gui to regenerate the command below manually.
 python generate-build-exe-config.py

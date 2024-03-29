@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "bapsicle"
+version = "3.1.0"
+description = ""
+authors = ["University Radio York"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+wheel = "^0.43.0"
+pygame = "2.5.2"
+sanic = "21.9.3"
+sanic-cors = "2.0.1"
+syncer = "1.3.0"
+aiohttp = "3.7.4"
+mutagen = "1.45.1"
+sounddevice = "0.4.2"
+setproctitle = "1.2.2"
+pyttsx3 = "2.90"
+websockets = "10.1"
+typing-extensions = "3.10.0.0"
+pyserial = "3.5"
+requests = "2.26.0"
+jinja2 = "3.0.1"
+pydub = "0.25.1"
+psutil = "^5.9.8"
+
+[tool.poetry.group.dev.dependencies]
+pyinstaller = [
+  {version = "^6.5.0", platform = "linux"},
+  {version = "^6.5.0", platform = "darwin"}
+]
+auto-py-to-exe = {version = "^2.43.3", platform = "win32"}
+pywin32 = {version = "^306", platform = "win32"}
+autopep8 = "^2.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

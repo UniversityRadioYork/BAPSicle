@@ -14,10 +14,7 @@ sudo apt install python3-pip python3-venv ffmpeg
 python3 -m venv ../venv
 source ../venv/bin/activate
 
-pip3 install wheel
-pip3 install -r requirements.txt
-pip3 install -r requirements-linux.txt
-pip3 install -e ../
+poetry install
 
 python3 ./generate-build-exe-config.py
 
