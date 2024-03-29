@@ -4,10 +4,10 @@ version = "3.1.0"
 description = ""
 authors = ["University Radio York"]
 readme = "README.md"
-package-mode = false
+packages = [{include = "__init__.py"}]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.13"
+python = ">=3.8,<3.13"
 wheel = "^0.43.0"
 pygame = "2.5.2"
 sanic = "21.9.3"
