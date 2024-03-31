@@ -18,6 +18,8 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Setup poetry
+      uses: Gr1N/setup-poetry@v8
     - name: Install Python dependencies
       run: poetry install --with=dev
     - name: Lint with flake8
