@@ -27,3 +27,6 @@ music-tmp/
 presenter-build
 
 node_modules/
+
+.direnv/
+result

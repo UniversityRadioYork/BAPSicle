@@ -1,0 +1,53 @@
+diff --git a/launch.py b/launch.py
+index 712bb6a..6210095 100755
+--- a/launch.py
++++ b/launch.py
+@@ -54,14 +54,7 @@ def notif(msg: str):
+     print("NOTIFICATION:{}".format(msg))
+ 
+ 
+-if __name__ == "__main__":
+-    # On Windows, calling this function is necessary.
+-    # Causes all kinds of loops if not present.
+-    # IT HAS TO BE RIGHT HERE, AT THE TOP OF __MAIN__
+-    # NOT INSIDE AN IF STATEMENT. RIGHT. HERE.
+-    # If it's not here, multiprocessing just doesn't run in the package.
+-    # Freeze support refers to being packaged with Pyinstaller.
+-    multiprocessing.freeze_support()
++def main():
+     setproctitle("BAPSicle - Launcher")
+     if len(sys.argv) > 1:
+         # We got an argument! It's probably Platypus's UI.
+@@ -86,3 +79,13 @@ if __name__ == "__main__":
+     else:
+         startServer()
+         sys.exit(0)
++
++if __name__ == "__main__":
++    # On Windows, calling this function is necessary.
++    # Causes all kinds of loops if not present.
++    # IT HAS TO BE RIGHT HERE, AT THE TOP OF __MAIN__
++    # NOT INSIDE AN IF STATEMENT. RIGHT. HERE.
++    # If it's not here, multiprocessing just doesn't run in the package.
++    # Freeze support refers to being packaged with Pyinstaller.
++    multiprocessing.freeze_support()
++    main()
+diff --git a/setup.py b/setup.py
+index 9af4e1d..3a6db65 100644
+--- a/setup.py
++++ b/setup.py
+@@ -7,5 +7,13 @@ setup(
+     description=package.DESCRIPTION,
+     author=package.AUTHOR,
+     license=package.LICENSE,
+-    packages=find_packages(),
++    packages=find_packages() + [
++        '.',
++        'alerts',
++    ],
++    entry_points={
++        'console_scripts': [
++            'bapsicle = launch:main'
++        ],
++    },
+ )
