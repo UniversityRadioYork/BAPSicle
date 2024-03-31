@@ -71,9 +71,9 @@ jobs:
       run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"
       id: extract_branch
     - name: Archive Build
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
-        name: BAPSicle-${{ steps.extract_branch.outputs.branch }}-${{github.sha}}-Ubuntu
+        name: BAPSicle-${{ steps.extract_branch.outputs.branch }}-${{github.sha}}-Ubuntu-python${{matrix.python-version}}-node${{matrix.node-version}}
         path: |
           build/output/BAPSicle
 
@@ -109,9 +109,9 @@ jobs:
       run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"
       id: extract_branch
     - name: Archive Build
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
-        name: BAPSicle-${{ steps.extract_branch.outputs.branch }}-${{github.sha}}-Windows
+        name: BAPSicle-${{ steps.extract_branch.outputs.branch }}-${{github.sha}}-Windows-python${{matrix.python-version}}-node${{matrix.node-version}}
         path: |
           build/output/BAPSicle.exe
           install/
