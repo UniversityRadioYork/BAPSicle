@@ -14,6 +14,9 @@
           inherit (pkgs) lib;
           inherit (pkgs.python311Packages) setuptools packaging sanic buildPythonPackage fetchPypi;
         };
+        webstudio = import ./webstudio.nix {
+          inherit pkgs;
+        };
         dependencies = ps: with ps; [
           setuptools
           wheel
@@ -36,7 +39,7 @@
         version = self.shortRev or self.dirtyShortRev or "dirty-inputs";
       in
     {
-      packages = {
+      packages = rec {
         default = pkgs.python311Packages.buildPythonApplication {
           pname = "bapsicle";
           inherit version;
@@ -45,8 +48,14 @@
           src = ./.;
           patches = [
             ./patches/0-setup.py-fixes.patch
+            (pkgs.substituteAll {
+              src = ./patches/1-presenter-build-path.patch;
+              baps_presenter = "${webstudio}";
+            })
           ];
         };
+
+        inherit webstudio;
       };
 
       devShells.default = pkgs.mkShell {

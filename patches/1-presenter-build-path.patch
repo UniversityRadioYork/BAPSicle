@@ -1,0 +1,18 @@
+diff --git a/web_server.py b/web_server.py
+index ccc3979..dc36db3 100644
+--- a/web_server.py
++++ b/web_server.py
+@@ -449,11 +449,11 @@ app.static(
+ app.static("/static", resolve_local_file_path("ui-static"), name="ui-static")
+ 
+ 
+-dist_directory = resolve_local_file_path("presenter-build")
++dist_directory = "@baps_presenter@";
+ app.static("/presenter", dist_directory)
+ app.static(
+     "/presenter/",
+-    resolve_local_file_path("presenter-build/index.html"),
++    "@baps_presenter@/index.html",
+     strict_slashes=True,
+     name="presenter-index",
+ )
