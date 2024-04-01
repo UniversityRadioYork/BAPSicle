@@ -72,6 +72,7 @@
               ui_static = "${ui-static}";
               ui_templates = "${ui-templates}";
             })
+            ./patches/2-not-beta.patch
           ];
         };
 

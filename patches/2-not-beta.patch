@@ -1,0 +1,21 @@
+diff --git a/package.py b/package.py
+index 1689140..bacf68f 100644
+--- a/package.py
++++ b/package.py
+@@ -12,15 +12,7 @@ with open(resolve_local_file_path("package.json")) as file:
+ 
+     build_commit = "Dev"
+     build_branch = "Local"
+-    build_beta = True
+-    try:
+-        import build
+-
+-        build_commit = build.BUILD
+-        build_branch = build.BRANCH
+-        build_beta = build_branch != "release"
+-    except (ModuleNotFoundError, AttributeError):
+-        pass
++    build_beta = False
+     BUILD: str = build_commit
+     BRANCH: str = build_branch
+     BETA: bool = build_beta
