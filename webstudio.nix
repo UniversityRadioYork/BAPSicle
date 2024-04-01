@@ -12,7 +12,6 @@ let
   };
 in
 pkgs.stdenv.mkDerivation {
-  pname = "baps-presenter";
   name = "baps-presenter";
   inherit src;
 

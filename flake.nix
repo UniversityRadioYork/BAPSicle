@@ -17,6 +17,24 @@
         webstudio = import ./webstudio.nix {
           inherit pkgs;
         };
+        ui-templates = pkgs.stdenv.mkDerivation {
+          name = "baps-ui-templates";
+          src = ./ui-templates;
+          phases = "installPhase";
+          installPhase = ''
+          mkdir -p $out
+          cp -R $src/. $out
+          '';
+        };
+        ui-static = pkgs.stdenv.mkDerivation {
+          name = "baps-ui-static";
+          src = ./ui-static;
+          phases = "installPhase";
+          installPhase = ''
+          mkdir -p $out
+          cp -R $src/. $out
+          '';
+        };
         dependencies = ps: with ps; [
           setuptools
           wheel
@@ -51,6 +69,8 @@
             (pkgs.substituteAll {
               src = ./patches/1-presenter-build-path.patch;
               baps_presenter = "${webstudio}";
+              ui_static = "${ui-static}";
+              ui_templates = "${ui-templates}";
             })
           ];
         };

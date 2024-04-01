@@ -1,9 +1,25 @@
 diff --git a/web_server.py b/web_server.py
-index ccc3979..dc36db3 100644
+index ccc3979..2909ff8 100644
 --- a/web_server.py
 +++ b/web_server.py
-@@ -449,11 +449,11 @@ app.static(
- app.static("/static", resolve_local_file_path("ui-static"), name="ui-static")
+@@ -32,7 +32,7 @@ import package
+ from baps_types.happytime import happytime
+ 
+ env = Environment(
+-    loader=FileSystemLoader("%s/ui-templates/" % os.path.dirname(__file__)),
++    loader=FileSystemLoader("@ui_templates@"),
+     autoescape=select_autoescape(),
+ )
+ 
+@@ -444,16 +444,16 @@ async def audio_file(request, type: str, id: int):
+ 
+ # Static Files
+ app.static(
+-    "/favicon.ico", resolve_local_file_path("ui-static/favicon.ico"), name="ui-favicon"
++    "/favicon.ico", "@ui_static@/favicon.ico", name="ui-favicon"
+ )
+-app.static("/static", resolve_local_file_path("ui-static"), name="ui-static")
++app.static("/static", "@ui_static@", name="ui-static")
  
  
 -dist_directory = resolve_local_file_path("presenter-build")
