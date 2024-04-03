@@ -685,6 +685,158 @@ class Player:
         self.state.update("show_plan", [])
         return True
 
+    def load(self, weight: int):
+        if not self.isPlaying:
+            loaded_state = self.state.get()
+            self.unload()
+
+            self.logger.log.info("Resetting output (in case of sound output gone silent somehow) to " + str(loaded_state["output"]))
+            self.output(loaded_state["output"])
+
+            showplan = loaded_state["show_plan"]
+
+            loaded_item: Optional[PlanItem] = None
+
+            for i in range(len(showplan)):
+                if showplan[i].weight == weight:
+                    loaded_item = showplan[i]
+                    break
+
+            if loaded_item is None:
+                self.logger.log.error(
+                    "Failed to find weight: {}".format(weight))
+                return False
+
+            reload = False
+            if loaded_item.filename == "" or loaded_item.filename is None:
+                self.logger.log.info(
+                    "Filename is not specified, loading from API.")
+                reload = True
+            elif not os.path.exists(loaded_item.filename):
+                self.logger.log.warn(
+                    "Filename given doesn't exist. Re-loading from API."
+                )
+                reload = True
+
+            if reload:
+                loaded_item.filename = sync(self.api.get_filename(item=loaded_item))
+
+            if not loaded_item.filename:
+                return False
+
+            self.state.update("loaded_item", loaded_item)
+
+            for i in range(len(showplan)):
+                if showplan[i].weight == weight:
+                    self.state.update("show_plan", index=i, value=loaded_item)
+                break
+                # TODO: Update the show plan filenames???
+
+            load_attempt = 0
+            while load_attempt < 5:
+                load_attempt += 1
+                try:
+                    self.logger.log.info("Loading file: " +
+                                        str(loaded_item.filename))
+                    mixer.music.load(loaded_item.filename)
+                except Exception:
+                    # We couldn't load that file.
+                    self.logger.log.exception(
+                        "Couldn't load file: " + str(loaded_item.filename)
+                    )
+                    time.sleep(1)
+                    continue # Try loading again.
+
+                if not self.isLoaded:
+                    self.logger.log.error("Pygame loaded file without error, but never actually loaded.")
+                    time.sleep(1)
+                    continue # Try loading again.
+
+                try:
+                    if ".mp3" in loaded_item.filename:
+                        song = MP3(loaded_item.filename)
+                        self.state.update("length", song.info.length)
+                    else:
+                        self.state.update(
+                            "length", mixer.Sound(
+                                loaded_item.filename).get_length() / 1000
+                        )
+                except Exception:
+                    self.logger.log.exception(
+                        "Failed to update the length of item.")
+                    time.sleep(1)
+                    continue # Try loading again.
+
+                # Everything worked, we made it!
+                if loaded_item.cue > 0:
+                    self.seek(loaded_item.cue)
+                else:
+                    self.seek(0)
+
+                if self.state.get()["play_on_load"]:
+                    self.unpause()
+
+                return True
+
+            self.logger.log.error("Failed to load track after numerous retries.")
+            return False
+
+        return False
+
+    def unload(self):
+        if not self.isPlaying:
+            try:
+                mixer.music.unload()
+                self.state.update("paused", False)
+                self.state.update("loaded_item", None)
+            except Exception:
+                self.logger.log.exception("Failed to unload channel.")
+                return False
+
+        self._potentially_end_tracklist()
+        # If we unloaded successfully, reset the tracklist_id, ready for the next item.
+        if not self.isLoaded:
+            self.state.update("tracklist_id", None)
+
+        return not self.isLoaded
+
+    def quit(self):
+        try:
+            mixer.quit()
+            self.state.update("paused", False)
+            self.logger.log.info("Quit mixer.")
+        except Exception:
+            self.logger.log.exception("Failed to quit mixer.")
+
+    def output(self, name: Optional[str] = None):
+        wasPlaying = self.state.get()["playing"]
+        oldPos = self.state.get()["pos_true"]
+
+        name = None if (not name or name.lower() == "none") else name
+
+        self.quit()
+        self.state.update("output", name)
+        try:
+            if name:
+                mixer.init(44100, -16, 2, 1024, devicename=name)
+            else:
+                mixer.init(44100, -16, 2, 1024)
+        except Exception:
+            self.logger.log.exception(
+                "Failed to init mixer with device name: " + str(name)
+            )
+            return False
+
+        loadedItem = self.state.get()["loaded_item"]
+        if loadedItem:
+            self.logger.log.info("Reloading after output change.")
+            self.load(loadedItem.weight)
+        if wasPlaying:
+            self.logger.log.info("Resuming playback after output change.")
+            self.play(oldPos)
+
+        return True
+
     # PlanItems can have markers. These are essentially bookmarked positions in the audio.
     # Timeslotitemid can be a ghost (un-submitted item), so may be "IXXX", hence str.
     def set_marker(self, timeslotitemid: str, marker_str: str):

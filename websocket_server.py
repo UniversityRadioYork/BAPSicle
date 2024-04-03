@@ -26,7 +26,7 @@ class WebsocketServer:
     logger: LoggingManager
     to_webstudio: Task
     from_webstudio: Task
-    websocket_server: Serve
+    websocket_server: serve
 
     def __init__(self, in_q, out_q, state):
 
