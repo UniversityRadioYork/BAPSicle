@@ -88,6 +88,10 @@
   {
     "optionDest": "collect-all",
     "value": "setproctitle"
+  },
+  {
+   "optionDest": "collect-all",
+   "value": "tracerite"
   }
  ],
  "nonPyinstallerOptions": {
