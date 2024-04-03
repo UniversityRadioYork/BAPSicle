@@ -6,9 +6,9 @@ config = json.loads(file.read())
 file.close()
 
 if isLinux():
-    cmd_str = "python3 -m PyInstaller "
+    cmd_str = "poetry run python3 -m PyInstaller "
 else:
-    cmd_str = "pyinstaller "
+    cmd_str = "poetry run pyinstaller "
 
 json_dests = ["icon_file", "clean_build"]
 pyi_dests = ["icon", "clean"]

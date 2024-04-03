@@ -92,7 +92,7 @@ class WebsocketServer:
                     channel = int(data["channel"])
                     self.sendCommand(channel, data)
 
-                await asyncio.wait([conn.send(message) for conn in self.baps_clients])
+                await asyncio.wait([asyncio.Task(conn.send(message)) for conn in self.baps_clients])
 
         except websockets.exceptions.ConnectionClosedError as e:
             self.logger.log.error(
@@ -244,7 +244,7 @@ class WebsocketServer:
                 data = json.dumps(
                     {"command": command, "data": message, "channel": channel}
                 )
-                await asyncio.wait([conn.send(data) for conn in self.baps_clients])
+                await asyncio.wait([asyncio.Task(conn.send(data)) for conn in self.baps_clients])
             except queue.Empty:
                 continue
             except ValueError:

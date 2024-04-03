@@ -8,24 +8,18 @@ build_branch="$(git branch --show-current)"
 echo "BUILD: str = \"$build_commit\"" > ../build.py
 echo "BRANCH: str = \"$build_branch\"" >> ../build.py
 
-python3 -m venv ../venv
-source ../venv/bin/activate
+poetry install
 
-pip3 install wheel
-pip3 install -r requirements.txt
-pip3 install -r requirements-macos.txt
-pip3 install -e ..\
+poetry run python3 ./generate-build-exe-config.py
 
-python3 ./generate-build-exe-config.py
-
-python3 ./build-exe.py
+poetry run python3 ./build-exe.py
 
 bash ./build-exe-pyinstaller-command.sh
 
 rm ./*.spec
 
 cd ../
-python3 build/generate-platypus-config.py
+poetry run python3 build/generate-platypus-config.py
 cd build
 
 brew install platypus

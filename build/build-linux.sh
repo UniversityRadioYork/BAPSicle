@@ -11,19 +11,13 @@ echo "BRANCH: str = \"$build_branch\"" >> ../build.py
 sudo apt install libportaudio2
 sudo apt install python3-pip python3-venv ffmpeg
 
-python3 -m venv ../venv
-source ../venv/bin/activate
+poetry install
 
-pip3 install wheel
-pip3 install -r requirements.txt
-pip3 install -r requirements-linux.txt
-pip3 install -e ../
-
-python3 ./generate-build-exe-config.py
+poetry run python3 ./generate-build-exe-config.py
 
 chmod +x output/BAPSicle
 
-python3 ./build-exe.py
+poetry run python3 ./build-exe.py
 
 bash ./build-exe-pyinstaller-command.sh
 
