@@ -38,7 +38,7 @@ Starting and stopping the server, as well as UI links, are available in the Syst
 
 On all platforms:
 
--   Python 3.8 - 3.9 Tested
+-   Python 3.8 - 3.11 Tested
 -   Git (Obviously)
 
 On MacOS:

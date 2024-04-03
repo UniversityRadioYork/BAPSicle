@@ -88,8 +88,10 @@ LOGGING_CONFIG = dict(
     },
 )
 
-app = Sanic("BAPSicle-WebServer", log_config=LOGGING_CONFIG)
+# https://sanic.dev/en/guide/running/manager.html#overcoming-a-coderuntimeerrorcode
+Sanic.START_METHOD_SET = True
 
+app = Sanic("BAPSicle-WebServer", log_config=LOGGING_CONFIG)
 
 def render_template(file, data, status=200):
     template = env.get_template(file)
@@ -553,6 +555,7 @@ def WebServer(player_to: List[Queue], player_from: Queue, state: StateManager):
                 host=server_state.get()["host"],
                 port=server_state.get()["port"],
                 auto_reload=False,
+                single_process=True,
                 debug=not package.BETA,
                 access_log=not package.BETA,
             )
