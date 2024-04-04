@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Literal, Optional, Union
+from typing import Dict, Optional, Union
 
 POSITIONS = ["start", "mid", "end"]
 PARAMS = ["name", "time", "position", "section"]

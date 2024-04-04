@@ -15,9 +15,10 @@ with open(resolve_local_file_path("package.json")) as file:
     build_beta = True
     try:
         import build
+
         build_commit = build.BUILD
         build_branch = build.BRANCH
-        build_beta = (build_branch != "release")
+        build_beta = build_branch != "release"
     except (ModuleNotFoundError, AttributeError):
         pass
     BUILD: str = build_commit

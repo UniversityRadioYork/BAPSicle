@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 cd "$(dirname "$0")"
 
 # Get the git commit / branch and write it into build.py.
@@ -7,18 +8,16 @@ build_branch="$(git branch --show-current)"
 echo "BUILD: str = \"$build_commit\"" > ../build.py
 echo "BRANCH: str = \"$build_branch\"" >> ../build.py
 
-apt install libportaudio2
+sudo apt install libportaudio2
+sudo apt install python3-pip python3-venv ffmpeg
 
-python3 -m venv ../venv
-source ../venv/bin/activate
+poetry install
 
-pip3 install -r requirements.txt
-pip3 install -r requirements-linux.txt
-pip3 install -e ../
+poetry run python3 ./generate-build-exe-config.py
 
-python3 ./generate-build-exe-config.py
+chmod +x output/BAPSicle
 
-python3 ./build-exe.py
+poetry run python3 ./build-exe.py
 
 bash ./build-exe-pyinstaller-command.sh
 

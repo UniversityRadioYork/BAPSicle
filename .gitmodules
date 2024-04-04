@@ -1,3 +1,4 @@
 [submodule "presenter"]
 	path = presenter
-	url = https://github.com/michael-grace/WebStudio.git
+	url = https://github.com/UniversityRadioYork/WebStudio.git
+	branch = master

@@ -68,7 +68,9 @@ class TestPlayer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.logger = LoggingManager("Test_Player")
-        cls.server_state = StateManager("BAPSicleServer", cls.logger, default_state={"tracklist_mode": "off"})  # Mostly dummy here.
+        cls.server_state = StateManager(
+            "BAPSicleServer", cls.logger, default_state={"tracklist_mode": "off"}
+        )  # Mostly dummy here.
 
     # clean up logic for the test suite declared in the test module
     # code that is executed after all tests in one test run
@@ -82,7 +84,8 @@ class TestPlayer(unittest.TestCase):
         self.player_from_q = multiprocessing.Queue()
         self.player_to_q = multiprocessing.Queue()
         self.player = multiprocessing.Process(
-            target=Player, args=(-1, self.player_to_q, self.player_from_q, self.server_state)
+            target=Player,
+            args=(-1, self.player_to_q, self.player_from_q, self.server_state),
         )
         self.player.start()
         self._send_msg_wait_OKAY("CLEAR")  # Empty any previous track items.
@@ -313,7 +316,8 @@ class TestPlayer(unittest.TestCase):
         self._send_msg_wait_OKAY("LOAD:2")  # To test currently loaded marker sets.
 
         markers = [
-            # Markers are stored as float, to compare against later, these must all be floats, despite int being supported.
+            # Markers are stored as float, to compare against later,
+            # these must all be floats, despite int being supported.
             getMarkerJSON("Intro Name", 2.0, "start", None),
             getMarkerJSON("Cue Name", 3.14, "mid", None),
             getMarkerJSON("Outro Name", 4.0, "end", None),
@@ -339,9 +343,13 @@ class TestPlayer(unittest.TestCase):
         # Now test that all the markers we setup are present.
         item = json_obj["show_plan"][0]
         self.assertEqual(item["weight"], 0)
-        self.assertEqual(item["intro"], 2.0)  # Backwards compat with basic Webstudio intro/cue/outro
+        self.assertEqual(
+            item["intro"], 2.0
+        )  # Backwards compat with basic Webstudio intro/cue/outro
         self.assertEqual(item["cue"], 3.14)
-        self.assertEqual([json.dumps(item) for item in item["markers"]], markers[0:2])  # Check the full marker configs match
+        self.assertEqual(
+            [json.dumps(item) for item in item["markers"]], markers[0:2]
+        )  # Check the full marker configs match
 
         item = json_obj["show_plan"][1]
         self.assertEqual(item["weight"], 1)
@@ -351,11 +359,14 @@ class TestPlayer(unittest.TestCase):
         # In this case, we want to make sure both the current and loaded items are updated
         for item in [json_obj["show_plan"][2], json_obj["loaded_item"]]:
             self.assertEqual(item["weight"], 2)
-            # This is a loop marker. It should not appear as a standard intro, outro or cue. Default of 0.0 should apply to all.
+            # This is a loop marker. It should not appear as a standard intro, outro or cue.
+            # Default of 0.0 should apply to all.
             self.assertEqual(item["intro"], 0.0)
             self.assertEqual(item["outro"], 0.0)
             self.assertEqual(item["cue"], 0.0)
-            self.assertEqual([json.dumps(item) for item in item["markers"]], markers[3:])
+            self.assertEqual(
+                [json.dumps(item) for item in item["markers"]], markers[3:]
+            )
 
         # TODO: Now test editing/deleting them
 

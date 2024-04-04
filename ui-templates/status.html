@@ -10,6 +10,12 @@
       <div class="col-4">
         {% if player %}
           <h3 class="h5">Player {{player.channel}}</h3>
+          <p>
+            Initialised: {{player.initialised}}<br/>
+            Successful Load: {{player.loaded}}<br/>
+            Fader Live: {{player.live}}<br/>
+            Current Tracklist: {{player.tracklist_id}}
+          </p>
           <a href="/player/{{player.channel}}/play">Play</a>
           {% if player.paused %}
           <a href="/player/{{player.channel}}/unpause">UnPause</a>
@@ -38,7 +44,7 @@
           {% endfor %}
           <br>
           {% else %}
-            <p>RIP. Failed to get this.</p>
+            <p>Failed to get status from Player Channel. Channel may be busy or has failed.</p>
           {% endif %}
       </div>
       {% endfor %}

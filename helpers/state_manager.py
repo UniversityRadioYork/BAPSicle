@@ -1,10 +1,12 @@
 import json
 import os
-from logging import CRITICAL, DEBUG, INFO
+from logging import DEBUG, INFO
 import time
 from datetime import datetime
 from copy import copy
 from typing import Any, Dict, List
+from setproctitle import setproctitle
+from multiprocessing import current_process
 
 from baps_types.plan import PlanItem
 from helpers.logging_manager import LoggingManager
@@ -28,6 +30,11 @@ class StateManager:
         rate_limit_params=[],
         rate_limit_period_s=5,
     ):
+        # When a StateManager is shared via proxy to other processes, it has a thread itself.
+        process_title = "BAPSicle - StateManager Proxy"
+        setproctitle(process_title)
+        current_process().name = process_title
+
         self.logger = logger
 
         path_dir: str = resolve_external_file_path("/state")
@@ -36,7 +43,7 @@ class StateManager:
                 # Try creating the directory.
                 os.mkdir(path_dir)
             except Exception:
-                print("Failed to create state directory.")
+                self._logException("Failed to create state directory.")
                 return
 
         self.filepath = resolve_external_file_path("/state/" + name + ".json")
@@ -48,7 +55,7 @@ class StateManager:
                 # Try creating the file.
                 open(self.filepath, "x")
             except Exception:
-                self._log("Failed to create state file.", CRITICAL)
+                self._logException("Failed to create state file.")
                 return
 
         file_raw: str
@@ -78,9 +85,10 @@ class StateManager:
 
                 # If there are any new config options in the default state, save them.
                 # Uses update() to save them to file too.
-                for key in default_state.keys():
-                    if not key in file_state.keys():
-                        self.update(key, default_state[key])
+                if default_state:
+                    for key in default_state.keys():
+                        if key not in file_state.keys():
+                            self.update(key, default_state[key])
 
             except Exception:
                 self._logException(
@@ -113,7 +121,6 @@ class StateManager:
         state_to_json = copy(state)
 
         now = datetime.now()
-
 
         current_time = now.strftime("%H:%M:%S")
         state_to_json["last_updated"] = current_time
@@ -154,21 +161,30 @@ class StateManager:
             allow = False
 
             # It's hard to compare lists, especially of complex objects like show plans, just write it.
-            if (isinstance(value, list)):
+            if isinstance(value, list):
                 allow = True
 
             # If the two objects have dict representations, and they don't match, allow writing.
             # TODO: This should be easier.
-            if (getattr(value, "__dict__", None) and getattr(state_to_update[key], "__dict__", None)):
+            if getattr(value, "__dict__", None) and getattr(
+                state_to_update[key], "__dict__", None
+            ):
                 if value.__dict__ != state_to_update[key].__dict__:
                     allow = True
 
             if not allow:
 
                 # Just some debug logging.
-                if update_file and (key not in ["playing", "loaded", "initialised"]):
-                    self._log("Key: {},\nnew:{}\nold:{}, ".format(key, getattr(value, "__dict__", None), getattr(state_to_update[key], "__dict__", None)), DEBUG)
-                    self._log("Not updating state for key {} with value {} of type {}.".format(key, value, type(value)), DEBUG)
+                if update_file and (
+                    key
+                    not in ["playing", "loaded", "initialised", "remaining", "pos_true"]
+                ):
+                    self._log(
+                        "Not updating state for key '{}' with value '{}' of type '{}'.".format(
+                            key, value, type(value)
+                        ),
+                        DEBUG,
+                    )
 
                 # We're trying to update the state with the same value.
                 # In this case, ignore the update
@@ -177,11 +193,22 @@ class StateManager:
 
         if index > -1 and key in state_to_update:
             if not isinstance(state_to_update[key], list):
-                self._log("Not updating state for key {} with value {} of type {} since index is set and key is not a list.".format(key, value, type(value)), DEBUG)
+                self._log(
+                    "Not updating state for key '{}' with value '{}' of type '{}' since index is set and key is not a list."
+                    .format(
+                        key, value, type(value)
+                    ),
+                    DEBUG,
+                )
                 return
             list_items = state_to_update[key]
             if index >= len(list_items):
-                self._log("Not updating state for key {} with value {} of type {} because index {} is too large..".format(key, value, type(value), index), DEBUG)
+                self._log(
+                    "Not updating state for key '{}' with value '{}' of type '{}' because index '{}' is too large..".format(
+                        key, value, type(value), index
+                    ),
+                    DEBUG,
+                )
                 return
             list_items[index] = value
             state_to_update[key] = list_items
@@ -191,7 +218,12 @@ class StateManager:
         self.state = state_to_update
 
         if update_file:
-            self._log("Writing change to key {} with value {} of type {} to disk.".format(key, value, type(value)), DEBUG)
+            self._log(
+                "Writing change to key '{}' with value '{}' of type '{}' to disk.".format(
+                    key, value, type(value)
+                ),
+                DEBUG,
+            )
             # Either a routine write, or state has changed.
             # Update the file
             self.write_to_file(state_to_update)

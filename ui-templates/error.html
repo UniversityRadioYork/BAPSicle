@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content_inner %}
+<div class="text-center">
+  <div class="error error-big mx-auto" data-text="{{data.code}}">{{data.code}}</div>
+  <p class="lead text-gray-800 mb-5">{{data.title}}</p>
+  <p class="text-gray-900 mb-0">{{data.message}}</p>
+  <a href="/">← Escape Back Home</a>
+</div>
+{% endblock %}

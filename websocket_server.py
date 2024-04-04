@@ -7,6 +7,7 @@ from typing import List
 import websockets
 import json
 from os import _exit
+from websockets.legacy.server import Serve
 from websockets.server import serve
 from setproctitle import setproctitle
 from multiprocessing import current_process
@@ -19,8 +20,8 @@ class WebsocketServer:
 
     threads = Future
     baps_clients = set()
-    channel_to_q: List[multiprocessing.Queue]
-    webstudio_to_q: List[multiprocessing.Queue]
+    player_to_q: List[multiprocessing.Queue]
+    player_from_q: multiprocessing.Queue
     server_name: str
     logger: LoggingManager
     to_webstudio: Task
@@ -29,17 +30,17 @@ class WebsocketServer:
 
     def __init__(self, in_q, out_q, state):
 
-        self.channel_to_q = in_q
-        self.webstudio_to_q = out_q
+        self.player_to_q = in_q
+        self.player_from_q = out_q
 
-        process_title = "Websockets Servr"
+        process_title = "BAPSicle - Websockets Server"
         setproctitle(process_title)
         current_process().name = process_title
 
         self.logger = LoggingManager("Websockets")
         self.server_name = state.get()["server_name"]
 
-        self.websocket_server = websockets.serve(
+        self.websocket_server = serve(
             self.websocket_handler, state.get()["host"], state.get()["ws_port"]
         )
 
@@ -59,7 +60,7 @@ class WebsocketServer:
         _exit(0)
 
     def __del__(self):
-        print("Deleting websocket server")
+        self.logger.log.info("Deleting websocket server")
         self.quit()
 
     async def websocket_handler(self, websocket, path):
@@ -68,15 +69,14 @@ class WebsocketServer:
             json.dumps({"message": "Hello", "serverName": self.server_name})
         )
         self.logger.log.info("New Client: {}".format(websocket))
-        for channel in self.channel_to_q:
+        for channel in self.player_to_q:
             channel.put("WEBSOCKET:STATUS")
 
-        self.from_webstudio = asyncio.create_task(self.handle_from_webstudio(websocket))
+        self.from_webstudio = asyncio.create_task(
+            self.handle_from_webstudio(websocket))
 
         try:
-            self.threads = await shield(
-                asyncio.gather(self.from_webstudio)
-            )
+            self.threads = await shield(asyncio.gather(self.from_webstudio))
         finally:
             self.from_webstudio.cancel()
 
@@ -86,15 +86,13 @@ class WebsocketServer:
                 data = json.loads(message)
                 if "channel" not in data:
                     # Didn't specify a channel, send to all.
-                    for channel in range(len(self.channel_to_q)):
+                    for channel in range(len(self.player_to_q)):
                         self.sendCommand(channel, data)
                 else:
                     channel = int(data["channel"])
                     self.sendCommand(channel, data)
 
-                await asyncio.wait(
-                    [conn.send(message) for conn in self.baps_clients]
-                )
+                await asyncio.wait([asyncio.Task(conn.send(message)) for conn in self.baps_clients])
 
         except websockets.exceptions.ConnectionClosedError as e:
             self.logger.log.error(
@@ -110,7 +108,7 @@ class WebsocketServer:
             self.baps_clients.remove(websocket)
 
     def sendCommand(self, channel, data):
-        if channel not in range(len(self.channel_to_q)):
+        if channel not in range(len(self.player_to_q)):
             self.logger.log.exception(
                 "Received channel number larger than server supported channels."
             )
@@ -146,12 +144,13 @@ class WebsocketServer:
                     extra += str(data["weight"])
                 elif command == "RESETPLAYED":
                     extra += str(data["weight"])
-                elif command == "GET_PLAN":
+                elif command == "SETPLAYED":
+                    extra += str(data["weight"])
+                elif command == "GETPLAN":
                     extra += str(data["timeslotId"])
                 elif command == "SETMARKER":
                     extra += "{}:{}".format(
-                        data["timeslotitemid"],
-                        json.dumps(data["marker"])
+                        data["timeslotitemid"], json.dumps(data["marker"])
                     )
 
                 # TODO: Move this to player handler.
@@ -159,7 +158,7 @@ class WebsocketServer:
                 elif command == "MOVE":
 
                     # remove the exiting item first
-                    self.channel_to_q[channel].put(
+                    self.player_to_q[channel].put(
                         "{}REMOVE:{}".format(message, data["weight"])
                     )
 
@@ -171,8 +170,9 @@ class WebsocketServer:
                     item["weight"] = int(data["new_weight"])
 
                     # Now send the special case.
-                    self.channel_to_q[new_channel].put(
-                        "WEBSOCKET:ADD:" + json.dumps(item))
+                    self.player_to_q[new_channel].put(
+                        "WEBSOCKET:ADD:" + json.dumps(item)
+                    )
 
                     # Don't bother, we should be done.
                     return
@@ -180,18 +180,20 @@ class WebsocketServer:
             except ValueError as e:
                 self.logger.log.exception(
                     "Error decoding extra data {} for command {} ".format(
-                        e, command
-                    )
+                        e, command)
                 )
                 pass
 
             # Stick the message together and send!
-            message += command # Put the command in at the end, in case MOVE etc changed it.
+            message += (
+                # Put the command in at the end, in case MOVE etc changed it.
+                command
+            )
             if extra != "":
                 message += ":" + extra
 
             try:
-                self.channel_to_q[channel].put(message)
+                self.player_to_q[channel].put(message)
             except Exception as e:
                 self.logger.log.exception(
                     "Failed to send message {} to channel {}: {}".format(
@@ -201,64 +203,60 @@ class WebsocketServer:
 
         else:
             self.logger.log.error(
-                "Command missing from message. Data: {}".format(data)
-            )
+                "Command missing from message. Data: {}".format(data))
 
     async def handle_to_webstudio(self):
 
         terminator = Terminator()
         while not terminator.terminate:
-
-            for channel in range(len(self.webstudio_to_q)):
-                try:
-                    message = self.webstudio_to_q[channel].get_nowait()
-                    source = message.split(":")[0]
-                    # TODO ENUM
-                    if source not in ["WEBSOCKET", "ALL"]:
-                        self.logger.log.error(
-                            "ERROR: Message received from invalid source to websocket_handler. Ignored.",
-                            source,
-                            message,
-                        )
-                        continue
-
-                    command = message.split(":")[1]
-                    # print("Websocket Out:", command)
-                    if command == "STATUS":
-                        try:
-                            message = message.split("OKAY:")[1]
-                            message = json.loads(message)
-                        except Exception:
-                            continue  # TODO more logging
-                    elif command == "POS":
-                        try:
-                            message = message.split(":", 2)[2]
-                        except Exception:
-                            continue
-                    elif command == "QUIT":
-                        self.quit()
-                    else:
-                        continue
-
-                    data = json.dumps(
-                        {"command": command, "data": message, "channel": channel}
-                    )
-                    await asyncio.wait(
-                        [conn.send(data) for conn in self.baps_clients]
-                    )
-                except queue.Empty:
-                    continue
-                except ValueError:
-                    # Typically a "Set of coroutines/Futures is empty." when sending to a dead client.
-                    continue
-                except Exception as e:
-                    self.logger.log.exception(
-                        "Exception trying to send to websocket:", e
-                    )
             await asyncio.sleep(0.02)
+            try:
+                message = self.player_from_q.get_nowait()
+                split = message.split(":")
+                channel = int(split[0])
+                source = split[1]
+                # TODO ENUM
+                if source not in ["WEBSOCKET", "ALL"]:
+                    self.logger.log.error(
+                        "ERROR: Message received from invalid source to websocket_handler. Ignored.",
+                        source,
+                        message,
+                    )
+                    continue
+
+                command = split[2]
+                if command == "STATUS":
+                    try:
+                        message = message.split("OKAY:")[1]
+                        message = json.loads(message)
+                    except Exception:
+                        continue  # TODO more logging
+                elif command == "POS":
+                    try:
+                        message = split[3]
+                    except Exception:
+                        continue
+                elif command == "QUIT":
+                    self.quit()
+                else:
+                    continue
+
+                data = json.dumps(
+                    {"command": command, "data": message, "channel": channel}
+                )
+                await asyncio.wait([asyncio.Task(conn.send(data)) for conn in self.baps_clients])
+            except queue.Empty:
+                continue
+            except ValueError:
+                # Typically a "Set of coroutines/Futures is empty." when sending to a dead client.
+                continue
+            except Exception as e:
+                self.logger.log.exception(
+                    "Exception trying to send to websocket:", e
+                )
 
         self.quit()
 
 
 if __name__ == "__main__":
-    print("Don't do this")
+    raise Exception("Don't run this file standalone.")
