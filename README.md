@@ -39,6 +39,7 @@ Starting and stopping the server, as well as UI links, are available in the Syst
 On all platforms:
 
 -   Python 3.8 - 3.11 Tested
+-   [Poetry](https://python-poetry.org/)
 -   Git (Obviously)
 
 On MacOS:
@@ -47,7 +48,9 @@ On MacOS:
 
 ### Running
 
-To just run the server standalone without installing, run `python ./launch.py`.
+To run the server standalone without installing BAPSicle, you'll need to install the dependencies.
+Run `poetry install` in the root directory to install them.
+Then, run `poetry run python ./launch.py` to start the server.
 
 ## Building
 
