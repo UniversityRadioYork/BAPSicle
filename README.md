@@ -49,6 +49,8 @@ On MacOS:
 
 To just run the server standalone without installing, run `python ./launch.py`.
 
+Make sure to add your API key into the config page once its running.
+
 ## Building
 
 ### Windows
