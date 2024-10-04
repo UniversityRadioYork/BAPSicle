@@ -51,6 +51,7 @@ On MacOS:
 
 To run the server standalone without installing BAPSicle, you'll need to install the dependencies.
 Run `poetry install` in the root directory to install them.
+BAPSicle also requires a built version of the [presenter UI](https://github.com/UniversityRadioYork/WebStudio) in order to use; run `npm run presenter-make` to build it (the output will be in `presenter-ui`/).
 Then, run `poetry run python ./launch.py` to start the server.
 
 ## Building
