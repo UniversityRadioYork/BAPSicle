@@ -40,6 +40,7 @@ On all platforms:
 
 -   Python 3.8 - 3.11 Tested
 -   [Poetry](https://python-poetry.org/)
+-   NodeJS and Yarn 1.x
 -   Git (Obviously)
 
 On MacOS:
