@@ -24,7 +24,7 @@ in
 
       serviceConfig = {
         ExecStart = "${pkgs.lib.makeBinPath pkgs.bapsicle}";
-        WorkingDirectory = "%h/.local/state/bapsicle"
+        WorkingDirectory = "%h/.local/state/bapsicle";
         LockPersonality = "yes";
         MemoryDenyWriteExecute = "yes";
         NoNewPrivileges = "yes";
