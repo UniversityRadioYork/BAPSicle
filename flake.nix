@@ -7,7 +7,7 @@
   outputs = { self, nixpkgs, flake-utils }:
     {
        overlays.default = final: prev: {
-        inherit (self.packages.${prev.system}) default;
+        inherit (self.packages.${prev.system}) bapsicle;
       };
       nixosModules.default = import ./nixos.nix (self.overlays.default);
     } // flake-utils.lib.eachDefaultSystem (system:
@@ -59,10 +59,7 @@
           psutil
         ];
         version = self.shortRev or self.dirtyShortRev or "dirty-inputs";
-      in
-    {
-      packages = rec {
-        default = pkgs.python313Packages.buildPythonApplication {
+        bapsicle = pkgs.python313Packages.buildPythonApplication {
           pname = "bapsicle";
           inherit version;
           doCheck = false;
@@ -82,8 +79,12 @@
             ./patches/2-not-beta.patch
           ];
         };
+      in
+    {
+      packages = rec {
+        default = bapsicle;
 
-        inherit webstudio;
+        inherit bapsicle webstudio;
       };
 
       devShells.default = pkgs.mkShell {
