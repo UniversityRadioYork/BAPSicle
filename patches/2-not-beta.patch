@@ -1,11 +1,22 @@
 diff --git a/package.py b/package.py
-index 1689140..bacf68f 100644
+index 1689140..ec4f56a 100644
 --- a/package.py
 +++ b/package.py
-@@ -12,15 +12,7 @@ with open(resolve_local_file_path("package.json")) as file:
+@@ -1,28 +1,6 @@
+ # BAPSicle Details
+-from json import loads
+-from helpers.os_environment import resolve_local_file_path
  
-     build_commit = "Dev"
-     build_branch = "Local"
+-with open(resolve_local_file_path("package.json")) as file:
+-    config = loads(file.read())
+-    NAME: str = config["name"]
+-    NICE_NAME: str = config["nice_name"]
+-    DESCRIPTION: str = config["description"]
+-    AUTHOR: str = config["author"]
+-    LICENSE: str = config["license"]
+-
+-    build_commit = "Dev"
+-    build_branch = "Local"
 -    build_beta = True
 -    try:
 -        import build
@@ -15,7 +26,12 @@ index 1689140..bacf68f 100644
 -        build_beta = build_branch != "release"
 -    except (ModuleNotFoundError, AttributeError):
 -        pass
-+    build_beta = False
-     BUILD: str = build_commit
-     BRANCH: str = build_branch
-     BETA: bool = build_beta
+-    BUILD: str = build_commit
+-    BRANCH: str = build_branch
+-    BETA: bool = build_beta
+-
+-    VERSION: str = config["version"] + "b" if BETA else config["version"]
++BUILD = "%version%"
++BRANCH = "nixpkgs"
++BETA = False
++VERSION = "%version%"
