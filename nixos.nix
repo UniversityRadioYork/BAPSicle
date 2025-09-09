@@ -23,7 +23,7 @@ in
       description = "BAPS 3 Server";
 
       serviceConfig = {
-        ExecStart = "${pkgs.lib.makeBinPath pkgs.bapsicle}";
+        ExecStart = "${pkgs.lib.getExe pkgs.bapsicle}";
         WorkingDirectory = "%h/.local/state/bapsicle";
         LockPersonality = "yes";
         MemoryDenyWriteExecute = "yes";
