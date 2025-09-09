@@ -31,7 +31,7 @@ index 1689140..ec4f56a 100644
 -    BETA: bool = build_beta
 -
 -    VERSION: str = config["version"] + "b" if BETA else config["version"]
-+BUILD = "%version%"
++BUILD = "@version@"
 +BRANCH = "nixpkgs"
 +BETA = False
-+VERSION = "%version%"
++VERSION = "@version@"
