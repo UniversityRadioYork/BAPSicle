@@ -35,7 +35,7 @@ in
       };
 
       after = ["pipewire-pulse.socket"];
-      wantedBy = "default.target";
+      wantedBy = ["default.target"];
     };
   };
 }
