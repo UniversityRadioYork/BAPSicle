@@ -1,7 +1,7 @@
 {
   inputs = {
-    nixpkgs.url = github:NixOS/nixpkgs/nixpkgs-unstable;
-    flake-utils.url = github:numtide/flake-utils;
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
   outputs = { self, nixpkgs, flake-utils }:
@@ -12,7 +12,7 @@
         };
         sanic-cors = import ./sanic-cors.nix {
           inherit (pkgs) lib;
-          inherit (pkgs.python311Packages) setuptools packaging sanic buildPythonPackage fetchPypi;
+          inherit (pkgs.python313Packages) setuptools packaging sanic buildPythonPackage fetchPypi;
         };
         webstudio = import ./webstudio.nix {
           inherit pkgs;
@@ -37,7 +37,6 @@
         };
         dependencies = ps: with ps; [
           setuptools
-          wheel
           sanic
           sanic-cors
           pygame
@@ -58,16 +57,19 @@
       in
     {
       packages = rec {
-        default = pkgs.python311Packages.buildPythonApplication {
+        default = pkgs.python313Packages.buildPythonApplication {
           pname = "bapsicle";
           inherit version;
           doCheck = false;
-          propagatedBuildInputs = dependencies pkgs.python311Packages;
+          build-system = with pkgs.python313Packages; [
+            poetry-core
+          ];
+          dependencies = dependencies pkgs.python313Packages;
+          pyproject = true;
           src = ./.;
           patches = [
             ./patches/0-setup.py-fixes.patch
-            (pkgs.substituteAll {
-              src = ./patches/1-presenter-build-path.patch;
+            (pkgs.replaceVars ./patches/1-presenter-build-path.patch {
               baps_presenter = "${webstudio}";
               ui_static = "${ui-static}";
               ui_templates = "${ui-templates}";
@@ -85,6 +87,7 @@
           nodejs_20
           yarn
           ffmpeg_6-full
+          poetry
         ];
       };
     });

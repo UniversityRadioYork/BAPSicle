@@ -3,8 +3,8 @@ let
   src = pkgs.fetchFromGitHub {
     owner = "UniversityRadioYork";
     repo = "WebStudio";
-    rev= "8b7f59cdc6ed80b525b2dff665308d808a526d97";
-    hash = "sha256-I+N/mskX8/gN065SqPxmOn3nrHKPWPcIZygSGbB6GEE=";
+    rev= "ca4b8f6e45e88914912e63425d061ac8cb7d91c7";
+    hash = "sha256-wjQhNZyIqu61h14d6isTWymv9ajYeu/JG5WvKh1pdd8=";
   };
   yarnOfflineCache = pkgs.fetchYarnDeps {
     yarnLock = "${src}/yarn.lock";
