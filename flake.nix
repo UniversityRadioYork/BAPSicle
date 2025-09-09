@@ -78,6 +78,7 @@
             })
             ./patches/2-not-beta.patch
           ];
+          meta.mainProgram = "bapsicle";
         };
       in
     {
