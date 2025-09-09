@@ -24,7 +24,7 @@ in
 
       serviceConfig = {
         ExecStart = "${pkgs.lib.getExe pkgs.bapsicle}";
-        ExecStartPre = "mkdir -p %h/.local/state/bapsicle";
+        ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p %h/.local/state/bapsicle";
         WorkingDirectory = "-%h/.local/state/bapsicle";
         LockPersonality = "yes";
         MemoryDenyWriteExecute = "yes";
